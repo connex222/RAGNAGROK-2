@@ -1,0 +1,735 @@
+{
+  "schema": "ragnagrok.v2.content",
+  "version": 1,
+  "supplies": [
+    "turf",
+    "fertiliser",
+    "sprinklers",
+    "compost",
+    "gnomeDust"
+  ],
+  "terrainSupply": {
+    "turf": "turf",
+    "fertilizer": "fertiliser",
+    "sprinklers": "sprinklers",
+    "compost": "compost",
+    "gnomeDust": "gnomeDust",
+    "scorched": null
+  },
+  "terrainNames": {
+    "turf": "Turf",
+    "fertilizer": "Allotment",
+    "sprinklers": "Hot Clay",
+    "compost": "Compost Heap",
+    "gnomeDust": "Gnome Meadow",
+    "scorched": "Scorched"
+  },
+  "healthNames": [
+    "Ruined",
+    "Withered",
+    "Healthy",
+    "Lush"
+  ],
+  "yieldByHealth": [
+    0,
+    0,
+    1,
+    2
+  ],
+  "shedCapacity": 10,
+  "startingSupplies": {
+    "turf": 1,
+    "fertiliser": 1,
+    "sprinklers": 1,
+    "compost": 1,
+    "gnomeDust": 1
+  },
+  "actions": {
+    "order": [
+      "shelter",
+      "meddle",
+      "tend",
+      "claim",
+      "cultivate",
+      "carBoot"
+    ],
+    "shelter": {
+      "name": "Shelter",
+      "cost": {
+        "turf": 1
+      }
+    },
+    "meddle": {
+      "name": "Meddle",
+      "cost": {
+        "gnomeDust": 1
+      }
+    },
+    "tend": {
+      "name": "Tend",
+      "cost": {
+        "compost": 1
+      }
+    },
+    "claim": {
+      "name": "Claim",
+      "cost": {
+        "turf": 1,
+        "fertiliser": 1
+      }
+    },
+    "cultivate": {
+      "name": "Cultivate",
+      "cost": null
+    },
+    "carBoot": {
+      "name": "Car-Boot Sale",
+      "cost": null,
+      "gain": 2
+    }
+  },
+  "conditions": {
+    "frozen": {
+      "name": "Frozen",
+      "bad": true,
+      "yieldZero": true
+    },
+    "ash": {
+      "name": "Ash",
+      "bad": true,
+      "healthCap": 2
+    },
+    "flooded": {
+      "name": "Flooded",
+      "bad": true,
+      "yieldZero": true
+    },
+    "infested": {
+      "name": "Infested",
+      "bad": true,
+      "yieldZero": true,
+      "featureIgnored": true
+    },
+    "blessed": {
+      "name": "Blessed",
+      "bad": false,
+      "yieldBonus": 1,
+      "absorbs": true
+    }
+  },
+  "features": {
+    "goldenGazebo": {
+      "name": "Golden Gazebo",
+      "cost": {
+        "turf": 1,
+        "fertiliser": 1,
+        "sprinklers": 1,
+        "compost": 1,
+        "gnomeDust": 1
+      },
+      "prestige": 6,
+      "tags": [
+        "ornament"
+      ]
+    },
+    "prizeMarrow": {
+      "name": "Prize Marrow",
+      "cost": {
+        "fertiliser": 2,
+        "compost": 1
+      },
+      "prestige": 5,
+      "tags": [
+        "produce"
+      ]
+    },
+    "roseArch": {
+      "name": "Rose Arch",
+      "cost": {
+        "turf": 1,
+        "fertiliser": 1,
+        "gnomeDust": 1
+      },
+      "prestige": 3,
+      "tags": [
+        "flora"
+      ],
+      "lushYieldBonus": 1
+    },
+    "waterFeature": {
+      "name": "Water Feature",
+      "cost": {
+        "sprinklers": 2,
+        "gnomeDust": 1
+      },
+      "prestige": 3,
+      "tags": [
+        "water"
+      ],
+      "immune": [
+        "ash"
+      ]
+    },
+    "birdBath": {
+      "name": "Bird Bath of Valhalla",
+      "cost": {
+        "sprinklers": 1,
+        "gnomeDust": 1,
+        "compost": 1
+      },
+      "prestige": 3,
+      "tags": [
+        "water",
+        "ornament"
+      ]
+    },
+    "beeHotel": {
+      "name": "Bee Hotel",
+      "cost": {
+        "turf": 1,
+        "fertiliser": 1,
+        "compost": 1
+      },
+      "prestige": 2,
+      "tags": [
+        "flora",
+        "produce"
+      ],
+      "freeTendNearby": true
+    },
+    "hedgeMaze": {
+      "name": "Hedge Maze",
+      "cost": {
+        "turf": 3
+      },
+      "prestige": 2,
+      "tags": [
+        "flora",
+        "defence"
+      ],
+      "noMeddle": true
+    },
+    "greenhouse": {
+      "name": "Greenhouse",
+      "cost": {
+        "sprinklers": 2,
+        "turf": 1,
+        "compost": 1
+      },
+      "prestige": 2,
+      "tags": [
+        "produce",
+        "defence"
+      ],
+      "immune": [
+        "frozen",
+        "ash"
+      ]
+    },
+    "gnomeBattalion": {
+      "name": "Gnome Battalion",
+      "cost": {
+        "gnomeDust": 2,
+        "compost": 1
+      },
+      "prestige": 2,
+      "tags": [
+        "ornament",
+        "defence"
+      ],
+      "freeMeddle": true
+    }
+  },
+  "gods": {
+    "thor": {
+      "name": "Thor",
+      "title": "Master of Edging",
+      "level": "Beginner",
+      "power": "Lightning Edger",
+      "rule": "Claim costs just 1 Turf instead of Turf and Fertiliser.",
+      "flavour": "Straight lines. Crisp borders. Annexation."
+    },
+    "freya": {
+      "name": "Freya",
+      "title": "Floral Queen",
+      "level": "Beginner",
+      "power": "Late Bloomer",
+      "rule": "Tend gives +2 health, or clears a condition and gives +1.",
+      "flavour": "Even dead soil owes her a favour."
+    },
+    "heimdall": {
+      "name": "Heimdall",
+      "title": "Neighbourhood Watch Captain",
+      "level": "Beginner",
+      "power": "Ever-Vigilant",
+      "rule": "Meddling against your plots always fails, and the meddler's Gnome Dust goes to you.",
+      "flavour": "He saw you coming three postcodes away."
+    },
+    "njord": {
+      "name": "Njord",
+      "title": "Water Feature Enthusiast",
+      "level": "Intermediate",
+      "power": "Burst Main",
+      "rule": "Your Water features are worth +2 Prestige, count double for Water Wonderland, and your Flooded plots yield normally.",
+      "flavour": "The pond pump has run since the Bronze Age."
+    },
+    "frigg": {
+      "name": "Frigg",
+      "title": "Chair of the Residents' Association",
+      "level": "Intermediate",
+      "power": "Committee Rates",
+      "rule": "Your pledged cards count double toward emergencies, and you gain +1 Goodwill whenever an emergency succeeds and you pledged.",
+      "flavour": "Minutes were taken. Motions were passed."
+    },
+    "hel": {
+      "name": "Hel",
+      "title": "Landscaping Manager",
+      "level": "Intermediate",
+      "power": "Green Waste Collection",
+      "rule": "Gain 1 Compost whenever a disaster damages a plot you don't own (max 2 per round).",
+      "flavour": "Everything ends up in her compost eventually."
+    },
+    "odin": {
+      "name": "Odin",
+      "title": "All-Father of the Allotments",
+      "level": "Advanced",
+      "power": "One-Eyed Foresight",
+      "rule": "You privately see disasters 2 rounds ahead. Once per act you may shift a sector disaster to a neighbouring sector.",
+      "flavour": "He gave an eye for wisdom, and a plot by the shed."
+    },
+    "loki": {
+      "name": "Loki",
+      "title": "Turf Impostor",
+      "level": "Advanced",
+      "power": "Sticky Fingers",
+      "rule": "Your Trample moves 1 health from the target to one of your plots next to it, and ignores Hedge Mazes.",
+      "flavour": "That's not your lawn. It was never your lawn."
+    }
+  },
+  "hel": {
+    "perRoundCap": 2
+  },
+  "disasters": {
+    "1": [
+      {
+        "key": "frost",
+        "name": "Fimbulwinter Frost",
+        "target": {
+          "kind": "sector"
+        },
+        "health": 0,
+        "condition": "frozen"
+      },
+      {
+        "key": "hail",
+        "name": "Hail of the Frost Giants",
+        "target": {
+          "kind": "random",
+          "count": [
+            4,
+            6
+          ]
+        },
+        "health": -1
+      },
+      {
+        "key": "uprising",
+        "name": "Gnome Uprising",
+        "target": {
+          "kind": "terrain",
+          "terrain": "gnomeDust"
+        },
+        "health": 0,
+        "condition": "infested"
+      },
+      {
+        "key": "ravens",
+        "name": "Raven Raid",
+        "target": {
+          "kind": "tag",
+          "tag": "produce"
+        },
+        "health": -1
+      },
+      {
+        "key": "winds",
+        "name": "Bitter Winds",
+        "target": {
+          "kind": "terrain",
+          "terrain": "turf"
+        },
+        "health": 0,
+        "condition": "frozen"
+      },
+      {
+        "key": "yggdrasil",
+        "name": "Yggdrasil Stirs",
+        "target": {
+          "kind": "random",
+          "count": [
+            2,
+            3
+          ]
+        },
+        "health": 1,
+        "condition": "blessed",
+        "good": true
+      }
+    ],
+    "2": [
+      {
+        "key": "ash",
+        "name": "Fire Giants' Ash",
+        "target": {
+          "kind": "sector"
+        },
+        "health": -1,
+        "condition": "ash"
+      },
+      {
+        "key": "sprinklers",
+        "name": "Hellfire Sprinkler Malfunction",
+        "target": {
+          "kind": "terrain",
+          "terrain": "sprinklers"
+        },
+        "health": 0,
+        "condition": "ash"
+      },
+      {
+        "key": "lava",
+        "name": "Lava Seep",
+        "target": {
+          "kind": "random",
+          "count": [
+            2,
+            3
+          ]
+        },
+        "health": -1
+      },
+      {
+        "key": "smoulder",
+        "name": "Smouldering Compost",
+        "target": {
+          "kind": "terrain",
+          "terrain": "compost"
+        },
+        "health": 0,
+        "condition": "ash"
+      },
+      {
+        "key": "arsonists",
+        "name": "Gnome Arsonists",
+        "target": {
+          "kind": "tag",
+          "tag": "ornament"
+        },
+        "health": -1
+      },
+      {
+        "key": "bloom",
+        "name": "Ash-Fed Bloom",
+        "target": {
+          "kind": "terrain",
+          "terrain": "fertilizer"
+        },
+        "health": 1,
+        "good": true
+      }
+    ],
+    "3": [
+      {
+        "key": "serpent",
+        "name": "Jörmungandr Rises",
+        "target": {
+          "kind": "coast"
+        },
+        "health": -1,
+        "condition": "flooded"
+      },
+      {
+        "key": "fenrir",
+        "name": "Fenrir Digs",
+        "target": {
+          "kind": "tag",
+          "tag": "water"
+        },
+        "health": -1
+      },
+      {
+        "key": "mower",
+        "name": "Surtur's Mower",
+        "target": {
+          "kind": "line"
+        },
+        "health": -2
+      },
+      {
+        "key": "naglfar",
+        "name": "The Ship of Nails",
+        "target": {
+          "kind": "sector"
+        },
+        "health": -1,
+        "condition": "infested"
+      },
+      {
+        "key": "twilight",
+        "name": "Twilight of the Gods",
+        "target": {
+          "kind": "half"
+        },
+        "health": -1
+      },
+      {
+        "key": "worldTree",
+        "name": "The World Tree Regrows",
+        "target": {
+          "kind": "random",
+          "count": [
+            3,
+            4
+          ]
+        },
+        "setHealth": 3,
+        "condition": "blessed",
+        "good": true
+      }
+    ]
+  },
+  "emergencies": {
+    "1": {
+      "key": "hosepipeBan",
+      "name": "The Great Hosepipe Ban",
+      "perPlayer": 0.75,
+      "fail": {
+        "kind": "loseSupplies",
+        "count": 2
+      }
+    },
+    "2": {
+      "key": "barbecue",
+      "name": "Muspell's Barbecue Gets Out of Hand",
+      "perPlayer": 1,
+      "fail": {
+        "kind": "damageBest",
+        "count": 2,
+        "health": -1
+      }
+    },
+    "3": {
+      "key": "bifrost",
+      "name": "The Bifrost Bridge Lands on the Allotments",
+      "perPlayer": 1.25,
+      "fail": {
+        "kind": "damageBest",
+        "count": 2,
+        "health": -1,
+        "loseFeaturesWithered": true
+      }
+    }
+  },
+  "categories": {
+    "bloomingMarvellous": {
+      "name": "Blooming Marvellous",
+      "measure": "tag",
+      "tag": "flora",
+      "describe": "Most Flora features"
+    },
+    "waterWonderland": {
+      "name": "Water Wonderland",
+      "measure": "tag",
+      "tag": "water",
+      "describe": "Most Water features"
+    },
+    "prideOfThePatio": {
+      "name": "Pride of the Patio",
+      "measure": "tag",
+      "tag": "ornament",
+      "describe": "Most Ornament features"
+    },
+    "growYourOwn": {
+      "name": "Grow Your Own",
+      "measure": "tag",
+      "tag": "produce",
+      "describe": "Most Produce features"
+    },
+    "fortressGardening": {
+      "name": "Fortress Gardening",
+      "measure": "tag",
+      "tag": "defence",
+      "describe": "Most Defence features"
+    },
+    "lushestLawn": {
+      "name": "Lushest Lawn",
+      "measure": "lush",
+      "describe": "Most Lush plots"
+    },
+    "landBaron": {
+      "name": "Land Baron",
+      "measure": "plots",
+      "describe": "Most plots owned"
+    },
+    "bestKept": {
+      "name": "Best Kept Garden",
+      "measure": "health",
+      "describe": "Highest total health across your plots"
+    },
+    "hardyPerennial": {
+      "name": "Hardy Perennial",
+      "measure": "undamaged",
+      "minPlots": 3,
+      "describe": "Fewest Withered or Ruined plots (needs 3+ plots)"
+    },
+    "pillarOfCommunity": {
+      "name": "Pillar of the Community",
+      "measure": "goodwill",
+      "notFirstShow": true,
+      "describe": "Most Goodwill"
+    }
+  },
+  "showPoints": {
+    "2": [
+      3,
+      1
+    ],
+    "3": [
+      4,
+      2,
+      1
+    ],
+    "4": [
+      4,
+      2,
+      1
+    ],
+    "5": [
+      5,
+      3,
+      2,
+      1
+    ],
+    "6": [
+      5,
+      3,
+      2,
+      1
+    ],
+    "7": [
+      6,
+      4,
+      2,
+      1
+    ],
+    "8": [
+      6,
+      4,
+      2,
+      1
+    ]
+  },
+  "lengths": {
+    "standard": {
+      "name": "Standard",
+      "rounds": 9,
+      "actLength": 3,
+      "emergencyRounds": [
+        2,
+        5,
+        8
+      ],
+      "showRounds": [
+        3,
+        6,
+        9
+      ],
+      "categoriesPerShow": [
+        2,
+        2,
+        3
+      ],
+      "slotsByAct": [
+        2,
+        2,
+        2
+      ],
+      "planSec": 60
+    },
+    "long": {
+      "name": "Long",
+      "rounds": 12,
+      "actLength": 4,
+      "emergencyRounds": [
+        3,
+        7,
+        11
+      ],
+      "showRounds": [
+        4,
+        8,
+        12
+      ],
+      "categoriesPerShow": [
+        2,
+        2,
+        3
+      ],
+      "slotsByAct": [
+        2,
+        2,
+        2
+      ],
+      "planSec": 60
+    },
+    "epic": {
+      "name": "Epic",
+      "rounds": 24,
+      "actLength": 8,
+      "emergencyRounds": [
+        4,
+        8,
+        12,
+        16,
+        20,
+        23
+      ],
+      "showRounds": [
+        4,
+        8,
+        12,
+        16,
+        20,
+        24
+      ],
+      "categoriesPerShow": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        3
+      ],
+      "slotsByAct": [
+        2,
+        3,
+        4
+      ],
+      "planSec": 100
+    }
+  },
+  "disastersPerRound": {
+    "small": {
+      "1": 1,
+      "2": 1,
+      "3": 2
+    },
+    "large": {
+      "1": 2,
+      "2": 2,
+      "3": 3
+    }
+  },
+  "njordWaterBonus": 2,
+  "defaultLength": "long"
+}

@@ -1,0 +1,149 @@
+{
+  "schema": "ragnagrok.cards",
+  "schemaVersion": 1,
+
+  "factions": [
+    {
+      "id": "thor",
+      "name": "Thor",
+      "title": "Master of Edging",
+      "power": "Lightning Edger",
+      "rule": "Once per turn, you may build a Mulch Path for just 1 Yggdrasil Turf.",
+      "flavour": "Straight lines. Crisp borders. Occasional thunder.",
+      "hook": { "type": "costOverride", "build": "path", "cost": { "turf": 1 }, "limitPerTurn": 1 },
+      "tier": "medium"
+    },
+    {
+      "id": "loki",
+      "name": "Loki",
+      "title": "Turf Impostor",
+      "power": "Sticky Fingers",
+      "rule": "When you steal with the Mower, steal 2 cards instead of 1. You see their hand and choose. The TV only shows that 'something' went missing.",
+      "flavour": "That's not your lawn. That was never your lawn.",
+      "hook": { "type": "stealModifier", "count": 2, "choose": true, "hidePublic": true },
+      "tier": "medium"
+    },
+    {
+      "id": "freya",
+      "name": "Freya",
+      "title": "Floral Queen",
+      "power": "Late Bloomer",
+      "rule": "If your own roll produces nothing for you, take 1 resource of your choice from the bank.",
+      "flavour": "Even dead soil owes her a favour.",
+      "hook": { "type": "consolation", "trigger": "ownRollNoProduction", "gain": "anyOne" },
+      "tier": "medium-high early, low late"
+    },
+    {
+      "id": "hel",
+      "name": "Hel",
+      "title": "Landscaping Manager",
+      "power": "Green Waste Collection",
+      "rule": "You never discard when a 7 is rolled. When other players discard, you take 1 of the discarded cards (your choice, once per 7).",
+      "flavour": "Everything ends up in her compost eventually.",
+      "hook": { "type": "sevenModifier", "immuneToDiscard": true, "skimDiscards": 1 },
+      "tier": "medium"
+    },
+    {
+      "id": "odin",
+      "name": "Odin",
+      "title": "All-Father of the Allotments",
+      "power": "One-Eyed Foresight",
+      "rule": "When you buy a Perk, draw 2. Keep 1 and put the other on the bottom of the deck.",
+      "flavour": "He gave an eye for wisdom. And a decent plot by the shed.",
+      "hook": { "type": "perkDraw", "draw": 2, "keep": 1, "returnTo": "bottom" },
+      "tier": "low-medium (watch)"
+    },
+    {
+      "id": "heimdall",
+      "name": "Heimdall",
+      "title": "Neighbourhood Watch Captain",
+      "power": "Ever-Vigilant",
+      "rule": "Your buildings still produce from a hex that has the Mower on it.",
+      "flavour": "He saw the Mower coming three postcodes away.",
+      "hook": { "type": "mowerImmunity", "production": true },
+      "tier": "medium"
+    },
+    {
+      "id": "frigg",
+      "name": "Frigg",
+      "title": "Chair of the Residents' Association",
+      "power": "Committee Rates",
+      "rule": "You always trade with the bank at 3:1 for any resource, even without a Garden Centre.",
+      "flavour": "Minutes were taken. Motions were passed.",
+      "hook": { "type": "bankRatio", "ratio": 3, "resource": "any" },
+      "tier": "medium"
+    },
+    {
+      "id": "njord",
+      "name": "Njord",
+      "title": "Water Feature Enthusiast",
+      "power": "Burst Main",
+      "rule": "Whenever anyone rolls a 7, take 1 Hellfire Sprinkler from the bank before discards are checked.",
+      "flavour": "The pond pump has been running since the Bronze Age.",
+      "hook": { "type": "sevenGain", "gain": { "sprinklers": 1 }, "timing": "beforeDiscard" },
+      "tier": "medium"
+    }
+  ],
+
+  "perkRules": {
+    "cost": { "compost": 1, "fertilizer": 1, "gnomeDust": 1 },
+    "maxPlayedPerTurn": 1,
+    "cannotPlayTurnBought": true,
+    "vpCardsExempt": true,
+    "playWindow": "anyTimeOnYourTurn",
+    "largestMilitia": { "minPlayed": 3, "vp": 2 }
+  },
+
+  "perkTypes": [
+    {
+      "type": "militia",
+      "name": "Gnome Militia",
+      "rule": "Move Surtur's Lawn Mower to any hex and steal 1 random resource from a player next to it. Counts towards Largest Gnome Militia.",
+      "flavour": "Tiny hats. Tiny pitchforks. Enormous grudges.",
+      "count": { "standard": 12, "expanded": 17 }
+    },
+    {
+      "type": "mulchSpreader",
+      "name": "Mulch Spreader",
+      "rule": "Build 2 Mulch Paths for free.",
+      "flavour": "Industrial grade. Smells of brimstone and bark.",
+      "count": { "standard": 2, "expanded": 3 }
+    },
+    {
+      "type": "bumperCrop",
+      "name": "Bumper Crop",
+      "rule": "Take any 2 resources from the bank.",
+      "flavour": "The end of the world has done wonders for the tomatoes.",
+      "count": { "standard": 2, "expanded": 3 }
+    },
+    {
+      "type": "binDay",
+      "name": "Bin Day",
+      "rule": "Name a resource. Every other player gives you all of that resource they hold.",
+      "flavour": "Wrong bin. Everything is confiscated.",
+      "count": { "standard": 2, "expanded": 3 }
+    },
+    {
+      "type": "sinkhole",
+      "name": "Suburban Sinkhole",
+      "rule": "Swap two adjacent hexes. Terrain, number token and the Mower (if present) move with their hex. Buildings and paths stay put.",
+      "flavour": "The council says it's 'settling'.",
+      "count": { "standard": 2, "expanded": 3 }
+    },
+    {
+      "type": "vp",
+      "name": "Victory Point",
+      "rule": "Worth 1 hidden Victory Point. Keep it secret. Reveal only when it wins you the game.",
+      "count": { "standard": 5, "expanded": 5 },
+      "variants": [
+        { "name": "Garden Gnome of Distinction", "flavour": "Hand-painted. Faintly cursed." },
+        { "name": "Best Lawn in Midgard", "flavour": "Framed certificate. Slightly singed." },
+        { "name": "Pristine Bird Bath", "flavour": "The ravens approve." },
+        { "name": "Golden Hosepipe", "flavour": "Never kinks. Never." },
+        { "name": "Rune-Carved Water Feature", "flavour": "Plays a tiny dirge on the hour." }
+      ]
+    }
+  ],
+
+  "deckTotals": { "standard": 25, "expanded": 34 }
+}

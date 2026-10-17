@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dusk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a1226">
+<title>Ragnagrok</title>
+<style>
+:root {
+  --bg:#1a1226; --surface:#2a1d3b; --surface2:#3b2a52; --line:#4f3c69;
+  --ink:#f7f0e3; --muted:#c3b5d3; --primary:#ff8a4c; --on-primary:#1a1226;
+  --good:#8cc45e; --bad:#ff7a7a; --warn:#f5c451;
+  --compost:#9b7bd4; --fertilizer:#e8b931; --sprinklers:#e5533d; --turf:#4fa34a; --gnomeDust:#7ec8e3;
+  --radius:16px; --tap:56px;
+  color-scheme:dark;
+}
+html[data-theme="day"] {
+  --bg:#eef2e0; --surface:#ffffff; --surface2:#e3e9cf; --line:#b9c79c;
+  --ink:#142109; --muted:#46563a; --primary:#b8410b; --on-primary:#ffffff;
+  --good:#2f7a1f; --bad:#b3261e; --warn:#8a5a00;
+  color-scheme:light;
+}
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { margin:0; height:100%; background:var(--bg); color:var(--ink);
+  font:400 17px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+body { padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); overscroll-behavior:none; }
+button { font:inherit; color:inherit; cursor:pointer; border:0; background:none; }
+button:disabled { cursor:not-allowed; }
+:focus-visible { outline:3px solid var(--primary); outline-offset:2px; }
+[hidden] { display:none !important; }
+.wrap { max-width:560px; margin:0 auto; }
+
+/* ---------- join ---------- */
+#joinScreen { padding:28px 20px; }
+.title { font-weight:900; font-size:clamp(34px,10vw,48px); line-height:.95; color:var(--primary); margin:0; letter-spacing:-.01em; }
+.subtitle { color:var(--muted); margin:6px 0 24px; }
+label.f { display:block; font-weight:700; margin:16px 0 6px; }
+input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; border-radius:var(--radius);
+  border:2px solid var(--line); background:var(--surface); color:var(--ink); }
+#joinCode { text-transform:uppercase; letter-spacing:.35em; font-weight:900; font-size:24px; }
+.avatars { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+.avatars button { aspect-ratio:1; font-size:28px; border-radius:14px; background:var(--surface); border:2px solid var(--line); }
+.avatars button[aria-pressed="true"] { border-color:var(--primary); background:var(--surface2); }
+
+/* ---------- buttons ---------- */
+.btn { display:flex; align-items:center; justify-content:center; gap:8px; min-height:var(--tap); padding:0 18px;
+  border-radius:var(--radius); font-weight:800; background:var(--surface2); border:2px solid var(--line); width:100%; text-align:center; }
+.btn.primary { background:var(--primary); color:var(--on-primary); border-color:var(--primary); }
+.btn.good { background:var(--good); color:var(--on-primary); border-color:var(--good); }
+.btn:disabled { opacity:.42; }
+.btn.small { min-height:44px; font-size:15px; padding:0 12px; width:auto; }
+.row { display:flex; gap:10px; }
+.row > * { flex:1; }
+.stack > * + * { margin-top:10px; }
+
+/* ---------- game frame ---------- */
+#app { height:100%; display:flex; flex-direction:column; }
+#top { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--surface); border-bottom:2px solid var(--line); }
+#top .av { font-size:30px; line-height:1; }
+#top .who { flex:1; min-width:0; }
+#top .who b { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#top .who small { color:var(--muted); font-size:14px; }
+#turnLine { padding:8px 14px; font-weight:800; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+#turnLine.mine { background:var(--primary); color:var(--on-primary); }
+#timer { font-variant-numeric:tabular-nums; font-weight:800; min-width:3.2em; text-align:right; }
+#timer.low { color:var(--bad); }
+#turnLine.mine #timer.low { color:var(--on-primary); text-decoration:underline; }
+.iconbtn { width:48px; height:48px; border-radius:14px; font-size:22px; background:var(--surface2); }
+
+#hand { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; padding:8px 10px; background:var(--bg); }
+.res { border-radius:12px; padding:6px 2px 4px; text-align:center; background:var(--surface); border-bottom:5px solid var(--c); }
+.res .i { font-size:22px; line-height:1.1; display:block; }
+.res .n { font-weight:900; font-size:20px; font-variant-numeric:tabular-nums; }
+.res.zero { opacity:.45; }
+#handNote { grid-column:1/-1; text-align:center; font-size:14px; color:var(--muted); }
+#handNote.warn { color:var(--warn); font-weight:700; }
+
+#content { flex:1; overflow-y:auto; padding:12px 14px 20px; -webkit-overflow-scrolling:touch; }
+#actionBar { padding:10px 14px; background:var(--surface); border-top:2px solid var(--line); }
+#actionBar .wait { text-align:center; color:var(--muted); padding:14px 0; }
+#tabs { display:grid; grid-template-columns:repeat(4,1fr); background:var(--surface); border-top:1px solid var(--line); }
+#tabs button { min-height:60px; font-size:13px; font-weight:700; color:var(--muted); position:relative; }
+#tabs button span { display:block; font-size:22px; }
+#tabs button[aria-current="page"] { color:var(--primary); box-shadow:inset 0 3px 0 var(--primary); }
+.badge { position:absolute; top:6px; right:calc(50% - 26px); min-width:20px; height:20px; border-radius:10px; padding:0 5px;
+  background:var(--bad); color:#fff; font-size:12px; line-height:20px; }
+
+/* ---------- content blocks ---------- */
+.card { background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); padding:14px; }
+.card + .card, .card + .map, .map + .card, .stack + .card { margin-top:12px; }
+.card h3 { margin:0 0 6px; font-size:18px; }
+.muted { color:var(--muted); }
+.small { font-size:14px; }
+.prompt { border-color:var(--primary); }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:999px; background:var(--surface2); font-weight:700; font-size:15px; }
+.chip.short { background:transparent; border:2px dashed var(--bad); }
+.pick { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+.pick button { min-height:64px; border-radius:12px; background:var(--surface2); border:2px solid var(--line); border-bottom:5px solid var(--c); font-size:24px; }
+.pick button small { display:block; font-size:13px; font-weight:800; }
+.pick button[aria-pressed="true"] { border-color:var(--primary); }
+.players { width:100%; border-collapse:collapse; }
+.players td { padding:8px 4px; border-bottom:1px solid var(--line); }
+.players td:last-child { text-align:right; font-weight:800; }
+.players tr.off { opacity:.5; }
+.players tr.active td:first-child { box-shadow:inset 4px 0 0 var(--primary); }
+.log { margin:0; padding:0; list-style:none; font-size:14px; color:var(--muted); }
+.log li { padding:4px 0; border-bottom:1px solid var(--line); }
+.big { font-size:44px; font-weight:900; letter-spacing:.2em; text-align:center; margin:4px 0; }
+.dice { font-size:28px; font-weight:900; }
+
+.build { display:grid; grid-template-columns:1fr auto; gap:6px 12px; align-items:center; }
+.build + .build { margin-top:12px; }
+.build h3 { margin:0; }
+.seg { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px; }
+.seg button { min-height:48px; border-radius:12px; background:var(--surface); border:2px solid var(--line); font-weight:800; }
+.seg button[aria-pressed="true"] { border-color:var(--primary); color:var(--primary); }
+.step { display:grid; grid-template-columns:2.2em 1fr auto; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
+.step .i { font-size:24px; }
+.stepper { display:flex; align-items:center; gap:4px; }
+.trow { display:grid; grid-template-columns:3.2em 1fr 1fr; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
+.trow.head { padding-top:0; }
+.trow .i { font-size:26px; text-align:center; line-height:1; }
+.trow .i small { display:block; font-size:11px; color:var(--muted); margin-top:2px; }
+.stepper button { width:44px; height:44px; border-radius:12px; background:var(--surface2); font-size:22px; font-weight:900; }
+.stepper button:disabled, .pick button:disabled, .avatars button:disabled { opacity:.3; }
+.stepper b { min-width:1.6em; text-align:center; font-size:18px; }
+.offer .who2 { font-weight:800; }
+.offer .row { margin-top:10px; }
+
+.perk { border-left:6px solid var(--primary); }
+.perk.locked { opacity:.6; }
+.perk.vp { border-left-color:var(--warn); }
+.fac { display:grid; grid-template-columns:44px 1fr; gap:4px 12px; }
+.fac .ic { font-size:34px; grid-row:span 3; }
+.fac.taken { opacity:.45; }
+
+/* ---------- map ---------- */
+.map { background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); overflow:auto; }
+.map svg { display:block; width:100%; height:auto; touch-action:manipulation; }
+.map.zoom svg { width:180%; }
+.map .hex { stroke:var(--bg); stroke-width:.06; }
+.map .hex.dim { opacity:.35; }
+.map .hex.can { stroke:var(--primary); stroke-width:.09; cursor:pointer; }
+.map .hex.sel { stroke:var(--ink); stroke-width:.16; }
+.map .tok circle { fill:#f7f0e3; stroke:#2a1d3b; stroke-width:.04; }
+.map .tok text { font-weight:900; font-size:.36px; text-anchor:middle; dominant-baseline:central; fill:#2a1d3b; }
+.map .tok.red text { fill:#c42b1c; }
+.map .emo { font-size:.34px; text-anchor:middle; dominant-baseline:central; }
+.map .port { font-size:.24px; font-weight:900; text-anchor:middle; dominant-baseline:central; fill:var(--ink); }
+.map .spot { fill:var(--primary); stroke:var(--on-primary); stroke-width:.05; cursor:pointer; }
+.map .spot.ring { fill:transparent; stroke:var(--primary); stroke-width:.09; }
+.map .edge { stroke:var(--primary); stroke-width:.24; stroke-linecap:round; opacity:.75; cursor:pointer; }
+.map .hit { stroke:transparent; stroke-width:.55; cursor:pointer; }
+.map .sel.spot { fill:var(--ink); }
+.map .sel.edge { stroke:var(--ink); opacity:1; }
+@media (prefers-reduced-motion: no-preference) {
+  .map .spot, .map .edge { animation:pulse 1.3s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.45; } }
+}
+
+.resart { width:28px; height:28px; object-fit:contain; display:block; margin:0 auto; }
+.portrait { width:44px; height:44px; border-radius:10px; object-fit:cover; display:block; }
+.map .ghost { opacity:.55; }
+
+.gi { width:1.2em; height:1.2em; object-fit:contain; vertical-align:-0.25em; display:inline-block; }
+.gi-round { border-radius:50%; object-fit:cover; }
+.gi-hero { width:140px; height:140px; }
+.build h3 .gi { width:1.7em; height:1.7em; vertical-align:-0.5em; }
+.chip .gi { width:1.3em; height:1.3em; }
+.pick button .gi { width:30px; height:30px; display:block; margin:0 auto; }
+#top .who small .gi-round { width:1.3em; height:1.3em; }
+.rules h2 { display:flex; align-items:center; gap:10px; }
+.rules h2 .gi, .rules .big-ic .gi { width:56px; height:56px; }
+.rules .big-ic { font-size:48px; line-height:1; }
+.rules ul, .rules ol { padding-left:1.2em; margin:8px 0; }
+.rules li { margin:6px 0; }
+.rules ul.costs { list-style:none; padding:0; }
+.rules ul.costs li { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid var(--line); }
+.rules ul.costs span { margin-left:auto; }
+.dots { display:flex; gap:6px; justify-content:center; margin:14px 0 4px; }
+.dots i { width:9px; height:9px; border-radius:50%; background:var(--line); }
+.dots i.on { background:var(--primary); }
+.check { display:flex; align-items:center; gap:10px; min-height:48px; font-weight:700; }
+.check input { width:24px; height:24px; accent-color:var(--primary); }
+
+/* ---------- sheets, toasts, overlays ---------- */
+#sheetWrap { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; z-index:20; }
+#sheet { width:100%; max-width:560px; margin:0 auto; max-height:92%; overflow-y:auto; background:var(--bg);
+  border-radius:22px 22px 0 0; border-top:3px solid var(--primary); padding:16px 14px calc(16px + env(safe-area-inset-bottom,0px)); }
+#sheet h2 { margin:0 0 4px; font-size:22px; }
+#sheet .head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; }
+#sheet .foot { position:sticky; bottom:-16px; background:var(--bg); padding-top:12px; }
+#toasts { position:fixed; left:0; right:0; bottom:calc(150px + env(safe-area-inset-bottom,0px)); display:flex; flex-direction:column; align-items:center; gap:8px; z-index:30; pointer-events:none; padding:0 14px; }
+.toast { background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:14px; font-weight:700; max-width:100%; box-shadow:0 6px 20px rgba(0,0,0,.35); }
+.toast.good { background:var(--good); color:var(--on-primary); }
+.toast.bad { background:var(--bad); color:#1a1226; }
+#flash { position:fixed; inset:0; display:grid; place-items:center; background:var(--primary); color:var(--on-primary);
+  font-size:42px; font-weight:900; z-index:40; text-align:center; padding:20px; }
+#overlay { position:fixed; inset:0; display:grid; place-items:center; background:rgba(26,18,38,.92); z-index:35; padding:24px; text-align:center; }
+#overlay .card { max-width:420px; width:100%; }
+#conn { position:fixed; top:env(safe-area-inset-top,0px); left:0; right:0; background:var(--warn); color:#1a1226; text-align:center; font-weight:800; padding:6px; z-index:50; }
+</style>
+</head>
+<body>
+
+<section id="joinScreen" class="wrap" hidden>
+  <div id="joinLogo"><p class="title">Ragnagrok</p></div>
+  <p class="subtitle">Lawn care at the end of days</p>
+  <label class="f" for="joinCode">Room code</label>
+  <input class="f" id="joinCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false">
+  <label class="f" for="joinName">Your name</label>
+  <input class="f" id="joinName" maxlength="16" autocomplete="nickname">
+  <label class="f">Pick a face</label>
+  <div class="avatars" id="avatarGrid"></div>
+  <div style="margin-top:22px"><button class="btn primary" data-act="join">Join the yard</button></div>
+  <p class="muted small" id="joinMsg" role="alert" style="min-height:1.4em"></p>
+</section>
+
+<div id="app" class="wrap" hidden>
+  <header id="top"></header>
+  <div id="turnLine"><span id="turnText"></span><span id="timer"></span></div>
+  <div id="hand"></div>
+  <main id="content"></main>
+  <div id="actionBar"></div>
+  <nav id="tabs" aria-label="Sections"></nav>
+</div>
+
+<div id="sheetWrap" hidden><div id="sheet" role="dialog" aria-modal="true"></div></div>
+<div id="overlay" hidden></div>
+<div id="flash" hidden></div>
+<div id="toasts" aria-live="polite"></div>
+<div id="conn" hidden>Reconnecting…</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/sfx.js"></script>
+<script src="/board.js"></script>
+<script src="/rules.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ================= constants ================= */
+const RES = ['compost', 'fertilizer', 'sprinklers', 'turf', 'gnomeDust'];
+const R = {
+  compost:    { i: '🍄', n: 'Compost',    full: 'Eldritch Compost' },
+  fertilizer: { i: '🌾', n: 'Fertilizer', full: 'Asgardian Fertilizer' },
+  sprinklers: { i: '🔥', n: 'Sprinklers', full: 'Hellfire Sprinklers' },
+  turf:       { i: '🌳', n: 'Turf',       full: 'Yggdrasil Turf' },
+  gnomeDust:  { i: '✨', n: 'Gnome Dust', full: 'Gnome Dust' }
+};
+const TERRAIN = {
+  compost: '#7e5db5', fertilizer: '#e1b12c', sprinklers: '#d9533d', turf: '#4a9a42', gnomeDust: '#8fd0e8', scorched: '#5a4632'
+};
+const COST = {
+  path:  { turf: 1, sprinklers: 1 },
+  shack: { turf: 1, sprinklers: 1, fertilizer: 1, gnomeDust: 1 },
+  manor: { fertilizer: 2, compost: 3 },
+  perk:  { compost: 1, fertilizer: 1, gnomeDust: 1 }
+};
+const BUILD_INFO = {
+  path:  { icon: '🛤️', name: 'Mulch Path', what: 'Links your buildings. 5+ in a row can win Longest Path.' },
+  shack: { icon: '🛖', name: 'Gardener Shack', what: '1 VP. Collects from the hexes around it.' },
+  manor: { icon: '🏰', name: 'Garden Manor', what: 'Upgrade a Shack. 2 VP and double harvests.' },
+  perk:  { icon: '🃏', name: 'Apocalypse Perk', what: 'A random card. Some are worth hidden VP.' }
+};
+const FACTION_ICON = { thor: '⚡', loki: '🎭', freya: '🌸', hel: '☠️', odin: '👁️', heimdall: '🔭', frigg: '📋', njord: '⛲' };
+const AVATARS = ['🦩', '🌻', '🔨', '💀', '🐐', '🦔', '🍄', '🐸', '🦉', '🐝', '🌵', '👑'];
+const FROZEN = ['discard', 'moveMower', 'steal'];
+const KEY = 'ragnagrok.player';
+const RULES_KEY = 'ragnagrok.rulesHidden';
+const PREFS = 'ragnagrok.prefs';
+
+/* ================= helpers ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const empty = () => ({ compost: 0, fertilizer: 0, sprinklers: 0, turf: 0, gnomeDust: 0 });
+const total = h => RES.reduce((s, r) => s + (h[r] || 0), 0);
+const hasAll = (h, c) => RES.every(r => (h[r] || 0) >= (c[r] || 0));
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+};
+const chips = b => RES.filter(r => b[r] > 0).map(r => `<span class="chip">${b[r]} ${R[r].i}</span>`).join('') || '<span class="muted">nothing</span>';
+const listIcons = arr => arr.map(r => R[r].i).join(' ');
+const sfx = name => { try { if (window.SFX) window.SFX.play(name); } catch (e) { /* audio is optional */ } };
+
+function getJSON(url) {
+  return new Promise(resolve => {
+    try {
+      const x = new XMLHttpRequest();
+      x.open('GET', url);
+      x.onload = () => { try { resolve(JSON.parse(x.responseText)); } catch (e) { resolve(null); } };
+      x.onerror = () => resolve(null);
+      x.send();
+    } catch (e) { resolve(null); }
+  });
+}
+
+/* ================= state ================= */
+let cards = { factions: [], perkTypes: [] };
+let view = null;
+let topo = null;
+let clockOffset = 0;
+let saved = store.get(KEY);
+const prefs = Object.assign({ day: false, sound: true }, store.get(PREFS) || {});
+const params = new URLSearchParams(location.search);
+const ui = {
+  tab: 'play', sheet: null, tradeSeg: 'inbox',
+  trade: { give: empty(), want: empty(), to: null },
+  bank: { give: null, get: null },
+  lastGains: null, unseen: 0, joinMsg: '',
+  avatar: store.get('ragnagrok.avatar') || AVATARS[0]
+};
+
+const socket = io({ transports: ['websocket', 'polling'] });
+
+/* ================= derived ================= */
+const me = () => (view && view.me ? view.me : null);
+const mySeat = () => (me() ? me().seat : -1);
+const pl = seat => (view && view.players[seat]) || { name: '?', avatar: '❔' };
+const nm = seat => esc(pl(seat).name);
+const ph = () => view.phase;
+const isMyTurn = () => view && ph().activeSeat === mySeat();
+const facCard = id => cards.factions.find(f => f.id === id);
+const perkType = t => cards.perkTypes.find(p => p.type === t) || { rule: '' };
+function canBuildNow() {
+  const p = ph();
+  if (p.stage !== 'playing') return false;
+  if (isMyTurn() && p.step === 'main') return true;
+  return p.step === 'specialBuild' && p.specialBuildPending.includes(mySeat());
+}
+function pathCostNow() {
+  const m = me();
+  if (m.freePaths > 0 && isMyTurn() && ph().step === 'main') return { cost: null, note: `Free (${m.freePaths} left from Mulch Spreader)` };
+  if (pl(m.seat).faction === 'thor' && !m.thorUsed) return { cost: { turf: 1 }, note: 'Thor discount: just 1 🌳' };
+  return { cost: COST.path, note: '' };
+}
+function missing(cost) {
+  const h = me().hand;
+  return RES.filter(r => (cost[r] || 0) > h[r]).map(r => `<span class="chip short">${cost[r] - h[r]} ${R[r].i}</span>`).join('');
+}
+function remaining(deadline) {
+  if (!deadline) return null;
+  return Math.max(0, Math.ceil((deadline - (Date.now() + clockOffset)) / 1000));
+}
+
+/* ================= socket ================= */
+async function emit(event, data) {
+  try {
+    return await socket.timeout(6000).emitWithAck(event, data || {});
+  } catch (e) {
+    return { ok: false, error: 'No reply from the server. Check your connection.' };
+  }
+}
+
+async function act(action) {
+  const r = await emit('action', action);
+  if (!r.ok) { toast(r.error, 'bad'); sfx('denied'); }
+  return r;
+}
+
+async function host(cmd, data) {
+  const r = await emit('host:' + cmd, data);
+  if (!r.ok) toast(r.error, 'bad');
+  return r;
+}
+
+function forget(msg) {
+  saved = null;
+  view = null;
+  topo = null;
+  ui.sheet = null;
+  store.del(KEY);
+  ui.joinMsg = msg || '';
+  render();
+}
+
+async function rejoin() {
+  const wanted = (params.get('room') || '').toUpperCase();
+  if (!saved || (wanted && wanted !== saved.code)) { render(); return; }
+  const r = await emit('player:rejoin', saved);
+  if (!r.ok) forget(r.error);
+  else { maybeShowRules(); render(); }
+}
+
+socket.on('connect', () => { $('#conn').hidden = true; rejoin(); });
+socket.on('disconnect', () => { $('#conn').hidden = false; });
+socket.on('kicked', () => forget('The host removed you from the game.'));
+socket.on('roomClosed', () => forget('The host closed the room.'));
+socket.on('state', v => {
+  if (view && view.meta && v.meta && view.meta.code === v.meta.code && v.stateVersion < view.stateVersion) return;
+  if (v.topology) topo = v.topology;
+  if (v.meta && v.meta.serverNow) clockOffset = v.meta.serverNow - Date.now();
+  if (view && view.phase.stage === 'gameOver' && v.phase.stage === 'lobby') { topo = v.topology || null; ui.lastGains = null; }
+  view = v;
+  syncSheets();
+  maybeShowRules();
+  render();
+});
+
+/* Show How to Play once per visit, at the start, unless the player ticked "Don't show this again". */
+let rulesOffered = false;
+function maybeShowRules() {
+  if (rulesOffered || !saved || !view || !view.me) return;
+  if (!['lobby', 'factions'].includes(view.phase.stage)) return;
+  rulesOffered = true;
+  if (store.get(RULES_KEY) || ui.sheet) return;
+  ui.sheet = { type: 'rules', page: 0, required: false };
+}
+socket.on('events', list => { list.forEach(handleEvent); render(); });
+
+/* ================= events → sound, toasts ================= */
+function handleEvent(e) {
+  const seat = mySeat();
+  switch (e.type) {
+    case 'turnStart':
+      if (e.seat === seat) { sfx('yourTurn'); flash('Your turn'); }
+      break;
+    case 'setupTurn':
+      if (e.seat === seat) sfx('yourTurn');
+      break;
+    case 'production': {
+      const g = e.gains && e.gains[seat];
+      ui.lastGains = { total: e.total, gains: g || null };
+      if (g) toast('+ ' + RES.filter(r => g[r]).map(r => `${g[r]} ${R[r].i}`).join('  '), 'good');
+      break;
+    }
+    case 'dice':
+      if (e.total === 7) ui.lastGains = { total: 7, gains: null };
+      break;
+    case 'discardRequired':
+      if (e.seats.includes(seat)) sfx('discardAlarm');
+      break;
+    case 'tradeOffer':
+      if (e.from !== seat) { sfx('offerIn'); if (ui.tab !== 'trade') ui.unseen += 1; }
+      break;
+    case 'tradeAccepted':
+      if (e.from === seat) toast(`${nm(e.with)} accepted your offer`, 'good');
+      else if (e.with === seat) toast('Deal done', 'good');
+      break;
+    case 'tradeDeclined': toast(`${nm(e.by)} declined your offer`); break;
+    case 'tradeVoid': toast('That offer fell through'); break;
+    case 'tradeExpired': toast('Your offer expired'); break;
+    case 'stolenDetail':
+      if (e.from === seat) toast(`${nm(e.to)} pinched ${listIcons(e.resources)}`, 'bad');
+      else if (e.to === seat) toast(`You pinched ${listIcons(e.resources)}`, 'good');
+      break;
+    case 'binDay':
+      if (e.seat !== seat) toast(`Bin Day! ${nm(e.seat)} took every ${R[e.resource].i}`, 'bad');
+      break;
+    case 'bonusAvailable': sfx('offerIn'); break;
+    case 'paused': toast('Game paused'); break;
+    case 'resumed': toast('Game on!', 'good'); break;
+    default: break;
+  }
+}
+
+function toast(text, kind) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind ? ' ' + kind : '');
+  el.innerHTML = text;
+  $('#toasts').appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+  while ($('#toasts').children.length > 3) $('#toasts').firstChild.remove();
+}
+
+function flash(text) {
+  const f = $('#flash');
+  f.textContent = text;
+  f.hidden = false;
+  setTimeout(() => { f.hidden = true; }, 1200);
+}
+
+/* ================= required sheets ================= */
+function requiredSheet() {
+  if (!view || !me()) return null;
+  const p = ph();
+  const seat = mySeat();
+  if (view.meta.paused) return null;
+  if (p.stage === 'setup' && p.activeSeat === seat) {
+    return { type: 'place', what: p.step === 'placeShack' ? 'shack' : 'path', setup: true };
+  }
+  if (p.stage !== 'playing') return null;
+  if (p.step === 'discard' && p.pendingDiscards[seat]) return { type: 'discard' };
+  if (p.activeSeat === seat && p.step === 'moveMower') return { type: 'mower' };
+  if (p.activeSeat === seat && p.step === 'steal') return { type: 'steal' };
+  if (me().odinChoice) return { type: 'odin' };
+  return null;
+}
+
+function syncSheets() {
+  const req = requiredSheet();
+  const cur = ui.sheet;
+  const key = s => (s ? s.type + ':' + (s.what || '') : '');
+  if (req) {
+    if (!cur || !cur.required || key(cur) !== key(req)) ui.sheet = Object.assign({ required: true }, req, freshSel(req));
+    return;
+  }
+  if (cur && cur.required) { ui.sheet = null; return; }
+  // Close optional sheets that no longer make sense.
+  if (cur && cur.type === 'place' && !canBuildNow()) ui.sheet = null;
+  if (cur && cur.type === 'perk' && !(isMyTurn() && ['roll', 'main'].includes(ph().step))) ui.sheet = null;
+  if (view.phase.stage !== 'setup' && view.phase.stage !== 'playing' && cur && cur.type !== 'menu') ui.sheet = null;
+}
+
+function freshSel(s) {
+  if (s.type === 'discard') return { sel: empty() };
+  if (s.type === 'steal') return { victim: null, picks: [] };
+  return { sel: null };
+}
+
+function openSheet(s) {
+  ui.sheet = Object.assign({ required: false }, s, freshSel(s));
+  render();
+}
+
+/* ================= map ================= */
+let ART = {};
+const I = (key, cls) => RagnaBoard.icon(ART, key, cls);
+const artImg = (slot, cls, alt) => (ART[slot] ? `<img class="${cls || 'art'}" src="${ART[slot]}" alt="${esc(alt || '')}">` : '');
+
+function mapSVG(opts = {}) {
+  if (!topo || !view.board) return '<div class="card muted">Loading the board…</div>';
+  return `<div class="map${opts.zoom ? ' zoom' : ''}">${RagnaBoard.svg(Object.assign({ board: view.board, topo, players: view.players, art: ART, idPrefix: 'ph' }, opts))}</div>`;
+}
+
+/* Tell the TV what we're about to place, so it can show a ghost piece. */
+function preview(what, at) {
+  if (socket.connected) socket.emit('player:preview', { what, at: at || null });
+}
+
+/* ================= render: frame ================= */
+function render() {
+  document.documentElement.dataset.theme = prefs.day ? 'day' : 'dusk';
+  const joined = !!(saved && view && view.me);
+  $('#joinScreen').hidden = joined;
+  $('#app').hidden = !joined;
+  if (!joined) { renderJoin(); renderSheet(); renderOverlay(); return; }
+
+  const scroll = $('#content').scrollTop;
+  const stage = ph().stage;
+  renderTop();
+  renderHand();
+  const inGame = stage === 'setup' || stage === 'playing';
+  $('#actionBar').hidden = !inGame;
+  $('#tabs').hidden = !inGame;
+  if (stage === 'lobby') $('#content').innerHTML = renderLobby();
+  else if (stage === 'factions') $('#content').innerHTML = renderDraft();
+  else if (stage === 'gameOver') $('#content').innerHTML = renderGameOver();
+  else {
+    if (ui.tab === 'trade') ui.unseen = 0;
+    $('#content').innerHTML = ({ play: renderPlay, build: renderBuild, trade: renderTrade, perks: renderPerks })[ui.tab]();
+    renderActionBar();
+    renderTabs();
+  }
+  $('#content').scrollTop = scroll;
+  renderSheet();
+  renderOverlay();
+  tickTimer();
+}
+
+function renderJoin() {
+  const logo = $('#joinLogo');
+  if (ART.logo && !logo.dataset.done) { logo.innerHTML = `<img src="${ART.logo}" alt="Ragnagrok" style="max-width:100%;max-height:160px">`; logo.dataset.done = '1'; }
+  const code = $('#joinCode');
+  if (!code.value && params.get('room')) code.value = params.get('room').toUpperCase();
+  const name = $('#joinName');
+  if (!name.value) name.value = store.get('ragnagrok.name') || '';
+  $('#avatarGrid').innerHTML = AVATARS.map(a =>
+    `<button data-act="avatar" data-av="${a}" aria-pressed="${a === ui.avatar}" aria-label="Avatar ${a}">${a}</button>`).join('');
+  $('#joinMsg').textContent = ui.joinMsg;
+}
+
+function renderTop() {
+  const m = me();
+  const p = pl(m.seat);
+  const f = facCard(p.faction);
+  const vp = p.vp.public + (m.vp.hidden ? ` <span title="Hidden VP">(+${m.vp.hidden})</span>` : '');
+  $('#top').innerHTML = `
+    <span class="av" aria-hidden="true">${esc(p.avatar)}</span>
+    <div class="who"><b>${esc(p.name)}</b>
+      <small>${f ? FACTION_ICON[f.id] + ' ' + esc(f.name) + ' · ' : ''}${ph().stage === 'lobby' ? 'Room ' + esc(view.meta.code) : vp + ' VP'}</small></div>
+    <button class="iconbtn" data-act="rules" aria-label="How to play">📖</button>
+    <button class="iconbtn" data-act="menu" aria-label="Menu">⚙️</button>`;
+  const line = $('#turnLine');
+  line.className = turnIsMine() ? 'mine' : '';
+  $('#turnText').innerHTML = turnText();
+}
+
+function turnIsMine() {
+  const p = ph();
+  const s = mySeat();
+  if (p.stage === 'factions') return p.draftQueue[0] === s;
+  if (p.stage === 'setup') return p.activeSeat === s;
+  if (p.stage !== 'playing') return false;
+  if (p.step === 'discard') return !!p.pendingDiscards[s];
+  if (p.step === 'specialBuild') return p.specialBuildPending.includes(s);
+  return p.activeSeat === s;
+}
+
+function turnText() {
+  const p = ph();
+  const s = mySeat();
+  const who = nm(p.activeSeat);
+  if (view.meta.paused) return '⏸ Paused';
+  switch (p.stage) {
+    case 'lobby': return 'Waiting for the host to start';
+    case 'factions': return p.draftQueue[0] === s ? '▶ Pick your deity' : `${nm(p.draftQueue[0])} is choosing a deity`;
+    case 'setup': return p.activeSeat === s
+      ? (p.step === 'placeShack' ? '▶ Place a Gardener Shack' : '▶ Place a Mulch Path')
+      : `${who} is placing`;
+    case 'gameOver': return I('trophy') + ' Game over';
+    default: break;
+  }
+  switch (p.step) {
+    case 'roll': return p.activeSeat === s ? '▶ Your turn: roll the dice' : `${who}'s turn`;
+    case 'main': return p.activeSeat === s ? '▶ Your turn' : `${who}'s turn`;
+    case 'discard': return p.pendingDiscards[s] ? `▶ Mower! Discard ${p.pendingDiscards[s]}` : 'The Mower is out. Waiting for discards';
+    case 'moveMower': return p.activeSeat === s ? '▶ Move the Mower' : `${who} is moving the Mower`;
+    case 'steal': return p.activeSeat === s ? '▶ Pick who to rob' : `${who} is choosing who to rob`;
+    case 'specialBuild': return p.specialBuildPending.includes(s) ? '▶ Quick build window' : 'Quick build window';
+    default: return '';
+  }
+}
+
+function tickTimer() {
+  const el = $('#timer');
+  if (!el || !view) return;
+  const left = view.meta.paused ? null : remaining(ph().deadline);
+  if (left === null || ['lobby', 'gameOver'].includes(ph().stage)) { el.textContent = ''; return; }
+  el.textContent = left >= 60 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : `${left}s`;
+  el.className = left <= 10 ? 'low' : '';
+}
+setInterval(tickTimer, 250);
+
+function renderHand() {
+  const stage = ph().stage;
+  const show = stage === 'setup' || stage === 'playing';
+  $('#hand').hidden = !show;
+  if (!show) return;
+  const h = me().hand;
+  const n = total(h);
+  const risky = n >= view.config.discardThreshold;
+  $('#hand').innerHTML = RES.map(r =>
+    `<div class="res${h[r] ? '' : ' zero'}" style="--c:var(--${r})" aria-label="${R[r].full}: ${h[r]}"><span class="i">${artImg('res-' + r, 'resart', R[r].full) || R[r].i}</span><span class="n">${h[r]}</span></div>`).join('') +
+    `<div id="handNote" class="${risky ? 'warn' : ''}">${n} card${n === 1 ? '' : 's'}${risky && pl(mySeat()).faction !== 'hel' ? ' · at risk on a 7' : ''}</div>`;
+}
+
+function renderTabs() {
+  const playable = me().perks.held.filter(c => c.type !== 'vp').length;
+  const tabs = [['play', '🏡', 'Play'], ['build', '🔨', 'Build'], ['trade', '🤝', 'Trade'], ['perks', '🃏', 'Perks']];
+  $('#tabs').innerHTML = tabs.map(([id, icon, label]) => {
+    let badge = '';
+    if (id === 'trade' && ui.unseen) badge = `<i class="badge">${ui.unseen}</i>`;
+    if (id === 'perks' && playable) badge = `<i class="badge" style="background:var(--surface2);color:var(--ink)">${playable}</i>`;
+    return `<button data-act="tab" data-tab="${id}"${ui.tab === id ? ' aria-current="page"' : ''}><span aria-hidden="true">${icon}</span>${label}${badge}</button>`;
+  }).join('');
+}
+
+function renderActionBar() {
+  const p = ph();
+  const m = me();
+  const bar = $('#actionBar');
+  if (view.meta.paused) { bar.innerHTML = '<div class="wait">Paused by the host</div>'; return; }
+  if (p.stage === 'setup') {
+    bar.innerHTML = p.activeSeat === m.seat
+      ? `<button class="btn primary" data-act="reopen">${p.step === 'placeShack' ? I('piece-shack') + ' Place your Shack' : I('icon-path') + ' Place your Path'}</button>`
+      : `<div class="wait">${nm(p.activeSeat)} is placing…</div>`;
+    return;
+  }
+  if (p.step === 'discard' && p.pendingDiscards[m.seat]) {
+    bar.innerHTML = `<button class="btn primary" data-act="reopen">Discard ${p.pendingDiscards[m.seat]} cards</button>`;
+    return;
+  }
+  if (isMyTurn()) {
+    if (p.step === 'roll') {
+      bar.innerHTML = `<div class="row"><button class="btn" data-act="tab" data-tab="perks">${I('icon-perk')} Play a Perk</button><button class="btn primary" data-act="roll" style="flex:2">🎲 Roll</button></div>`;
+      return;
+    }
+    if (p.step === 'main') {
+      bar.innerHTML = `<div class="row"><button class="btn" data-act="tab" data-tab="build">🔨 Build</button><button class="btn primary" data-act="endTurn">End turn</button></div>`;
+      return;
+    }
+    if (p.step === 'moveMower' || p.step === 'steal') {
+      bar.innerHTML = `<button class="btn primary" data-act="reopen">${I('mower')} ${p.step === 'steal' ? 'Pick who to rob' : 'Move the Mower'}</button>`;
+      return;
+    }
+  }
+  if (p.step === 'specialBuild' && p.specialBuildPending.includes(m.seat)) {
+    bar.innerHTML = `<div class="row"><button class="btn" data-act="tab" data-tab="build">🔨 Build</button><button class="btn primary" data-act="doneSpecialBuild">Done</button></div>`;
+    return;
+  }
+  bar.innerHTML = `<div class="wait">${turnText()}</div>`;
+}
+
+/* ================= render: screens ================= */
+function renderLobby() {
+  const isHost = view.meta.isHost;
+  const rows = view.players.map(p => `
+    <tr class="${p.connected ? '' : 'off'}"><td>${esc(p.avatar)} ${esc(p.name)}${p.seat === 0 ? ' <span class="muted small">host</span>' : ''}</td>
+    <td>${isHost && p.seat !== 0 ? `<button class="btn small" data-act="kick" data-seat="${p.seat}" aria-label="Remove ${esc(p.name)}">Remove</button>` : ''}</td></tr>`).join('');
+  return `
+    <div class="card"><div class="muted small">Room code</div><div class="big">${esc(view.meta.code)}</div>
+      <div class="muted small" style="text-align:center">${view.players.length} of ${view.config.maxPlayers} gardeners · ${view.players.length <= 4 ? 'standard' : 'expanded'} board</div></div>
+    <div class="card"><table class="players">${rows}</table></div>
+    <div class="stack" style="margin-top:14px">
+      ${isHost ? `<button class="btn primary" data-act="start"${view.players.length < 2 ? ' disabled' : ''}>Start the game</button>
+        ${view.players.length < 2 ? '<p class="muted small" style="text-align:center">Waiting for at least one more player</p>' : ''}`
+      : '<p class="muted" style="text-align:center">The host will start the game</p>'}
+      <button class="btn" data-act="leave">Leave</button>
+    </div>`;
+}
+
+function renderDraft() {
+  const p = ph();
+  const mine = p.draftQueue[0] === mySeat();
+  const pos = p.draftQueue.indexOf(mySeat());
+  const head = mine ? '<h3>Your pick</h3><p class="muted small">Each deity bends one rule in your favour.</p>'
+    : `<h3>${pl(mySeat()).faction ? 'You chose ' + esc(facCard(pl(mySeat()).faction).name) : 'Waiting for your pick'}</h3>
+       <p class="muted small">${pos > 0 ? pos + ' pick' + (pos > 1 ? 's' : '') + ' before you' : nm(p.draftQueue[0]) + ' is choosing'}</p>`;
+  const list = cards.factions.map(f => {
+    const taker = view.players.find(x => x.faction === f.id);
+    return `<div class="card fac${taker ? ' taken' : ''}">
+      <span class="ic" aria-hidden="true">${artImg('deity-' + f.id, 'portrait', f.name) || FACTION_ICON[f.id]}</span>
+      <div><b>${esc(f.name)}</b> <span class="muted small">${esc(f.title)}</span></div>
+      <div class="small"><b>${esc(f.power)}:</b> ${esc(f.rule)}</div>
+      <div>${taker ? `<span class="muted small">Taken by ${esc(taker.name)}</span>`
+        : `<button class="btn small" data-act="pickFaction" data-faction="${f.id}"${mine ? '' : ' disabled'}>Pick ${esc(f.name)}</button>`}</div>
+    </div>`;
+  }).join('');
+  return `<div class="card prompt">${head}</div>${list}`;
+}
+
+function renderPlay() {
+  const p = ph();
+  const m = me();
+  let html = '';
+
+  if (p.pendingBonus && p.pendingBonus.seat === m.seat) {
+    html += `<div class="card prompt"><h3>🌸 Late Bloomer</h3><p class="small">Your roll gave you nothing. Take any 1 resource.</p>
+      <div class="pick">${RES.map(r => `<button data-act="claimBonus" data-res="${r}" style="--c:var(--${r})"${view.bank.resources[r] ? '' : ' disabled'}>${R[r].i}<small>${R[r].n}</small></button>`).join('')}</div></div>`;
+  }
+  if (p.pendingSkim && p.pendingSkim.seat === m.seat) {
+    const pool = p.pendingSkim.pool;
+    html += `<div class="card prompt"><h3>☠️ Green Waste Collection</h3><p class="small">Take 1 card from what was discarded.</p>
+      <div class="pick">${RES.map(r => `<button data-act="skim" data-res="${r}" style="--c:var(--${r})"${pool[r] && view.bank.resources[r] ? '' : ' disabled'}>${R[r].i}<small>${pool[r]}</small></button>`).join('')}</div></div>`;
+  }
+
+  if (view.dice.last) {
+    const g = ui.lastGains;
+    const gain = g && g.gains ? chips(g.gains) : (view.dice.total === 7 ? '<span class="muted">The Mower roars. Nobody collects.</span>' : '<span class="muted">Nothing for you</span>');
+    html += `<div class="card"><div class="row" style="align-items:center"><div class="dice">${I('icon-dice')} ${view.dice.last[0]} + ${view.dice.last[1]} = ${view.dice.total}</div></div>
+      <div class="chips" style="margin-top:6px">${gain}</div></div>`;
+  }
+
+  html += mapSVG();
+
+  const f = facCard(pl(m.seat).faction);
+  if (f) html += `<div class="card"><b>${FACTION_ICON[f.id]} ${esc(f.power)}</b><div class="small muted">${esc(f.rule)}</div></div>`;
+
+  const rows = view.players.slice().sort((a, b) => b.vp.public - a.vp.public).map(x => {
+    const badges = (view.awards.longestPath.holder === x.seat ? ' ' + I('icon-longestPath') : '') + (view.awards.largestMilitia.holder === x.seat ? ' ' + I('icon-militia') : '');
+    return `<tr class="${x.connected ? '' : 'off'}${x.seat === p.activeSeat ? ' active' : ''}">
+      <td>${esc(x.avatar)} ${esc(x.name)}${x.seat === m.seat ? ' (you)' : ''}${badges}</td>
+      <td class="muted small">${I('icon-cards')} ${x.handCount}${x.handCount >= view.config.discardThreshold ? '⚠️' : ''} · ${I('icon-perk')} ${x.perks.heldCount}</td>
+      <td>${x.vp.public} VP</td></tr>`;
+  }).join('');
+  html += `<div class="card"><table class="players">${rows}</table></div>`;
+  html += `<div class="card"><ul class="log">${view.log.slice(-6).reverse().map(l => `<li>${esc(l.text)}</li>`).join('')}</ul></div>`;
+  return html;
+}
+
+function renderBuild() {
+  const m = me();
+  const able = canBuildNow();
+  const L = m.legal;
+  const left = pl(m.seat).piecesLeft;
+  const rows = ['path', 'shack', 'manor', 'perk'].map(what => {
+    const info = BUILD_INFO[what];
+    let cost = COST[what];
+    let note = '';
+    if (what === 'path') { const pc = pathCostNow(); cost = pc.cost; note = pc.note; }
+    const pieces = what === 'path' ? left.paths : what === 'shack' ? left.shacks : what === 'manor' ? left.manors : view.bank.perksRemaining;
+    const spots = what === 'perk' ? 1 : (L[what] || []).length;
+    let reason = '';
+    if (!able) reason = 'Not your turn';
+    else if (!pieces) reason = what === 'perk' ? 'The deck is empty' : 'None left';
+    else if (cost && !hasAll(m.hand, cost)) reason = 'Need ' + missing(cost);
+    else if (!spots) reason = 'Nowhere to build yet';
+    else if (what === 'perk' && m.odinChoice) reason = 'Choose your Odin card first';
+    const ok = !reason;
+    return `<div class="card build">
+      <h3>${info.icon} ${info.name}</h3>
+      <button class="btn small${ok ? ' primary' : ''}" data-act="build" data-what="${what}"${ok ? '' : ' disabled'}>${what === 'perk' ? 'Buy' : 'Build'}</button>
+      <div class="chips">${cost ? chips(cost) : '<span class="chip">Free</span>'}</div>
+      <div class="muted small" style="text-align:right">${what === 'perk' ? pieces + ' in deck' : pieces + ' left'}</div>
+      <div class="small muted" style="grid-column:1/-1">${note ? '<b>' + note + '</b> · ' : ''}${info.what}</div>
+      ${reason && able ? `<div class="small" style="grid-column:1/-1">${reason}</div>` : ''}
+    </div>`;
+  }).join('');
+  return rows;
+}
+
+function renderTrade() {
+  const seg = ui.tradeSeg;
+  const segs = [['inbox', `Offers${me().trades.length ? ' (' + me().trades.length + ')' : ''}`], ['new', 'New offer'], ['bank', 'Bank']];
+  let html = `<div class="seg">${segs.map(([id, label]) => `<button data-act="seg" data-seg="${id}" aria-pressed="${seg === id}">${label}</button>`).join('')}</div>`;
+  if (FROZEN.includes(ph().step)) html += `<div class="card small">${I('mower')} Trading is frozen while the Mower is out.</div>`;
+  if (seg === 'inbox') html += renderInbox();
+  if (seg === 'new') html += renderNewOffer();
+  if (seg === 'bank') html += renderBank();
+  return html;
+}
+
+function renderInbox() {
+  const m = me();
+  if (!m.trades.length) return '<div class="card muted">No offers right now. Make one from <b>New offer</b>.</div>';
+  const frozen = FROZEN.includes(ph().step);
+  return m.trades.map(t => {
+    const mineOffer = t.from === m.seat;
+    const toText = t.to === null ? 'everyone' : t.to.map(s => (s === m.seat ? 'you' : nm(s))).join(', ');
+    const left = remaining(t.expiresAt);
+    let buttons;
+    if (mineOffer) {
+      buttons = `<button class="btn small" data-act="cancelTrade" data-id="${t.id}">Cancel offer</button>`;
+    } else {
+      const afford = hasAll(m.hand, t.want);
+      buttons = `<button class="btn small" data-act="declineTrade" data-id="${t.id}"${frozen ? ' disabled' : ''}>Decline</button>
+        <button class="btn small" data-act="counterTrade" data-id="${t.id}">Counter</button>
+        <button class="btn small good" data-act="acceptTrade" data-id="${t.id}"${afford && !frozen ? '' : ' disabled'}>Accept</button>`;
+      if (!afford) buttons += `<div class="small" style="flex-basis:100%">You need ${missing(t.want)}</div>`;
+    }
+    return `<div class="card offer">
+      <div class="who2">${mineOffer ? 'You' : nm(t.from)} → ${toText} <span class="muted small">· ${left}s</span></div>
+      <div class="small muted" style="margin-top:6px">${mineOffer ? 'You give' : 'They give'}</div><div class="chips">${chips(t.give)}</div>
+      <div class="small muted" style="margin-top:6px">${mineOffer ? 'You want' : 'They want'}</div><div class="chips">${chips(t.want)}</div>
+      <div class="row" style="flex-wrap:wrap">${buttons}</div></div>`;
+  }).join('');
+}
+
+function renderNewOffer() {
+  const m = me();
+  const d = ui.trade;
+  const others = view.players.filter(p => p.seat !== m.seat);
+  const stepRow = (side, r) => {
+    const n = d[side][r];
+    const max = side === 'give' ? m.hand[r] : 9;
+    const blocked = side === 'give' ? d.want[r] > 0 : d.give[r] > 0;
+    return `<div class="stepper" aria-label="${side} ${R[r].n}">
+      <button data-act="step" data-side="${side}" data-res="${r}" data-d="-1"${n ? '' : ' disabled'} aria-label="Less">−</button><b>${n}</b>
+      <button data-act="step" data-side="${side}" data-res="${r}" data-d="1"${n < max && !blocked ? '' : ' disabled'} aria-label="More">+</button></div>`;
+  };
+  const rows = `<div class="trow head"><span></span><span class="muted small">You give</span><span class="muted small">You want</span></div>` +
+    RES.map(r => `<div class="trow"><span class="i" title="${R[r].full}">${R[r].i}<small>have ${m.hand[r]}</small></span>${stepRow('give', r)}${stepRow('want', r)}</div>`).join('');
+  const target = d.to === null ? 'all' : String(d.to);
+  const ready = total(d.give) > 0 && total(d.want) > 0 && !FROZEN.includes(ph().step);
+  return `<div class="card">${rows}</div>
+    <div class="card"><div class="muted small">Send to</div><div class="chips" style="margin-top:6px">
+      <button class="btn small" data-act="target" data-to="all" aria-pressed="${target === 'all'}"${target === 'all' ? ' style="border-color:var(--primary)"' : ''}>Everyone</button>
+      ${others.map(o => `<button class="btn small" data-act="target" data-to="${o.seat}"${target === String(o.seat) ? ' style="border-color:var(--primary)"' : ''}>${esc(o.avatar)} ${esc(o.name)}</button>`).join('')}
+    </div></div>
+    <div style="margin-top:12px"><button class="btn primary" data-act="sendOffer"${ready ? '' : ' disabled'}>Send offer</button></div>`;
+}
+
+function renderBank() {
+  const m = me();
+  if (!(isMyTurn() && ph().step === 'main')) return '<div class="card muted">Bank trades happen on your own turn, after you roll.</div>';
+  const b = ui.bank;
+  const ratios = m.legal.bankRatios;
+  const give = `<div class="pick">${RES.map(r => `<button data-act="bankGive" data-res="${r}" style="--c:var(--${r})" aria-pressed="${b.give === r}"${m.hand[r] >= ratios[r] ? '' : ' disabled'}>${R[r].i}<small>${ratios[r]}:1</small></button>`).join('')}</div>`;
+  const get = `<div class="pick">${RES.map(r => `<button data-act="bankGet" data-res="${r}" style="--c:var(--${r})" aria-pressed="${b.get === r}"${view.bank.resources[r] && r !== b.give ? '' : ' disabled'}>${R[r].i}<small>${view.bank.resources[r]}</small></button>`).join('')}</div>`;
+  const ready = b.give && b.get && b.give !== b.get && m.hand[b.give] >= ratios[b.give];
+  return `<div class="card"><h3>Give</h3><p class="muted small">Your best rate is shown under each.</p>${give}</div>
+    <div class="card"><h3>Get</h3><p class="muted small">Bank stock is shown under each.</p>${get}</div>
+    <div style="margin-top:12px"><button class="btn primary" data-act="bankTrade"${ready ? '' : ' disabled'}>${ready ? `Trade ${ratios[b.give]} ${R[b.give].i} for 1 ${R[b.get].i}` : 'Choose what to give and get'}</button></div>`;
+}
+
+function renderPerks() {
+  const m = me();
+  const p = ph();
+  const canPlayNow = isMyTurn() && ['roll', 'main'].includes(p.step) && !m.playedPerkThisTurn;
+  const card = (c, locked) => {
+    const t = perkType(c.type);
+    const vp = c.type === 'vp';
+    let btn = '';
+    if (vp) btn = '<span class="chip">+1 hidden VP</span>';
+    else if (locked) btn = '<span class="muted small">Bought this turn. Play it next turn.</span>';
+    else btn = `<button class="btn small primary" data-act="playPerk" data-id="${c.id}"${canPlayNow ? '' : ' disabled'}>Play</button>`;
+    return `<div class="card perk${vp ? ' vp' : ''}${locked ? ' locked' : ''}"><h3>${esc(c.name)}</h3>
+      <p class="small" style="margin:0 0 10px">${esc(vp ? 'Worth 1 Victory Point. Keep it secret.' : t.rule)}</p>${btn}</div>`;
+  };
+  const held = m.perks.held.map(c => card(c, false)).join('');
+  const bought = m.perks.boughtThisTurn.map(c => card(c, true)).join('');
+  let note = '';
+  if (!isMyTurn()) note = 'Perks are played on your own turn.';
+  else if (m.playedPerkThisTurn) note = 'You have already played a Perk this turn.';
+  else if (!['roll', 'main'].includes(p.step)) note = 'Finish the Mower first.';
+  const militia = pl(m.seat).militia;
+  return `<div class="card"><b>${I('icon-militia')} Gnome Militia played: ${militia}</b><div class="muted small">${view.awards.largestMilitia.holder === m.seat ? 'You hold Largest Gnome Militia (+2 VP).' : 'Play 3 to claim Largest Gnome Militia (+2 VP).'}</div></div>
+    ${note ? `<div class="card small">${note}</div>` : ''}
+    ${held || bought ? held + bought : '<div class="card muted">No Perks yet. Buy one from <b>Build</b> for 🍄 🌾 ✨.</div>'}`;
+}
+
+function renderGameOver() {
+  const w = view.winner;
+  const ranked = view.players.slice().sort((a, b) => (b.vp.total || 0) - (a.vp.total || 0));
+  const rows = ranked.map((p, i) => `<tr><td>${i + 1}. ${esc(p.avatar)} ${esc(p.name)}</td><td class="muted small">${(p.perks.revealed || []).map(c => esc(c.name)).join(', ')}</td><td>${p.vp.total} VP</td></tr>`).join('');
+  return `<div class="card prompt" style="text-align:center"><div style="font-size:64px">${I('trophy', 'gi-hero')}</div>
+      <h3 style="font-size:24px">${w && w.seat === mySeat() ? 'You win the Golden Flamingo!' : nm(w.seat) + ' wins the Golden Flamingo'}</h3>
+      <p class="muted">Turn ${ph().turn}</p></div>
+    <div class="card"><table class="players">${rows}</table></div>
+    <div style="margin-top:14px">${view.meta.isHost ? '<button class="btn primary" data-act="rematch">Rematch</button>' : '<p class="muted" style="text-align:center">Waiting for the host to start a rematch</p>'}</div>`;
+}
+
+/* ================= render: sheets ================= */
+function renderSheet() {
+  const s = ui.sheet;
+  const wrap = $('#sheetWrap');
+  if (!s || !view || !me()) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+  const fn = { rules: sheetRules, place: sheetPlace, discard: sheetDiscard, mower: sheetMower, steal: sheetSteal, odin: sheetOdin, perk: sheetPerk, menu: sheetMenu }[s.type];
+  $('#sheet').dataset.sheet = s.type;
+  $('#sheet').innerHTML = fn ? fn(s) : '';
+}
+
+const closeBtn = s => (s.required ? '' : '<button class="iconbtn" data-act="closeSheet" aria-label="Close">✕</button>');
+
+function zoomBtn() {
+  return topo && topo.radius > 2 ? `<button class="btn small" data-act="zoom">${ui.zoom ? '🔍 Fit board' : '🔍 Zoom in'}</button>` : '';
+}
+
+function sheetPlace(s) {
+  const m = me();
+  const legal = m.legal[s.what] || [];
+  const label = { shack: 'Gardener Shack', path: 'Mulch Path', manor: 'Garden Manor' }[s.what];
+  const mode = s.what === 'path' ? 'edge' : s.what === 'manor' ? 'ring' : 'vertex';
+  const hint = s.setup
+    ? (s.what === 'shack' ? 'Pick a glowing corner. Shacks need a gap of one corner from any other building.' : 'Pick a glowing edge next to your new Shack.')
+    : 'Tap a glowing spot, then confirm.';
+  return `<div class="head"><div><h2>Place a ${label}</h2><p class="muted small">${hint}</p></div>${closeBtn(s)}</div>
+    ${mapSVG({ mode, legal, sel: s.sel, zoom: ui.zoom })}
+    <div class="foot"><div class="row">${zoomBtn()}<button class="btn primary" data-act="confirmPlace"${s.sel ? '' : ' disabled'}>Place ${label}</button></div></div>`;
+}
+
+function sheetDiscard(s) {
+  const owe = ph().pendingDiscards[mySeat()] || 0;
+  const h = me().hand;
+  const n = total(s.sel);
+  return `<div class="head"><div><h2>${I('mower')} The Mower! Discard ${owe}</h2><p class="muted small">You hold 8 or more cards, so half go on the compost. Tap cards to choose.</p></div></div>
+    <div class="pick">${RES.map(r => `<button data-act="discardAdd" data-res="${r}" style="--c:var(--${r})"${h[r] - s.sel[r] > 0 && n < owe ? '' : ' disabled'}>${R[r].i}<small>${h[r] - s.sel[r]} left</small></button>`).join('')}</div>
+    <div class="card" style="margin-top:12px"><div class="muted small">Discarding (tap to put back)</div>
+      <div class="chips" style="margin-top:6px">${RES.filter(r => s.sel[r]).map(r => `<button class="chip" data-act="discardRemove" data-res="${r}">${s.sel[r]} ${R[r].i} ✕</button>`).join('') || '<span class="muted">nothing yet</span>'}</div></div>
+    <div class="foot"><button class="btn primary" data-act="confirmDiscard"${n === owe ? '' : ' disabled'}>${n === owe ? `Discard ${owe}` : `Choose ${owe - n} more`}</button></div>`;
+}
+
+function sheetMower(s) {
+  return `<div class="head"><div><h2>${I('mower')} Move Surtur's Mower</h2><p class="muted small">The hex it lands on stops producing. Then you rob someone next to it.</p></div></div>
+    ${mapSVG({ mode: 'hex', legal: me().legal.mower, sel: s.sel, zoom: ui.zoom })}
+    <div class="foot"><div class="row">${zoomBtn()}<button class="btn primary" data-act="confirmMower"${s.sel ? '' : ' disabled'}>Park the Mower here</button></div></div>`;
+}
+
+function sheetSteal(s) {
+  const p = ph();
+  const peek = me().stealPeek;
+  const victims = p.pendingSteal ? p.pendingSteal.victims : [];
+  let body = `<div class="stack">${victims.map(v => `<button class="btn${s.victim === v ? ' primary' : ''}" data-act="stealFrom" data-victim="${v}">${esc(pl(v).avatar)} ${nm(v)} · ${pl(v).handCount} cards</button>`).join('')}</div>`;
+  let ready = s.victim !== null;
+  if (peek && s.victim !== null) {
+    const hand = peek[s.victim];
+    const need = Math.min(2, total(hand));
+    const left = Object.assign({}, hand);
+    s.picks.forEach(r => { left[r] -= 1; });
+    body += `<div class="card prompt" style="margin-top:12px"><h3>🎭 Sticky Fingers: pick ${need}</h3>
+      <div class="pick">${RES.map(r => `<button data-act="lokiPick" data-res="${r}" style="--c:var(--${r})"${left[r] > 0 && s.picks.length < need ? '' : ' disabled'}>${R[r].i}<small>${left[r]}</small></button>`).join('')}</div>
+      <div class="chips" style="margin-top:8px">${s.picks.map((r, i) => `<button class="chip" data-act="lokiUnpick" data-i="${i}">${R[r].i} ✕</button>`).join('')}</div></div>`;
+    ready = s.picks.length === need;
+  }
+  return `<div class="head"><div><h2>Who do you rob?</h2><p class="muted small">${peek ? 'You can see their cards.' : 'You take 1 random card.'}</p></div></div>
+    ${body}<div class="foot"><button class="btn primary" data-act="confirmSteal"${ready ? '' : ' disabled'}>Rob them</button></div>`;
+}
+
+function sheetOdin() {
+  const choice = me().odinChoice || [];
+  return `<div class="head"><div><h2>👁️ One-Eyed Foresight</h2><p class="muted small">Keep one card. The other goes to the bottom of the deck.</p></div></div>
+    <div class="stack">${choice.map(c => `<div class="card perk${c.type === 'vp' ? ' vp' : ''}"><h3>${esc(c.name)}</h3>
+      <p class="small">${esc(c.type === 'vp' ? 'Worth 1 hidden Victory Point.' : perkType(c.type).rule)}</p>
+      <button class="btn primary" data-act="keepPerk" data-id="${c.id}">Keep this one</button></div>`).join('')}</div>`;
+}
+
+function sheetPerk(s) {
+  const c = me().perks.held.find(x => x.id === s.id);
+  if (!c) return '';
+  const t = perkType(c.type);
+  let body = '';
+  let ready = true;
+  if (c.type === 'bumperCrop') {
+    const picks = s.picks || [];
+    body = `<div class="pick">${RES.map(r => `<button data-act="perkRes" data-res="${r}" style="--c:var(--${r})"${picks.length < 2 && view.bank.resources[r] > picks.filter(x => x === r).length ? '' : ' disabled'}>${R[r].i}<small>${R[r].n}</small></button>`).join('')}</div>
+      <div class="chips" style="margin-top:8px">${picks.map((r, i) => `<button class="chip" data-act="perkUnpick" data-i="${i}">${R[r].i} ✕</button>`).join('') || '<span class="muted">Pick 2 (can be the same)</span>'}</div>`;
+    ready = picks.length === 2;
+  } else if (c.type === 'binDay') {
+    body = `<div class="pick">${RES.map(r => `<button data-act="perkOne" data-res="${r}" style="--c:var(--${r})" aria-pressed="${s.res === r}">${R[r].i}<small>${R[r].n}</small></button>`).join('')}</div>`;
+    ready = !!s.res;
+  } else if (c.type === 'sinkhole') {
+    const legal = !s.a ? topo.hexes.map(h => h.id) : topo.hexes.find(h => h.id === s.a).neighbors.concat([s.a]);
+    body = `<p class="small">${!s.a ? 'Tap the first hex.' : !s.b ? 'Now tap a hex next to it.' : 'Ready to swap.'}</p>${mapSVG({ mode: 'hex', legal, sel: s.a, sel2: s.b, zoom: ui.zoom })}`;
+    ready = !!(s.a && s.b);
+  } else if (c.type === 'militia') {
+    body = '<p class="small">You will move the Mower and rob a neighbour of its new hex.</p>';
+  }
+  return `<div class="head"><div><h2>${esc(c.name)}</h2><p class="muted small">${esc(t.rule)}</p></div>${closeBtn(s)}</div>
+    ${body}<div class="foot"><div class="row">${c.type === 'sinkhole' ? zoomBtn() : ''}<button class="btn primary" data-act="confirmPerk"${ready ? '' : ' disabled'}>Play ${esc(c.name)}</button></div></div>`;
+}
+
+function sheetRules(s) {
+  const slides = RagnaRules.slides(I);
+  const i = Math.max(0, Math.min(slides.length - 1, s.page || 0));
+  const sl = slides[i];
+  const last = i === slides.length - 1;
+  return `<div class="rules">
+    <div class="head"><div><p class="muted small" style="margin:0">How to play · ${i + 1} of ${slides.length}</p>
+      <h2>${sl.icon} ${esc(sl.title)}</h2></div>${closeBtn(s)}</div>
+    <div>${sl.body}</div>
+    <div class="dots">${slides.map((x, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="foot">
+      <label class="check"><input type="checkbox" data-act="rulesHide"${store.get(RULES_KEY) ? ' checked' : ''}> Don't show this again</label>
+      <div class="row">
+        <button class="btn" data-act="rulesPrev"${i === 0 ? ' disabled' : ''}>Back</button>
+        ${last ? '<button class="btn primary" data-act="closeSheet">Let\'s play</button>' : '<button class="btn primary" data-act="rulesNext">Next</button>'}
+      </div>
+    </div></div>`;
+}
+
+function sheetMenu(s) {
+  const isHost = view.meta.isHost;
+  const stage = ph().stage;
+  const playing = stage === 'setup' || stage === 'playing' || stage === 'factions';
+  return `<div class="head"><div><h2>Menu</h2><p class="muted small">Room ${esc(view.meta.code)}</p></div>${closeBtn(s)}</div>
+    <div class="stack">
+      <button class="btn" data-act="rules">📖 How to play</button>
+      <button class="btn" data-act="toggleDay">${prefs.day ? '🌙 Dusk colours' : '☀️ Daylight colours'}</button>
+      <button class="btn" data-act="toggleSound">${prefs.sound ? '🔇 Sound off' : '🔊 Sound on'}</button>
+      <button class="btn" data-act="toggleVibe">${window.SFX && !window.SFX.isVibration() ? '📳 Vibration on' : '📴 Vibration off'}</button>
+      ${isHost && playing ? (view.meta.paused ? '<button class="btn primary" data-act="resume">▶ Resume game</button>' : '<button class="btn" data-act="pause">⏸ Pause game</button>') : ''}
+      ${isHost ? '<button class="btn" data-act="closeRoom">Close the room</button>' : ''}
+      ${stage === 'lobby' ? '<button class="btn" data-act="leave">Leave</button>' : ''}
+    </div>`;
+}
+
+function renderOverlay() {
+  const o = $('#overlay');
+  if (view && view.meta && view.meta.paused && view.me) {
+    o.hidden = false;
+    o.innerHTML = `<div class="card"><div style="font-size:48px">⏸</div><h3>Paused</h3>
+      <p class="muted">${view.players.some(p => !p.connected) ? 'Waiting for every phone to reconnect.' : 'The host paused the game.'}</p>
+      ${view.meta.isHost ? '<button class="btn primary" data-act="resume">Resume</button>' : ''}</div>`;
+  } else {
+    o.hidden = true;
+  }
+}
+
+/* ================= input ================= */
+function onSpot(id) {
+  const s = ui.sheet;
+  if (!s) return;
+  if (s.type === 'perk') {
+    if (!s.a) s.a = id;
+    else if (id === s.a) { s.a = s.b || null; s.b = null; }
+    else s.b = s.b === id ? null : id;
+  } else {
+    s.sel = s.sel === id ? null : id;
+  }
+  if (s.type === 'place') preview(s.what, s.sel);
+  else if (s.type === 'mower') preview('mower', s.sel);
+  else if (s.type === 'perk') preview('sinkhole', s.b || s.a);
+  sfx('tap');
+  render();
+}
+
+async function onAct(el) {
+  const a = el.dataset.act;
+  const s = ui.sheet;
+  const d = el.dataset;
+  switch (a) {
+    /* join & lobby */
+    case 'avatar': ui.avatar = d.av; store.set('ragnagrok.avatar', d.av); renderJoin(); return;
+    case 'join': {
+      const code = $('#joinCode').value.trim().toUpperCase();
+      const name = $('#joinName').value.trim();
+      if (code.length !== 4) { ui.joinMsg = 'Enter the 4-letter code from the TV.'; renderJoin(); return; }
+      store.set('ragnagrok.name', name);
+      el.disabled = true;
+      const r = await emit('player:join', { code, name, avatar: ui.avatar });
+      el.disabled = false;
+      if (!r.ok) { ui.joinMsg = r.error; renderJoin(); return; }
+      saved = { code: r.code, token: r.token };
+      store.set(KEY, saved);
+      ui.joinMsg = '';
+      keepAwake();
+      maybeShowRules();
+      render();
+      return;
+    }
+    case 'start': await host('start'); return;
+    case 'kick': await host('kick', { seat: Number(d.seat) }); return;
+    case 'leave': await emit('player:leave'); forget(); return;
+    case 'rematch': await host('rematch'); return;
+    case 'pickFaction': await act({ type: 'chooseFaction', faction: d.faction }); return;
+
+    /* navigation */
+    case 'tab': ui.tab = d.tab; if (d.tab === 'trade') ui.unseen = 0; render(); return;
+    case 'seg': ui.tradeSeg = d.seg; render(); return;
+    case 'menu': openSheet({ type: 'menu' }); return;
+    case 'rules': openSheet({ type: 'rules', page: 0 }); return;
+    case 'rulesNext': if (s) { s.page = (s.page || 0) + 1; render(); } return;
+    case 'rulesPrev': if (s) { s.page = Math.max(0, (s.page || 0) - 1); render(); } return;
+    case 'rulesHide':
+      if (el.checked) store.set(RULES_KEY, true); else store.del(RULES_KEY);
+      return;
+    case 'closeSheet': ui.sheet = null; preview(null, null); render(); return;
+    case 'reopen': {
+      const req = requiredSheet();
+      if (req) ui.sheet = Object.assign({ required: true }, req, freshSel(req));
+      render();
+      return;
+    }
+    case 'zoom': ui.zoom = !ui.zoom; render(); return;
+
+    /* turn */
+    case 'roll': await act({ type: 'roll' }); return;
+    case 'endTurn': await act({ type: 'endTurn' }); return;
+    case 'doneSpecialBuild': await act({ type: 'doneSpecialBuild' }); return;
+    case 'claimBonus': await act({ type: 'claimBonus', resource: d.res }); return;
+    case 'skim': await act({ type: 'skim', resource: d.res }); return;
+
+    /* building */
+    case 'build':
+      if (d.what === 'perk') { await act({ type: 'buyPerk' }); return; }
+      openSheet({ type: 'place', what: d.what });
+      return;
+    case 'confirmPlace': {
+      if (!s || !s.sel) return;
+      const r = await act({ type: 'build', what: s.what, at: s.sel });
+      if (r.ok && ui.sheet && !ui.sheet.required) ui.sheet = null;
+      render();
+      return;
+    }
+
+    /* Mower */
+    case 'discardAdd': s.sel[d.res] += 1; render(); return;
+    case 'discardRemove': s.sel[d.res] = Math.max(0, s.sel[d.res] - 1); render(); return;
+    case 'confirmDiscard': await act({ type: 'discard', cards: s.sel }); return;
+    case 'confirmMower': if (s && s.sel) await act({ type: 'moveMower', hex: s.sel }); return;
+    case 'stealFrom': s.victim = Number(d.victim); s.picks = []; render(); return;
+    case 'lokiPick': s.picks.push(d.res); render(); return;
+    case 'lokiUnpick': s.picks.splice(Number(d.i), 1); render(); return;
+    case 'confirmSteal': await act({ type: 'steal', victim: s.victim, picks: me().stealPeek ? s.picks : undefined }); return;
+
+    /* Perks */
+    case 'keepPerk': await act({ type: 'keepPerk', id: d.id }); return;
+    case 'playPerk': {
+      const c = me().perks.held.find(x => x.id === d.id);
+      if (!c) return;
+      if (c.type === 'mulchSpreader') {
+        const r = await act({ type: 'playPerk', id: c.id });
+        if (r.ok) { ui.tab = 'build'; toast('2 free Mulch Paths. Build them now.', 'good'); render(); }
+        return;
+      }
+      openSheet({ type: 'perk', id: c.id, picks: [], res: null, a: null, b: null });
+      return;
+    }
+    case 'perkRes': s.picks.push(d.res); render(); return;
+    case 'perkUnpick': s.picks.splice(Number(d.i), 1); render(); return;
+    case 'perkOne': s.res = d.res; render(); return;
+    case 'confirmPerk': {
+      const c = me().perks.held.find(x => x.id === s.id);
+      if (!c) return;
+      const action = { type: 'playPerk', id: c.id };
+      if (c.type === 'bumperCrop') action.resources = s.picks;
+      if (c.type === 'binDay') action.resource = s.res;
+      if (c.type === 'sinkhole') { action.a = s.a; action.b = s.b; }
+      ui.sheet = null;
+      await act(action);
+      render();
+      return;
+    }
+
+    /* trading */
+    case 'step': {
+      const side = ui.trade[d.side];
+      side[d.res] = Math.max(0, side[d.res] + Number(d.d));
+      render();
+      return;
+    }
+    case 'target': ui.trade.to = d.to === 'all' ? null : Number(d.to); render(); return;
+    case 'sendOffer': {
+      const t = ui.trade;
+      const r = await act({ type: 'offerTrade', to: t.to === null ? null : [t.to], give: t.give, want: t.want });
+      if (r.ok) { ui.trade = { give: empty(), want: empty(), to: null }; ui.tradeSeg = 'inbox'; toast('Offer sent', 'good'); render(); }
+      return;
+    }
+    case 'acceptTrade': await act({ type: 'respondTrade', id: d.id, accept: true }); return;
+    case 'declineTrade': await act({ type: 'respondTrade', id: d.id, accept: false }); return;
+    case 'cancelTrade': await act({ type: 'cancelTrade', id: d.id }); return;
+    case 'counterTrade': {
+      const t = me().trades.find(x => x.id === d.id);
+      if (!t) return;
+      ui.trade = { give: Object.assign(empty(), t.want), want: Object.assign(empty(), t.give), to: t.from };
+      RES.forEach(r => { ui.trade.give[r] = Math.min(ui.trade.give[r], me().hand[r]); });
+      ui.tradeSeg = 'new';
+      render();
+      return;
+    }
+    case 'bankGive': ui.bank.give = d.res; if (ui.bank.get === d.res) ui.bank.get = null; render(); return;
+    case 'bankGet': ui.bank.get = d.res; render(); return;
+    case 'bankTrade': {
+      const r = await act({ type: 'bankTrade', give: ui.bank.give, get: ui.bank.get });
+      if (r.ok) { ui.bank = { give: null, get: null }; render(); }
+      return;
+    }
+
+    /* menu */
+    case 'toggleDay': prefs.day = !prefs.day; store.set(PREFS, prefs); render(); return;
+    case 'toggleSound':
+      prefs.sound = !prefs.sound;
+      store.set(PREFS, prefs);
+      if (window.SFX) window.SFX.setMuted(!prefs.sound);
+      render();
+      return;
+    case 'toggleVibe':
+      if (window.SFX) { window.SFX.setVibration(!window.SFX.isVibration()); if (window.SFX.isVibration()) window.SFX.vibrate(60); }
+      render();
+      return;
+    case 'pause': ui.sheet = null; await host('pause'); return;
+    case 'resume': ui.sheet = null; await host('resume'); return;
+    case 'closeRoom': ui.sheet = null; await host('close'); return;
+    default: break;
+  }
+}
+
+document.addEventListener('click', e => {
+  const target = e.target;
+  if (!target || !target.closest) return;
+  const spot = target.closest('[data-spot]');
+  if (spot) { onSpot(spot.getAttribute('data-spot')); return; }
+  const el = target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  if (el.dataset.act !== 'join') sfx('tap');
+  onAct(el);
+});
+
+$('#sheetWrap').addEventListener('click', e => {
+  if (e.target === $('#sheetWrap') && ui.sheet && !ui.sheet.required) { ui.sheet = null; render(); }
+});
+
+$('#joinCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('#joinName').focus(); });
+$('#joinName').addEventListener('keydown', e => { if (e.key === 'Enter') onAct(document.querySelector('[data-act="join"]')); });
+
+/* ================= phone niceties ================= */
+let wakeLock = null;
+async function keepAwake() {
+  try {
+    if (navigator.wakeLock && document.visibilityState === 'visible' && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) { /* not supported or refused */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { keepAwake(); if (saved && socket.connected) rejoin(); }
+});
+document.addEventListener('pointerdown', () => {
+  if (window.SFX) { window.SFX.unlock(); window.SFX.setMuted(!prefs.sound); }
+  keepAwake();
+}, { once: false, passive: true });
+
+// Read-only hook for automated tests and debugging in the browser console.
+window.__rg = { view: () => view, ui };
+
+getJSON('/data/cards.json').then(c => { if (c) { cards = c; render(); } });
+getJSON('/art.json').then(a => {
+  ART = RagnaBoard.artMap(a);
+  // Every small icon uses the same artwork as the big ones.
+  RES.forEach(r => { R[r].i = I('res-' + r); });
+  Object.keys(FACTION_ICON).forEach(k => { FACTION_ICON[k] = I('deity-' + k); });
+  BUILD_INFO.path.icon = I('icon-path');
+  BUILD_INFO.shack.icon = I('piece-shack');
+  BUILD_INFO.manor.icon = I('piece-manor');
+  BUILD_INFO.perk.icon = I('icon-perk');
+  render();
+});
+render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ragnagrok · Lawn Care at the End of Days</title>
+<style>
+:root {
+  --bg:#150e20; --bg2:#1f1530; --surface:#2a1d3b; --surface2:#3b2a52; --line:#4f3c69;
+  --ink:#f7f0e3; --muted:#c3b5d3; --primary:#ff8a4c; --on-primary:#1a1226;
+  --good:#8cc45e; --bad:#ff6b6b; --warn:#f5c451; --gold:#f5c451;
+  color-scheme:dark;
+}
+* { box-sizing:border-box; }
+html, body { margin:0; height:100%; overflow:hidden; background:#000; color:var(--ink);
+  font:400 30px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+button { font:inherit; color:inherit; cursor:pointer; border:0; }
+[hidden] { display:none !important; }
+
+/* Fixed 1920×1080 canvas, scaled to fit any screen. */
+#stage { position:absolute; left:0; top:0; width:1920px; height:1080px; transform-origin:0 0; overflow:hidden;
+  background: radial-gradient(ellipse at 30% 40%, #2b1d40 0%, var(--bg) 60%); }
+#stage.bgart { background-size:cover; background-position:center; }
+.screen { position:absolute; inset:0; padding:54px 96px; }
+
+/* ---------- lobby ---------- */
+#lobby { display:grid; grid-template-columns:480px 1fr; gap:0 70px; padding-top:44px; }
+#lobbyLeft { display:flex; flex-direction:column; gap:26px; }
+#logo { }
+#logo .t { font-weight:900; font-size:88px; line-height:.9; color:var(--primary); letter-spacing:-.02em; }
+#logo .s { color:var(--muted); font-size:36px; margin-top:8px; }
+#logo img { width:100%; display:block; }
+#qrBox { background:#fff; border-radius:28px; padding:22px; }
+#qrBox img { width:100%; display:block; image-rendering:pixelated; }
+#joinInfo .label { color:var(--muted); font-size:30px; }
+#joinInfo .code { font-size:150px; font-weight:900; letter-spacing:.14em; line-height:1; margin:4px 0 12px; }
+#joinInfo .url { font-size:32px; color:var(--warn); word-break:break-all; }
+#lobbyPlayers { display:flex; flex-wrap:wrap; gap:14px; margin-top:16px; }
+.pchip { display:flex; align-items:center; gap:14px; background:var(--surface); border:3px solid var(--line); border-radius:22px; padding:12px 22px 12px 14px; font-size:34px; font-weight:700; }
+.pchip .av { font-size:46px; }
+.pchip.empty { opacity:.35; border-style:dashed; font-weight:400; }
+@media (prefers-reduced-motion: no-preference) { .pchip.new { animation:pop .5s cubic-bezier(.2,1.6,.4,1); } }
+@keyframes pop { from { transform:scale(.3); opacity:0; } }
+#lobbyFoot { position:absolute; left:96px; right:96px; bottom:30px; display:flex; justify-content:space-between; align-items:center; color:var(--muted); }
+.smallbtn { background:var(--surface2); border:2px solid var(--line); border-radius:16px; padding:12px 22px; font-size:24px; }
+
+/* ---------- draft ---------- */
+#draft { padding-top:40px; }
+#draft h1 { margin:0 0 4px; font-size:60px; }
+#draft .sub { color:var(--muted); margin:0 0 22px; font-size:30px; }
+#deities { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; }
+.deity { background:var(--surface); border:3px solid var(--line); border-radius:26px; padding:22px; position:relative; }
+.deity .ic { font-size:84px; line-height:1; height:136px; display:flex; align-items:center; }
+.deity .ic img { width:136px; height:136px; object-fit:cover; border-radius:20px; border:3px solid var(--line); }
+.deity h3 { margin:10px 0 0; font-size:36px; }
+.deity .title { color:var(--muted); font-size:24px; }
+.deity .rule { font-size:22px; margin-top:8px; }
+.deity.taken { opacity:.5; }
+.deity .by { position:absolute; top:18px; right:18px; background:var(--ink); color:var(--bg); border-radius:999px; padding:6px 16px; font-size:24px; font-weight:800; }
+
+/* ---------- game ---------- */
+#game { padding:0; }
+#stage.bgart #game { background:rgba(21,14,32,.6); }
+#stage.bgart #draft { background:rgba(21,14,32,.45); }
+#bar { position:absolute; left:0; right:0; top:0; height:118px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 44px;
+  background:linear-gradient(var(--bg2), rgba(31,21,48,.85)); border-bottom:3px solid var(--line); }
+#who { display:flex; align-items:center; gap:18px; font-weight:900; font-size:42px; white-space:nowrap; overflow:hidden; }
+#who .av { font-size:60px; }
+#who small { display:block; font-size:24px; font-weight:600; color:var(--muted); }
+#diceBox { display:flex; align-items:center; gap:18px; }
+.die { width:84px; height:84px; border-radius:18px; background:var(--ink); color:var(--bg); display:grid; place-items:center; font-size:56px; font-weight:900; box-shadow:0 6px 0 #b9a98f; }
+.die.red { box-shadow:0 6px 0 #9b2f20; background:#ffd9cf; }
+#diceTotal { font-size:64px; font-weight:900; min-width:90px; text-align:center; }
+#diceTotal.seven { color:var(--bad); }
+#clock { text-align:right; font-variant-numeric:tabular-nums; }
+#clock b { font-size:52px; }
+#clock small { display:block; color:var(--muted); font-size:24px; }
+#clock.low b { color:var(--bad); }
+
+#boardWrap { position:absolute; left:24px; top:130px; width:1190px; height:830px; }
+#boardWrap svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.map .hex { stroke:#150e20; stroke-width:.06; }
+.map .hex.pulse { stroke:var(--warn); stroke-width:.14; }
+.map .tok circle { fill:#f7f0e3; stroke:#2a1d3b; stroke-width:.04; }
+.map .tok text { font-weight:900; font-size:.38px; text-anchor:middle; dominant-baseline:central; fill:#2a1d3b; }
+.map .tok.red text { fill:#c42b1c; }
+.map .emo { font-size:.34px; text-anchor:middle; dominant-baseline:central; }
+.map .port { font-size:.24px; font-weight:900; text-anchor:middle; dominant-baseline:central; fill:var(--ink); }
+.map .ghost { opacity:.6; }
+@media (prefers-reduced-motion: no-preference) {
+  .map .ghost { animation:ghost 1s ease-in-out infinite; }
+  @keyframes ghost { 50% { opacity:.25; } }
+}
+
+#side { position:absolute; right:28px; top:136px; width:680px; bottom:132px; display:flex; flex-direction:column; gap:10px; }
+#rows { display:flex; flex-direction:column; gap:12px; }
+#rows.compact { gap:8px; }
+.prow { display:grid; grid-template-columns:12px 70px 1fr auto; align-items:center; gap:14px; background:var(--surface); border:3px solid transparent; border-radius:20px; padding:10px 18px 10px 0; overflow:hidden; }
+.prow .bar { align-self:stretch; }
+.prow .av { font-size:50px; text-align:center; }
+.prow .nm { font-weight:800; font-size:32px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.prow .st { font-size:24px; color:var(--muted); display:flex; gap:16px; flex-wrap:wrap; }
+.prow .st .warn { color:var(--warn); font-weight:800; }
+.prow .vp { font-size:54px; font-weight:900; text-align:right; min-width:90px; }
+.prow .vp small { font-size:22px; color:var(--muted); display:block; font-weight:600; }
+.prow.active { border-color:var(--primary); background:var(--surface2); }
+.prow.off { opacity:.45; }
+.prow .tag { font-size:22px; font-weight:800; padding:2px 12px; border-radius:999px; background:var(--ink); color:var(--bg); vertical-align:middle; }
+.prow .tag.wait { background:var(--warn); }
+.prow .tag.ok { background:var(--good); }
+.compact .prow { padding-top:4px; padding-bottom:4px; }
+.compact .prow .av { font-size:38px; }
+.compact .prow .nm { font-size:26px; }
+.compact .prow .st { font-size:20px; }
+.compact .prow .vp { font-size:42px; }
+#bankBox { margin-top:auto; background:var(--bg2); border:2px solid var(--line); border-radius:20px; padding:12px 18px; font-size:26px; display:flex; justify-content:space-between; gap:12px; }
+#bankBox span { white-space:nowrap; }
+
+#ticker { position:absolute; left:0; right:0; bottom:0; height:118px; display:flex; align-items:center; gap:24px; padding:0 40px;
+  background:linear-gradient(rgba(31,21,48,.85), var(--bg2)); border-top:3px solid var(--line); font-size:28px; overflow:hidden; padding-right:420px; }
+#ticker .lbl { color:var(--warn); font-weight:900; white-space:nowrap; }
+#ticker .offers { display:flex; gap:18px; overflow:hidden; flex:1; }
+.offer { background:var(--surface); border-radius:16px; padding:10px 18px; white-space:nowrap; }
+.offer.priv { color:var(--muted); font-style:italic; }
+#ticker .log { color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:700px; }
+
+/* ---------- overlays ---------- */
+#fx { position:absolute; inset:0; pointer-events:none; z-index:20; }
+.fly { position:absolute; font-size:56px; will-change:transform; filter:drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+.fly img { width:64px; height:64px; object-fit:contain; }
+#banner { position:absolute; left:0; right:0; top:420px; text-align:center; z-index:50; pointer-events:none; }
+#banner div { display:inline-block; background:var(--primary); color:var(--on-primary); font-weight:900; font-size:76px; padding:20px 60px; border-radius:28px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+#banner div.small { font-size:46px; background:var(--ink); color:var(--bg); }
+#banner div.gold { background:var(--gold); }
+#seven { position:absolute; inset:0; z-index:25; background:rgba(160,20,10,.35); display:grid; place-items:end center; padding-bottom:170px; pointer-events:none; }
+#seven .box { background:rgba(21,14,32,.94); border:4px solid var(--bad); border-radius:30px; padding:34px 54px; text-align:center; min-width:900px; }
+#seven h2 { margin:0 0 18px; font-size:72px; color:var(--bad); }
+#seven .list { display:flex; flex-wrap:wrap; justify-content:center; gap:16px; font-size:32px; }
+#seven .list span { background:var(--surface); border-radius:16px; padding:10px 20px; }
+#pause { position:absolute; inset:0; z-index:40; background:rgba(21,14,32,.88); display:grid; place-items:center; text-align:center; }
+#pause b { font-size:110px; display:block; }
+#over { z-index:35; background:radial-gradient(ellipse at 50% 30%, #4a3418 0%, var(--bg) 65%); display:grid; grid-template-columns:600px 1fr; gap:60px; align-items:center; }
+#over .trophy { font-size:340px; text-align:center; line-height:1; }
+#over .trophy img { max-width:100%; max-height:620px; }
+#over h1 { font-size:88px; margin:0; line-height:1; color:var(--gold); }
+#over .sub { color:var(--muted); font-size:34px; margin:10px 0 30px; }
+#over table { border-collapse:collapse; width:100%; font-size:34px; }
+#over td { padding:12px 8px; border-bottom:2px solid var(--line); }
+#over td:last-child { text-align:right; font-weight:900; }
+#over .stats { margin-top:26px; color:var(--muted); font-size:28px; display:flex; gap:40px; flex-wrap:wrap; }
+#soundGate { position:absolute; left:40px; bottom:24px; z-index:60; background:var(--primary); color:var(--on-primary); font-weight:900; padding:20px 30px; border-radius:20px; font-size:30px; }
+#conn { position:absolute; left:0; right:0; top:0; z-index:70; background:var(--warn); color:#1a1226; text-align:center; font-weight:900; padding:10px; font-size:28px; }
+@media (prefers-reduced-motion: reduce) { .fly { display:none; } }
+.gi { width:1.15em; height:1.15em; object-fit:contain; vertical-align:-0.22em; display:inline-block; }
+.gi-round { border-radius:50%; object-fit:cover; }
+.fly .gi { width:64px; height:64px; }
+#banner .gi { width:1.2em; height:1.2em; }
+
+/* ---------- How to Play ---------- */
+#lobbyRules { margin-top:22px; background:rgba(42,29,59,.92); border:3px solid var(--line); border-radius:24px; padding:20px 26px; position:relative; min-height:250px; }
+#lobbyRules .kick { color:var(--warn); font-size:22px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+#lobbyRules h3 { margin:4px 0 8px; font-size:38px; display:flex; align-items:center; gap:14px; }
+#lobbyRules .body { font-size:26px; line-height:1.35; }
+#lobbyRules ul, #lobbyRules ol, #rulesBox ul, #rulesBox ol { margin:6px 0; padding-left:1.2em; }
+#lobbyRules li { margin:2px 0; }
+#lobbyRules p { margin:6px 0; }
+#lobbyRules .hide { position:absolute; top:16px; right:18px; background:transparent; border:2px solid var(--line); border-radius:12px; padding:6px 14px; font-size:20px; color:var(--muted); }
+#lobbyRules .gi, #rulesBox .body .gi { width:1.2em; height:1.2em; }
+#lobbyRules h3 .gi, #rulesBox h2 .gi { width:64px; height:64px; }
+ul.costs { list-style:none; padding:0 !important; }
+ul.costs li { display:flex; gap:12px; align-items:center; }
+ul.costs span { margin-left:auto; }
+.tvdots { display:flex; gap:10px; margin-top:12px; }
+.tvdots i { width:14px; height:14px; border-radius:50%; background:var(--line); }
+.tvdots i.on { background:var(--primary); }
+#corner { position:absolute; right:40px; top:36px; z-index:55; display:flex; gap:14px; }
+#game:not([hidden]) ~ #corner, #corner.ingame { top:auto; bottom:28px; right:40px; }
+#corner button { background:rgba(42,29,59,.92); border:2px solid var(--line); border-radius:16px; padding:12px 22px; font-size:26px; font-weight:800; }
+#rules { position:absolute; inset:0; z-index:58; background:rgba(15,10,22,.94); display:grid; place-items:center; }
+#rulesBox { width:1300px; background:var(--surface); border:4px solid var(--primary); border-radius:32px; padding:44px 56px; }
+#rulesBox .kick { color:var(--warn); font-size:26px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+#rulesBox h2 { font-size:64px; margin:6px 0 18px; display:flex; align-items:center; gap:20px; }
+#rulesBox .body { font-size:36px; line-height:1.4; min-height:380px; }
+#rulesBox .body .gi { width:1.35em !important; height:1.35em !important; }
+#rulesBox ul.costs li { padding:6px 0; border-bottom:2px solid var(--line); }
+#rulesBox .nav { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
+#rulesBox .nav button { background:var(--surface2); border:2px solid var(--line); border-radius:16px; padding:14px 30px; font-size:30px; font-weight:800; }
+#rulesBox .nav button.primary { background:var(--primary); color:var(--on-primary); border-color:var(--primary); }
+#rulesBox .hint { color:var(--muted); font-size:24px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <section id="lobby" class="screen">
+    <div id="lobbyLeft">
+      <div id="logo"><div class="t">Ragnagrok</div><div class="s">Lawn Care at the End of Days</div></div>
+      <div id="qrBox"><img id="qr" alt="Scan to join"></div>
+    </div>
+    <div id="joinInfo">
+      <div class="label">Scan the code, or go to</div>
+      <div class="url" id="url">Connecting…</div>
+      <div class="label" style="margin-top:30px">and enter</div>
+      <div class="code" id="code">····</div>
+      <div id="lobbyPlayers"></div>
+      <div id="lobbyRules" hidden></div>
+    </div>
+    <div id="lobbyFoot" style="padding-left:380px"><span id="lobbyHint">Waiting for gardeners…</span><button class="smallbtn" id="newRoom">New room</button></div>
+  </section>
+
+  <section id="draft" class="screen" hidden>
+    <h1>Choose your gods</h1>
+    <p class="sub" id="draftSub"></p>
+    <div id="deities"></div>
+  </section>
+
+  <section id="game" class="screen" hidden>
+    <header id="bar">
+      <div id="who"></div>
+      <div id="diceBox"><div class="die" id="d1">–</div><div class="die red" id="d2">–</div><div id="diceTotal"></div></div>
+      <div id="clock"></div>
+    </header>
+    <div id="boardWrap" class="map"></div>
+    <aside id="side"><div id="rows"></div><div id="bankBox"></div></aside>
+    <footer id="ticker"><span class="lbl">📣 Market</span><div class="offers" id="offers"></div><div class="log" id="logLine"></div></footer>
+  </section>
+
+  <section id="over" class="screen" hidden></section>
+
+  <div id="seven" hidden><div class="box"><h2><span id="sevenIcon">🚜</span> SURTUR'S LAWN MOWER</h2><div id="sevenText" style="margin-bottom:18px"></div><div class="list" id="sevenList"></div></div></div>
+  <div id="pause" hidden><div><b>⏸</b><div id="pauseText" style="font-size:44px"></div></div></div>
+  <div id="rules" hidden><div id="rulesBox"></div></div>
+  <div id="corner"><button id="rulesBtn" aria-label="How to play">📖 Rules</button><button id="musicBtn" aria-label="Music on or off">🎵 Music</button></div>
+  <div id="fx"></div>
+  <div id="banner"></div>
+  <div id="conn" hidden>Reconnecting to the server…</div>
+  <button id="soundGate">🔊 Click to switch on sound</button>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/sfx.js"></script>
+<script src="/board.js"></script>
+<script src="/rules.js"></script>
+<script>
+(() => {
+'use strict';
+
+const RES = ['compost', 'fertilizer', 'sprinklers', 'turf', 'gnomeDust'];
+const R = { compost: '🍄', fertilizer: '🌾', sprinklers: '🔥', turf: '🌳', gnomeDust: '✨' };
+const FACTION_ICON = { thor: '⚡', loki: '🎭', freya: '🌸', hel: '☠️', odin: '👁️', heimdall: '🔭', frigg: '📋', njord: '⛲' };
+const PERK_NAMES = { militia: 'Gnome Militia', mulchSpreader: 'Mulch Spreader', bumperCrop: 'Bumper Crop', binDay: 'Bin Day', sinkhole: 'Suburban Sinkhole' };
+const KEY = 'ragnagrok.tv';
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+};
+const sfx = (name, opts) => { try { if (window.SFX) window.SFX.play(name, Object.assign({ playWhenHidden: true }, opts || {})); } catch (e) { /* optional */ } };
+
+let view = null;
+let topo = null;
+let ART = {};
+let cards = { factions: [] };
+let saved = store.get(KEY);
+let clockOffset = 0;
+let seenPlayers = new Set();
+let ghost = null;
+let lastBoardKey = '';
+const session = { robbed: {} };
+
+const socket = io({ transports: ['websocket', 'polling'] });
+
+function getJSON(url) {
+  return new Promise(resolve => {
+    try {
+      const x = new XMLHttpRequest();
+      x.open('GET', url);
+      x.onload = () => { try { resolve(JSON.parse(x.responseText)); } catch (e) { resolve(null); } };
+      x.onerror = () => resolve(null);
+      x.send();
+    } catch (e) { resolve(null); }
+  });
+}
+
+/* ================= scale to screen ================= */
+function fit() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080) || 1;
+  const x = (window.innerWidth - 1920 * s) / 2;
+  const y = (window.innerHeight - 1080 * s) / 2;
+  $('#stage').style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+  $('#stage').dataset.scale = s;
+}
+// Re-measure whenever the screen might have changed: TVs, cast tabs and full-screen switches don't always fire 'resize'.
+window.addEventListener('resize', fit);
+window.addEventListener('load', fit);
+document.addEventListener('fullscreenchange', fit);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
+if (window.ResizeObserver) new ResizeObserver(fit).observe(document.documentElement);
+setInterval(fit, 2000);
+fit();
+
+/* ================= connection ================= */
+function showRoom(r) {
+  $('#code').textContent = r.code;
+  $('#url').textContent = r.joinUrl.replace(/^https?:\/\//, '');
+  $('#qr').src = r.qr;
+}
+
+async function create() {
+  const r = await socket.emitWithAck('tv:create', {});
+  if (!r.ok) return;
+  saved = { code: r.code, hostKey: r.hostKey };
+  store.set(KEY, saved);
+  seenPlayers = new Set();
+  session.robbed = {};
+  showRoom(r);
+}
+
+async function connect() {
+  $('#conn').hidden = true;
+  if (saved && saved.code) {
+    const r = await socket.emitWithAck('tv:attach', saved);
+    if (r.ok) { showRoom(r); return; }
+  }
+  await create();
+}
+
+socket.on('connect', connect);
+socket.on('disconnect', () => { $('#conn').hidden = false; });
+socket.on('roomClosed', () => { saved = null; store.del(KEY); view = null; create(); });
+socket.on('state', v => {
+  if (view && v.stateVersion < view.stateVersion && v.meta.code === view.meta.code) return;
+  if (v.topology) topo = v.topology;
+  if (v.meta && v.meta.serverNow) clockOffset = v.meta.serverNow - Date.now();
+  if (view && view.phase.stage === 'gameOver' && v.phase.stage === 'lobby') { session.robbed = {}; lastBoardKey = ''; }
+  view = v;
+  render();
+});
+socket.on('events', list => list.forEach(onEvent));
+socket.on('preview', p => {
+  if (!view) return;
+  ghost = p.what && p.at ? { seat: p.seat, what: p.what, at: p.at, colour: (view.players[p.seat] || {}).colour || '#fff' } : null;
+  renderBoard();
+});
+
+$('#newRoom').addEventListener('click', async () => {
+  saved = null;
+  store.del(KEY);
+  await create();
+});
+
+/* Browsers only allow sound after a click or key press on the page. */
+function unlockSound() {
+  if (window.SFX) window.SFX.unlock();
+  Music.unlock();
+  $('#soundGate').hidden = true;
+}
+$('#soundGate').addEventListener('click', unlockSound);
+document.addEventListener('keydown', unlockSound);
+document.addEventListener('pointerdown', unlockSound);
+
+/* Keeps a free Render server awake while the TV is on. */
+setInterval(() => { getJSON('/healthz'); }, 5 * 60 * 1000);
+
+/* ================= rendering ================= */
+const pl = seat => (view && view.players[seat]) || { name: '?', avatar: '❔', colour: '#999' };
+const nm = seat => esc(pl(seat).name);
+const I = (key, cls) => RagnaBoard.icon(ART, key, cls);
+const artImg = (slot, alt) => (ART[slot] ? `<img src="${ART[slot]}" alt="${esc(alt || '')}">` : '');
+const facName = id => { const f = cards.factions.find(x => x.id === id); return f ? f.name : id; };
+
+function render() {
+  if (!view) return;
+  const stage = view.phase.stage;
+  $('#lobby').hidden = stage !== 'lobby';
+  $('#draft').hidden = stage !== 'factions';
+  $('#game').hidden = !(stage === 'setup' || stage === 'playing' || stage === 'gameOver');
+  $('#over').hidden = stage !== 'gameOver';
+  $('#pause').hidden = !view.meta.paused;
+  $('#pauseText').textContent = view.players.some(p => !p.connected) ? 'Paused · waiting for every phone to reconnect' : 'Paused by the host';
+  if (stage === 'lobby') { renderLobby(); renderLobbyRules(); }
+  $('#corner').classList.toggle('ingame', stage !== 'lobby');
+  Music.update();
+  if (stage === 'factions') renderDraft();
+  if (!$('#game').hidden) renderGame();
+  if (stage === 'gameOver') renderOver();
+  renderSeven();
+}
+
+function renderLobby() {
+  const n = view.players.length;
+  const slots = Math.max(4, Math.min(8, n + 1));
+  let html = '';
+  for (let i = 0; i < slots; i++) {
+    const p = view.players[i];
+    if (p) {
+      const fresh = !seenPlayers.has(p.name + i);
+      seenPlayers.add(p.name + i);
+      html += `<div class="pchip${fresh ? ' new' : ''}${p.connected ? '' : ' empty'}"><span class="av">${esc(p.avatar)}</span>${esc(p.name)}${i === 0 ? ' 👑' : ''}</div>`;
+    } else {
+      html += '<div class="pchip empty"><span class="av">🌱</span>Open seat</div>';
+    }
+  }
+  $('#lobbyPlayers').innerHTML = html;
+  $('#lobbyHint').textContent = n < 2 ? 'Waiting for gardeners… you need at least 2.'
+    : `${n} gardeners · ${n <= 4 ? 'standard' : 'expanded'} board · ${view.players[0].name} presses Start on their phone`;
+  const logo = $('#logo');
+  if (ART.logo && !logo.dataset.done) { logo.innerHTML = `<img src="${ART.logo}" alt="Ragnagrok: Lawn Care at the End of Days">`; logo.dataset.done = '1'; }
+}
+
+function renderDraft() {
+  const picker = view.phase.draftQueue[0];
+  const left = remaining(view.phase.deadline);
+  $('#draftSub').innerHTML = picker !== undefined
+    ? `${esc(pl(picker).avatar)} <b>${nm(picker)}</b> is choosing on their phone${left !== null ? ` · ${left}s` : ''}`
+    : '';
+  $('#deities').innerHTML = cards.factions.map(f => {
+    const taker = view.players.find(p => p.faction === f.id);
+    return `<div class="deity${taker ? ' taken' : ''}">
+      ${taker ? `<span class="by">${esc(taker.avatar)} ${esc(taker.name)}</span>` : ''}
+      <div class="ic">${artImg('deity-' + f.id, f.name) || FACTION_ICON[f.id]}</div>
+      <h3>${esc(f.name)}</h3><div class="title">${esc(f.title)}</div>
+      <div class="rule"><b>${esc(f.power)}:</b> ${esc(f.rule)}</div></div>`;
+  }).join('');
+}
+
+function remaining(deadline) {
+  if (!deadline) return null;
+  return Math.max(0, Math.ceil((deadline - (Date.now() + clockOffset)) / 1000));
+}
+
+function stepText() {
+  const p = view.phase;
+  if (p.stage === 'setup') return p.step === 'placeShack' ? 'placing a Gardener Shack' : 'placing a Mulch Path';
+  switch (p.step) {
+    case 'roll': return 'about to roll';
+    case 'main': return 'building and trading';
+    case 'discard': return 'the Mower is out';
+    case 'moveMower': return 'moving the Mower';
+    case 'steal': return 'choosing who to rob';
+    case 'specialBuild': return 'quick build window for everyone else';
+    default: return '';
+  }
+}
+
+function renderGame() {
+  const p = view.phase;
+  const a = pl(p.activeSeat);
+  $('#who').innerHTML = `<span class="av">${esc(a.avatar)}</span><div>${esc(a.name)}'s turn
+    <small>${a.faction ? FACTION_ICON[a.faction] + ' ' + esc(facName(a.faction)) + ' · ' : ''}${stepText()}</small></div>`;
+  if (view.dice.last && !$('#diceBox').dataset.rolling) {
+    $('#d1').textContent = view.dice.last[0];
+    $('#d2').textContent = view.dice.last[1];
+    $('#diceTotal').textContent = '= ' + view.dice.total;
+    $('#diceTotal').className = view.dice.total === 7 ? 'seven' : '';
+  }
+  tickClock();
+  renderBoard();
+  renderRows();
+  const bank = view.bank;
+  $('#bankBox').innerHTML = `<span>${I('icon-bank')} Bank</span>${RES.map(r => `<span>${R[r]} ${bank.resources[r]}</span>`).join('')}<span>${I('icon-perk')} ${bank.perksRemaining}</span>`;
+  renderTicker();
+}
+
+function renderBoard() {
+  if (!view || !view.board || !topo) return;
+  const key = view.stateVersion + '|' + JSON.stringify(ghost) + '|' + Object.keys(ART).length;
+  if (key === lastBoardKey) return;
+  lastBoardKey = key;
+  $('#boardWrap').innerHTML = RagnaBoard.svg({ board: view.board, topo, players: view.players, art: ART, ghost, idPrefix: 'tv' });
+}
+
+function renderRows() {
+  const p = view.phase;
+  const n = view.players.length;
+  $('#rows').className = n > 5 ? 'compact' : '';
+  $('#rows').innerHTML = view.players.map(x => {
+    const badges = [];
+    if (view.awards.longestPath.holder === x.seat) badges.push(I('icon-longestPath') + ' Longest Path');
+    if (view.awards.largestMilitia.holder === x.seat) badges.push(I('icon-militia') + ' Militia');
+    let tag = '';
+    if (p.step === 'discard') {
+      tag = p.pendingDiscards[x.seat] ? `<span class="tag wait">discarding ${p.pendingDiscards[x.seat]}</span>` : '<span class="tag ok">safe</span>';
+    }
+    if (p.step === 'specialBuild' && p.specialBuildPending.includes(x.seat)) tag = '<span class="tag">building</span>';
+    if (!x.connected) tag = '<span class="tag wait">phone offline</span>';
+    const risky = x.handCount >= view.config.discardThreshold;
+    return `<div class="prow${x.seat === p.activeSeat ? ' active' : ''}${x.connected ? '' : ' off'}" data-seat="${x.seat}">
+      <div class="bar" style="background:${x.colour}"></div>
+      <div class="av">${esc(x.avatar)}</div>
+      <div><div class="nm">${esc(x.name)} ${x.faction ? FACTION_ICON[x.faction] : ''} ${tag}</div>
+        <div class="st"><span class="${risky ? 'warn' : ''}">${I('icon-cards')} ${x.handCount}${risky ? ' ⚠️' : ''}</span><span>${I('icon-perk')} ${x.perks.heldCount}</span>
+        ${x.militia ? `<span>${I('icon-militia')} ${x.militia}</span>` : ''}${badges.map(b => `<span>${b}</span>`).join('')}</div></div>
+      <div class="vp">${x.vp.total !== undefined ? x.vp.total : x.vp.public}<small>VP</small></div></div>`;
+  }).join('');
+}
+
+function renderTicker() {
+  const offers = view.trades.filter(t => t.status === 'open');
+  $('#offers').innerHTML = offers.length ? offers.slice(-4).map(t => {
+    if (t.private) return `<div class="offer priv">${nm(t.from)} → ${t.to.map(nm).join(', ')} (private)</div>`;
+    const give = RES.filter(r => t.give[r]).map(r => `${t.give[r]}${R[r]}`).join(' ');
+    const want = RES.filter(r => t.want[r]).map(r => `${t.want[r]}${R[r]}`).join(' ');
+    return `<div class="offer">${esc(pl(t.from).avatar)} ${nm(t.from)}: ${give} for ${want}</div>`;
+  }).join('') : '<div class="offer priv">No open offers</div>';
+  const last = view.log[view.log.length - 1];
+  $('#logLine').textContent = last ? last.text : '';
+}
+
+function renderSeven() {
+  const show = !!view && view.phase.stage === 'playing' && view.phase.step === 'discard' && !view.meta.paused;
+  $('#seven').hidden = !show;
+  if (!show) return;
+  const pd = view.phase.pendingDiscards;
+  $('#sevenText').textContent = 'Anyone holding 8 or more cards throws half on the compost.';
+  $('#sevenList').innerHTML = view.players.map(p => `<span>${esc(p.avatar)} ${esc(p.name)} ${pd[p.seat] ? '⏳ ' + pd[p.seat] : '✔'}</span>`).join('');
+}
+
+function renderOver() {
+  const w = view.winner;
+  const ranked = view.players.slice().sort((a, b) => (b.vp.total || 0) - (a.vp.total || 0));
+  const counts = view.dice.rollCounts;
+  const hot = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+  const robbedSeat = Object.keys(session.robbed).sort((a, b) => session.robbed[b] - session.robbed[a])[0];
+  const wp = pl(w.seat);
+  $('#over').innerHTML = `
+    <div class="trophy">${artImg('trophy', 'The Golden Flamingo') || '🦩'}</div>
+    <div>
+      <h1>${esc(wp.avatar)} ${esc(wp.name)} wins!</h1>
+      <div class="sub">The Golden Flamingo goes to ${wp.faction ? FACTION_ICON[wp.faction] + ' ' + esc(facName(wp.faction)) + "'s" : 'their'} gardener · ${w.vp} VP · turn ${view.phase.turn}</div>
+      <table>${ranked.map((p, i) => `<tr><td>${i + 1}. ${esc(p.avatar)} ${esc(p.name)}</td>
+        <td style="color:var(--muted);font-size:26px">${(p.perks.revealed || []).map(c => '🏆 ' + esc(c.name)).join(' ')}</td><td>${p.vp.total} VP</td></tr>`).join('')}</table>
+      <div class="stats">
+        <span>🎲 Hottest number: <b>${hot}</b> (×${counts[hot]})</span>
+        ${robbedSeat !== undefined ? `<span>🫳 Most robbed: <b>${nm(Number(robbedSeat))}</b></span>` : ''}
+        ${view.awards.longestPath.holder !== null ? `<span>${I('icon-longestPath')} Longest Path: <b>${nm(view.awards.longestPath.holder)}</b> (${view.awards.longestPath.length})</span>` : ''}
+      </div>
+      <div class="sub" style="margin-top:30px">${nm(0)} can start a rematch from their phone.</div>
+    </div>`;
+}
+
+function tickClock() {
+  if (!view) return;
+  if (view.phase.stage === 'factions') { renderDraft(); return; }
+  const el = $('#clock');
+  const left = view.meta.paused ? null : remaining(view.phase.deadline);
+  el.innerHTML = left === null ? `<small>Turn ${view.phase.turn || '–'}</small>`
+    : `<b>${left >= 60 ? Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : left + 's'}</b><small>${view.phase.turn ? 'Turn ' + view.phase.turn : 'Setup'}</small>`;
+  el.className = left !== null && left <= 10 ? 'low' : '';
+}
+setInterval(tickClock, 500);
+
+/* ================= animation queue ================= */
+/* The game never waits for these: the state is already applied, this only plays catch-up.
+   If too many pile up, older non-essential ones are dropped. */
+const queue = [];
+let running = false;
+
+function enqueue(fn, essential) {
+  queue.push({ fn, essential: !!essential });
+  while (queue.length > 4) {
+    const i = queue.findIndex(q => !q.essential);
+    if (i < 0) break;
+    queue.splice(i, 1);
+  }
+  if (!running) runQueue();
+}
+
+async function runQueue() {
+  running = true;
+  while (queue.length) {
+    const item = queue.shift();
+    try { await item.fn(); } catch (e) { /* an animation must never break the TV */ }
+  }
+  running = false;
+}
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const scale = () => Number($('#stage').dataset.scale) || 1;
+
+function stagePoint(el) {
+  if (!el || !el.getBoundingClientRect) return null;
+  const r = el.getBoundingClientRect();
+  const s = $('#stage').getBoundingClientRect();
+  if (!r.width && !r.height) return null;
+  return { x: (r.left + r.width / 2 - s.left) / scale(), y: (r.top + r.height / 2 - s.top) / scale() };
+}
+
+function fly(html, from, to, ms, delay) {
+  if (!from || !to) return;
+  const el = document.createElement('div');
+  el.className = 'fly';
+  el.innerHTML = html;
+  el.style.left = (from.x - 32) + 'px';
+  el.style.top = (from.y - 32) + 'px';
+  $('#fx').appendChild(el);
+  if (!el.animate) { el.remove(); return; }
+  const anim = el.animate([
+    { transform: 'translate(0,0) scale(.6)', opacity: 0 },
+    { transform: 'translate(0,-40px) scale(1.15)', opacity: 1, offset: 0.25 },
+    { transform: `translate(${to.x - from.x}px, ${to.y - from.y}px) scale(.7)`, opacity: 0.9 }
+  ], { duration: ms, delay: delay || 0, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'forwards' });
+  anim.onfinish = () => el.remove();
+}
+
+async function banner(text, kind, ms) {
+  const b = $('#banner');
+  b.innerHTML = `<div class="${kind || ''}">${text}</div>`;
+  const d = b.firstChild;
+  if (d.animate) d.animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'scale(1.05)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)' }], { duration: 350, easing: 'ease-out' });
+  await wait(ms || 1300);
+  if (d.animate) await new Promise(r => { const a = d.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }); a.onfinish = r; });
+  if (b.firstChild === d) b.innerHTML = '';
+}
+
+async function rollDice(d) {
+  const box = $('#diceBox');
+  box.dataset.rolling = '1';
+  sfx('dice');
+  for (let i = 0; i < 10; i++) {
+    $('#d1').textContent = 1 + Math.floor(Math.random() * 6);
+    $('#d2').textContent = 1 + Math.floor(Math.random() * 6);
+    await wait(55);
+  }
+  // Always settle on the latest real roll, even if animations queued up behind each other.
+  const last = (view && view.dice.last) || d;
+  $('#d1').textContent = last[0];
+  $('#d2').textContent = last[1];
+  $('#diceTotal').textContent = '= ' + (last[0] + last[1]);
+  $('#diceTotal').className = last[0] + last[1] === 7 ? 'seven' : '';
+  delete box.dataset.rolling;
+  [$('#d1'), $('#d2')].forEach(el => el.animate && el.animate([{ transform: 'scale(1.3)' }, { transform: 'scale(1)' }], { duration: 300, easing: 'ease-out' }));
+  await wait(250);
+}
+
+async function production(e) {
+  if (!view || !topo) return;
+  const hexes = view.board.hexes.filter(h => h.token === e.total);
+  hexes.forEach(h => { const el = document.querySelector(`#boardWrap [data-hex="${h.id}"]`); if (el) el.classList.add('pulse'); });
+  sfx('production', { resources: e.resources });
+  let k = 0;
+  Object.keys(e.gains || {}).forEach(seat => {
+    const to = stagePoint(document.querySelector(`.prow[data-seat="${seat}"] .av`));
+    RES.forEach(r => {
+      for (let i = 0; i < e.gains[seat][r]; i++) {
+        const src = hexes.find(h => h.terrain === r && h.id !== view.board.mowerHex) || hexes.find(h => h.terrain === r);
+        const from = src ? stagePoint(document.querySelector(`#boardWrap [data-hex="${src.id}"]`)) : null;
+        fly(artImg('res-' + r, r) || R[r], from, to, 900, k * 90);
+        k++;
+      }
+    });
+  });
+  await wait(Math.min(1400, 700 + k * 90));
+  document.querySelectorAll('#boardWrap .pulse').forEach(el => el.classList.remove('pulse'));
+}
+
+function steal(e) {
+  session.robbed[e.from] = (session.robbed[e.from] || 0) + e.count;
+  sfx('steal');
+  const from = stagePoint(document.querySelector(`.prow[data-seat="${e.from}"] .av`));
+  const to = stagePoint(document.querySelector(`.prow[data-seat="${e.to}"] .av`));
+  for (let i = 0; i < e.count; i++) fly(e.hidden ? I('deity-loki') : I('icon-cards'), from, to, 800, i * 150);
+  return wait(700);
+}
+
+function shake() {
+  const b = $('#boardWrap');
+  if (b.animate) b.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-14px,6px)' }, { transform: 'translate(12px,-8px)' }, { transform: 'translate(-8px,4px)' }, { transform: 'translate(0,0)' }], { duration: 700 });
+}
+
+/* ================= events ================= */
+function onEvent(e) {
+  switch (e.type) {
+    case 'playerJoined': sfx('tap'); break;
+    case 'gameStarted': enqueue(() => banner('Let the lawn wars begin', 'gold', 1600), true); break;
+    case 'factionChosen': sfx('buildShack'); enqueue(() => banner(`${nm(e.seat)} worships ${FACTION_ICON[e.faction] || ''} ${esc(facName(e.faction))}`, 'small', 1100)); break;
+    case 'gamePlaying': enqueue(() => banner('Setup done. Roll for glory!', 'gold', 1400), true); break;
+    case 'turnStart': ghost = null; sfx('turnStart'); enqueue(() => banner(`${esc(pl(e.seat).avatar)} ${nm(e.seat)}'s turn`, '', 1000)); break;
+    case 'dice': enqueue(() => rollDice(e.dice), true); break;
+    case 'production': enqueue(() => production(e), true); break;
+    case 'mower': enqueue(async () => { sfx('mower'); await banner(`${I('mower')} It's a 7!`, '', 1100); }, true); break;
+    case 'steal': enqueue(() => steal(e), true); break;
+    case 'buildPath': sfx('buildPath'); ghost = null; break;
+    case 'buildShack': sfx('buildShack'); ghost = null; break;
+    case 'buildManor': sfx('buildManor'); ghost = null; enqueue(() => banner(`${I('piece-manor')} ${nm(e.seat)} builds a Garden Manor`, 'small', 1100)); break;
+    case 'mowerMoved': ghost = null; break;
+    case 'sinkhole': ghost = null; enqueue(async () => { sfx('sinkhole'); shake(); await banner('🕳️ Suburban Sinkhole!', '', 1300); }, true); break;
+    case 'award': enqueue(async () => {
+      sfx('award');
+      const what = e.award === 'longestPath' ? I('icon-longestPath') + ' Longest Mulch Path' : I('icon-militia') + ' Largest Gnome Militia';
+      await banner(e.holder === null ? `${what} is up for grabs` : `${what}: ${nm(e.holder)}`, 'gold', 1600);
+    }, true); break;
+    case 'perkPlayed': enqueue(() => banner(`${nm(e.seat)} plays ${PERK_NAMES[e.perk] || 'a Perk'}`, 'small', 1200)); break;
+    case 'binDay': enqueue(() => banner(`🗑️ Bin Day! ${e.count} ${R[e.resource]} confiscated`, '', 1400), true); break;
+    case 'factionPower': enqueue(() => banner(`${FACTION_ICON[e.faction]} ${esc(facName(e.faction))}'s power!`, 'small', 900)); break;
+    case 'tradeOffer': sfx('tradeOffer'); break;
+    case 'tradeAccepted': sfx('tradeAccepted'); enqueue(() => banner(`🤝 ${nm(e.from)} and ${nm(e.with)} do a deal`, 'small', 1000)); break;
+    case 'bankTrade': sfx('tradeAccepted'); break;
+    case 'perkBought': sfx('tap'); break;
+    case 'specialBuild': enqueue(() => banner('⏱️ Quick build window', 'small', 900)); break;
+    case 'win': enqueue(async () => { sfx('win'); await banner(`${I('trophy')} THE GOLDEN FLAMINGO ${I('trophy')}`, 'gold', 2200); }, true); break;
+    case 'rematch': enqueue(() => banner('Rematch! Same yard, fresh lawn', 'gold', 1400), true); break;
+    case 'paused': sfx('denied'); break;
+    case 'resumed': sfx('turnStart'); break;
+    default: break;
+  }
+}
+
+/* ================= How to Play ================= */
+const TIPS_KEY = 'ragnagrok.tvTipsHidden';
+let tipIndex = 0;
+let rulesPage = 0;
+
+function renderLobbyRules() {
+  const box = $('#lobbyRules');
+  if (store.get(TIPS_KEY)) { box.hidden = true; return; }
+  const slides = RagnaRules.slides(I);
+  const sl = slides[tipIndex % slides.length];
+  box.hidden = false;
+  box.innerHTML = `<button class="hide" id="tipsHide">Don't show again</button>
+    <div class="kick">How to play · ${tipIndex % slides.length + 1} of ${slides.length}</div>
+    <h3>${sl.icon} ${esc(sl.title)}</h3><div class="body">${sl.body}</div>
+    <div class="tvdots">${slides.map((x, k) => `<i class="${k === tipIndex % slides.length ? 'on' : ''}"></i>`).join('')}</div>`;
+  $('#tipsHide').onclick = () => { store.set(TIPS_KEY, true); renderLobbyRules(); };
+}
+setInterval(() => {
+  if (!view || view.phase.stage !== 'lobby' || store.get(TIPS_KEY)) return;
+  tipIndex += 1;
+  renderLobbyRules();
+}, 11000);
+
+function openRules(page) {
+  rulesPage = page || 0;
+  $('#rules').hidden = false;
+  renderRulesBox();
+}
+function closeRules() { $('#rules').hidden = true; }
+function renderRulesBox() {
+  const slides = RagnaRules.slides(I);
+  rulesPage = Math.max(0, Math.min(slides.length - 1, rulesPage));
+  const sl = slides[rulesPage];
+  const last = rulesPage === slides.length - 1;
+  $('#rulesBox').innerHTML = `<div class="kick">How to play · ${rulesPage + 1} of ${slides.length}</div>
+    <h2>${sl.icon} ${esc(sl.title)}</h2><div class="body">${sl.body}</div>
+    <div class="nav"><button id="rPrev"${rulesPage === 0 ? ' disabled' : ''}>◀ Back</button>
+      <span class="hint">Arrow keys to move · R or Esc to close</span>
+      <button id="rNext" class="primary">${last ? 'Close' : 'Next ▶'}</button></div>`;
+  $('#rPrev').onclick = () => { rulesPage -= 1; renderRulesBox(); };
+  $('#rNext').onclick = () => { if (last) closeRules(); else { rulesPage += 1; renderRulesBox(); } };
+}
+$('#rulesBtn').addEventListener('click', () => ($('#rules').hidden ? openRules(0) : closeRules()));
+$('#rules').addEventListener('click', e => { if (e.target === $('#rules')) closeRules(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'r' || e.key === 'R') { $('#rules').hidden ? openRules(0) : closeRules(); return; }
+  if ($('#rules').hidden) return;
+  if (e.key === 'Escape') closeRules();
+  if (e.key === 'ArrowRight') { rulesPage += 1; renderRulesBox(); }
+  if (e.key === 'ArrowLeft') { rulesPage -= 1; renderRulesBox(); }
+});
+
+/* ================= music ================= */
+/* Two looping tracks on the TV only: intro (lobby, draft, winner) and ambience (during play).
+   Files go in public/audio as music-intro.mp3 and music-ambience.mp3. */
+const MUSIC_KEY = 'ragnagrok.tvMusicOff';
+const Music = {
+  tracks: {}, current: null, unlocked: false, off: !!store.get(MUSIC_KEY),
+  levels: { intro: 0.55, ambience: 0.28 },
+  load(map) {
+    [['intro', 'music-intro'], ['ambience', 'music-ambience']].forEach(([k, slot]) => {
+      if (!map[slot] || this.tracks[k]) return;
+      const a = new Audio(map[slot]);
+      a.loop = true;
+      a.preload = 'auto';
+      a.volume = 0;
+      this.tracks[k] = a;
+    });
+    this.update();
+  },
+  scene() {
+    if (!view) return 'intro';
+    return ['setup', 'playing'].includes(view.phase.stage) ? 'ambience' : 'intro';
+  },
+  fade(a, to, ms) {
+    if (!a) return;
+    const from = a.volume;
+    const start = performance.now();
+    const step = t => {
+      const k = Math.min(1, (t - start) / ms);
+      a.volume = Math.max(0, Math.min(1, from + (to - from) * k));
+      if (k < 1) requestAnimationFrame(step);
+      else if (to === 0) a.pause();
+    };
+    requestAnimationFrame(step);
+  },
+  update() {
+    $('#musicBtn').textContent = this.off ? '🔇 Music' : '🎵 Music';
+    $('#musicBtn').hidden = !Object.keys(this.tracks).length;
+    if (!this.unlocked) return;
+    const want = this.off || (view && view.meta && view.meta.paused) ? null : this.scene();
+    if (want === this.current) return;
+    if (this.current && this.tracks[this.current]) this.fade(this.tracks[this.current], 0, 1500);
+    this.current = want;
+    const t = want && this.tracks[want];
+    if (t) {
+      const p = t.play();
+      if (p && p.catch) p.catch(() => {});
+      this.fade(t, this.levels[want], 2000);
+    }
+  },
+  unlock() { this.unlocked = true; this.current = null; this.update(); },
+  toggle() { this.off = !this.off; store.set(MUSIC_KEY, this.off); this.current = null; Object.values(this.tracks).forEach(a => this.fade(a, 0, 600)); this.update(); }
+};
+$('#musicBtn').addEventListener('click', e => { e.stopPropagation(); Music.toggle(); });
+document.addEventListener('keydown', e => { if (e.key === 'm' || e.key === 'M') Music.toggle(); });
+
+/* ================= boot ================= */
+getJSON('/data/cards.json').then(c => { if (c) { cards = c; render(); } });
+getJSON('/art.json').then(a => {
+  ART = RagnaBoard.artMap(a);
+  Object.keys(R).forEach(r => { R[r] = I('res-' + r); });
+  Object.keys(FACTION_ICON).forEach(k => { FACTION_ICON[k] = I('deity-' + k); });
+  $('#sevenIcon').innerHTML = I('mower');
+  Music.load(RagnaBoard.audioMap(a));
+  if (ART['background-tv']) { $('#stage').classList.add('bgart'); $('#stage').style.backgroundImage = `url(${ART['background-tv']})`; }
+  lastBoardKey = '';
+  render();
+});
+
+window.__rgtv = { view: () => view };
+})();
+</script>
+</body>
+</html>

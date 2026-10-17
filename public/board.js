@@ -1,0 +1,227 @@
+/* Ragnagrok board renderer, shared by the TV and the phones.
+
+   RagnaBoard.svg(options) returns an <svg> string.
+     board, topo, players   from the server state
+     mode                   'view' | 'vertex' | 'ring' | 'edge' | 'hex'  (what can be tapped)
+     legal                  ids that can be tapped in this mode
+     sel, sel2              selected ids
+     ghost                  { what, at, colour }  semi-transparent preview piece
+     art                    { 'hex-turf': '/img/hex-turf.png', ... }  optional artwork
+
+   Artwork slots used here (any missing slot falls back to drawn shapes):
+     hex-turf, hex-fertilizer, hex-sprinklers, hex-compost, hex-gnomeDust, hex-scorched
+     piece-shack, piece-manor, mower */
+(function (global) {
+  'use strict';
+
+  const TERRAIN_COLOUR = {
+    compost: '#7e5db5', fertilizer: '#e1b12c', sprinklers: '#d9533d',
+    turf: '#4a9a42', gnomeDust: '#8fd0e8', scorched: '#5a4632'
+  };
+  const RES_ICON = { compost: '🍄', fertilizer: '🌾', sprinklers: '🔥', turf: '🌳', gnomeDust: '✨', scorched: '🥀' };
+  const PAD = 1.15;
+
+  /* One icon system for every screen: the artwork if it exists, otherwise an emoji.
+     Slot names match the files in public/img (without the extension). */
+  const FALLBACK = {
+    'res-compost': '🍄', 'res-fertilizer': '🌾', 'res-sprinklers': '🔥', 'res-turf': '🌳', 'res-gnomeDust': '✨',
+    'deity-thor': '⚡', 'deity-loki': '🎭', 'deity-freya': '🌸', 'deity-hel': '☠️',
+    'deity-odin': '👁️', 'deity-heimdall': '🔭', 'deity-frigg': '📋', 'deity-njord': '⛲',
+    mower: '🚜', 'piece-shack': '🛖', 'piece-manor': '🏰', trophy: '🦩',
+    'icon-path': '🛤️', 'icon-perk': '📜', 'icon-cards': '🃏', 'icon-militia': '🪖',
+    'icon-longestPath': '🛤️', 'icon-bank': '🏦', 'icon-dice': '🎲'
+  };
+
+  function icon(art, key, cls) {
+    const url = art && art[key];
+    if (url) {
+      const round = key.indexOf('deity-') === 0 ? ' gi-round' : '';
+      return `<img class="gi${round}${cls ? ' ' + cls : ''}" src="${url}" alt="" aria-hidden="true">`;
+    }
+    return FALLBACK[key] || '';
+  }
+
+  const f3 = n => n.toFixed(3);
+
+  function corners(h, k) {
+    const pts = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 180) * (60 * i - 30);
+      pts.push(f3(h.x + Math.cos(a) * k) + ',' + f3(h.y + Math.sin(a) * k));
+    }
+    return pts.join(' ');
+  }
+
+  function bounds(topo) {
+    const xs = topo.vertices.map(v => v.x);
+    const ys = topo.vertices.map(v => v.y);
+    const minX = Math.min(...xs) - PAD;
+    const minY = Math.min(...ys) - PAD;
+    return { minX, minY, w: Math.max(...xs) - Math.min(...xs) + PAD * 2, h: Math.max(...ys) - Math.min(...ys) + PAD * 2 };
+  }
+
+  function housePoly(x, y, s, manor) {
+    const pts = manor
+      ? [[-s, s], [-s, -s * 0.2], [-s * 0.45, -s * 0.2], [-s * 0.45, -s * 0.75], [0, -s * 1.15], [s * 0.45, -s * 0.75], [s * 0.45, -s * 0.2], [s, -s * 0.2], [s, s]]
+      : [[-s, s], [-s, -s * 0.25], [0, -s], [s, -s * 0.25], [s, s]];
+    return pts.map(([a, b]) => f3(x + a) + ',' + f3(y + b)).join(' ');
+  }
+
+  function piece(x, y, type, colour, art, extra) {
+    const manor = type === 'manor';
+    const slot = art[manor ? 'piece-manor' : 'piece-shack'];
+    if (slot) {
+      const r = manor ? 0.36 : 0.3;
+      const s = manor ? 0.62 : 0.5;
+      return `<g${extra || ''}><circle cx="${f3(x)}" cy="${f3(y)}" r="${r}" fill="${colour}" stroke="#1a1226" stroke-width=".05"/>` +
+        `<image href="${slot}" x="${f3(x - s / 2)}" y="${f3(y - s / 2)}" width="${s}" height="${s}"/></g>`;
+    }
+    return `<polygon${extra || ''} points="${housePoly(x, y, manor ? 0.31 : 0.24, manor)}" fill="${colour}" stroke="#1a1226" stroke-width=".05"/>`;
+  }
+
+  function svg(o) {
+    const board = o.board;
+    const topo = o.topo;
+    const players = o.players || [];
+    const mode = o.mode || 'view';
+    const legal = o.legal || [];
+    const art = o.art || {};
+    const legalSet = new Set(legal);
+    const colour = seat => (players[seat] && players[seat].colour) || '#999';
+    const prefix = o.idPrefix || 'rb';
+    const B = bounds(topo);
+
+    const vById = {};
+    topo.vertices.forEach(v => { vById[v.id] = v; });
+    const eById = {};
+    topo.edges.forEach(e => { eById[e.id] = e; });
+
+    let defs = '';
+    let tiles = '';
+    let marks = '';
+
+    topo.hexes.forEach((hx, i) => {
+      const st = board.hexes[i];
+      const slot = art['hex-' + st.terrain];
+      let cls = 'hex';
+      let data = ` data-hex="${hx.id}"`;
+      if (mode === 'hex') {
+        if (legalSet.has(hx.id)) { cls += ' can'; data += ` data-spot="${hx.id}"`; } else cls += ' dim';
+      }
+      if (hx.id === o.sel || hx.id === o.sel2) cls += ' sel';
+
+      if (slot) {
+        defs += `<clipPath id="${prefix}c${i}"><polygon points="${corners(hx, 0.97)}"/></clipPath>`;
+        tiles += `<image href="${slot}" x="${f3(hx.x - 0.87)}" y="${f3(hx.y - 1)}" width="1.74" height="2" preserveAspectRatio="xMidYMid slice" clip-path="url(#${prefix}c${i})"/>`;
+        tiles += `<polygon class="${cls}"${data} points="${corners(hx, 0.97)}" fill="transparent"/>`;
+      } else {
+        tiles += `<polygon class="${cls}"${data} points="${corners(hx, 0.97)}" fill="${TERRAIN_COLOUR[st.terrain]}"/>`;
+        tiles += `<text class="emo" x="${hx.x}" y="${f3(hx.y - 0.5)}" pointer-events="none">${RES_ICON[st.terrain]}</text>`;
+      }
+      if (st.token) {
+        const red = st.token === 6 || st.token === 8;
+        tiles += `<g class="tok${red ? ' red' : ''}" pointer-events="none"><circle cx="${hx.x}" cy="${f3(hx.y + 0.12)}" r=".34"/><text x="${hx.x}" y="${f3(hx.y + 0.12)}">${st.token}</text></g>`;
+      }
+    });
+
+    (board.ports || []).forEach(p => {
+      const e = eById[p.edge];
+      const len = Math.hypot(e.x, e.y) || 1;
+      const x = e.x + (e.x / len) * 0.42;
+      const y = e.y + (e.y / len) * 0.42;
+      const resArt = p.resource && art['res-' + p.resource];
+      if (resArt) {
+        marks += `<image href="${resArt}" x="${f3(x - 0.36)}" y="${f3(y - 0.15)}" width=".3" height=".3" pointer-events="none"/>`;
+        marks += `<text class="port" x="${f3(x + 0.13)}" y="${f3(y)}" pointer-events="none">2:1</text>`;
+      } else {
+        marks += `<text class="port" x="${f3(x)}" y="${f3(y)}" pointer-events="none">${p.resource ? RES_ICON[p.resource] + '2:1' : '3:1'}</text>`;
+      }
+    });
+
+    Object.keys(board.paths).forEach(eid => {
+      const e = eById[eid];
+      const a = vById[e.v[0]];
+      const c = vById[e.v[1]];
+      marks += `<line x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}" stroke="#1a1226" stroke-width=".26" stroke-linecap="round"/>`;
+      marks += `<line data-edge="${eid}" x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}" stroke="${colour(board.paths[eid])}" stroke-width=".17" stroke-linecap="round"/>`;
+    });
+
+    Object.keys(board.buildings).forEach(vid => {
+      const v = vById[vid];
+      const b = board.buildings[vid];
+      marks += piece(v.x, v.y, b.type, colour(b.owner), art, ` data-vertex="${vid}"`);
+    });
+
+    const mh = topo.hexes.find(hx => hx.id === board.mowerHex);
+    if (mh) {
+      marks += art.mower
+        ? `<image class="mower" href="${art.mower}" x="${f3(mh.x - 0.05)}" y="${f3(mh.y + 0.02)}" width=".8" height=".8" pointer-events="none"/>`
+        : `<text class="emo mower" x="${f3(mh.x + 0.45)}" y="${f3(mh.y + 0.42)}" style="font-size:.42px" pointer-events="none">🚜</text>`;
+    }
+
+    const g = o.ghost;
+    if (g && g.at) {
+      if ((g.what === 'shack' || g.what === 'manor') && vById[g.at]) {
+        const v = vById[g.at];
+        marks += `<g class="ghost">${piece(v.x, v.y, g.what, g.colour, art)}</g>`;
+      } else if (g.what === 'path' && eById[g.at]) {
+        const e = eById[g.at];
+        const a = vById[e.v[0]];
+        const c = vById[e.v[1]];
+        marks += `<line class="ghost" x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}" stroke="${g.colour}" stroke-width=".2" stroke-linecap="round"/>`;
+      } else if ((g.what === 'mower' || g.what === 'sinkhole') && topo.hexes.some(h => h.id === g.at)) {
+        const h = topo.hexes.find(x => x.id === g.at);
+        marks += `<polygon class="ghost ghost-hex" points="${corners(h, 0.97)}" fill="none" stroke="${g.colour}" stroke-width=".14"/>`;
+      }
+    }
+
+    if (mode === 'vertex' || mode === 'ring') {
+      legal.forEach(id => {
+        const v = vById[id];
+        if (!v) return;
+        const s = id === o.sel ? ' sel' : '';
+        marks += mode === 'ring'
+          ? `<circle class="spot ring${s}" data-spot="${id}" cx="${v.x}" cy="${v.y}" r=".38"/>`
+          : `<circle class="spot${s}" data-spot="${id}" cx="${v.x}" cy="${v.y}" r=".24"/>`;
+      });
+    }
+    if (mode === 'edge') {
+      legal.forEach(id => {
+        const e = eById[id];
+        if (!e) return;
+        const a = vById[e.v[0]];
+        const c = vById[e.v[1]];
+        const s = id === o.sel ? ' sel' : '';
+        marks += `<line class="edge${s}" x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}"/>`;
+        marks += `<line class="hit" data-spot="${id}" x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}"/>`;
+      });
+    }
+
+    return `<svg viewBox="${f3(B.minX)} ${f3(B.minY)} ${f3(B.w)} ${f3(B.h)}" role="img" aria-label="Game board">` +
+      (defs ? `<defs>${defs}</defs>` : '') + tiles + marks + '</svg>';
+  }
+
+  /* Where a hex or corner sits inside the drawn board, as fractions (0..1) of its width and height. */
+  function position(topo, id) {
+    const B = bounds(topo);
+    const h = topo.hexes.find(x => x.id === id) || topo.vertices.find(x => x.id === id) || topo.edges.find(x => x.id === id);
+    if (!h) return null;
+    return { fx: (h.x - B.minX) / B.w, fy: (h.y - B.minY) / B.h };
+  }
+
+  /* Turns /art.json into { slotName: url }. 'hex-turf.png' → art['hex-turf'] */
+  function artMap(list) {
+    const out = {};
+    ((list && list.files) || []).forEach(f => { out[f.replace(/\.[a-z0-9]+$/i, '')] = '/img/' + f; });
+    return out;
+  }
+
+  /* 'music-intro.mp3' → { 'music-intro': '/audio/music-intro.mp3' } */
+  function audioMap(list) {
+    const out = {};
+    ((list && list.audio) || []).forEach(f => { out[f.replace(/\.[a-z0-9]+$/i, '')] = '/audio/' + f; });
+    return out;
+  }
+
+  global.RagnaBoard = { svg, position, bounds, corners, artMap, audioMap, icon, FALLBACK, TERRAIN_COLOUR, RES_ICON };
+})(typeof window !== 'undefined' ? window : globalThis);
