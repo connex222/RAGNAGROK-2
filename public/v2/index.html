@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ragnagrok · The Last Garden Show</title>
+<style>
+:root {
+  --bg:#150e20; --bg2:#1f1530; --surface:#2a1d3b; --surface2:#3b2a52; --line:#4f3c69;
+  --ink:#f7f0e3; --muted:#c3b5d3; --primary:#ff8a4c; --on-primary:#1a1226;
+  --good:#8cc45e; --bad:#ff6b6b; --warn:#f5c451; --gold:#f5c451;
+  --act1:#7ec8e3; --act2:#ff8a4c; --act3:#ff4d4d;
+  color-scheme:dark;
+}
+* { box-sizing:border-box; }
+html, body { margin:0; height:100%; overflow:hidden; background:#000; color:var(--ink); font:400 30px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+button { font:inherit; color:inherit; cursor:pointer; border:0; }
+[hidden] { display:none !important; }
+.gi { width:1.15em; height:1.15em; object-fit:contain; vertical-align:-0.22em; display:inline-block; }
+.gi-round { border-radius:50%; object-fit:cover; }
+#stage { position:absolute; left:0; top:0; width:1920px; height:1080px; transform-origin:0 0; overflow:hidden; background:radial-gradient(ellipse at 30% 40%, #2b1d40 0%, var(--bg) 60%); }
+#stage.bgart { background-size:cover; background-position:center; }
+.screen { position:absolute; inset:0; padding:44px 96px; }
+#stage.bgart .shade { background:rgba(21,14,32,.62); }
+
+/* lobby */
+#lobby { display:grid; grid-template-columns:480px 1fr; gap:0 70px; }
+#lobbyLeft { display:flex; flex-direction:column; gap:26px; }
+#logo .t { font-weight:900; font-size:88px; line-height:.9; color:var(--primary); }
+#logo .s { color:var(--muted); font-size:34px; margin-top:8px; }
+#logo img { width:100%; display:block; }
+#qrBox { background:#fff; border-radius:28px; padding:22px; }
+#qrBox img { width:100%; display:block; image-rendering:pixelated; }
+.label { color:var(--muted); font-size:30px; }
+.code { font-size:150px; font-weight:900; letter-spacing:.14em; line-height:1; margin:4px 0 12px; }
+.url { font-size:32px; color:var(--warn); word-break:break-all; }
+#lobbyPlayers { display:flex; flex-wrap:wrap; gap:14px; margin-top:16px; }
+.pchip { display:flex; align-items:center; gap:14px; background:var(--surface); border:3px solid var(--line); border-radius:22px; padding:10px 22px 10px 14px; font-size:32px; font-weight:700; }
+.pchip .av { font-size:44px; }
+.pchip.empty { opacity:.35; border-style:dashed; font-weight:400; }
+#lobbyMode { margin-top:14px; font-size:30px; color:var(--muted); }
+#lobbyMode b { color:var(--ink); }
+#tips { margin-top:18px; background:rgba(42,29,59,.92); border:3px solid var(--line); border-radius:24px; padding:18px 24px; position:relative; }
+#tips .kick { color:var(--warn); font-size:22px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+#tips h3 { margin:4px 0 6px; font-size:36px; display:flex; gap:14px; align-items:center; }
+#tips h3 .gi { width:56px; height:56px; }
+#tips .body { font-size:25px; line-height:1.35; }
+#tips ul, #tips ol { margin:6px 0; padding-left:1.2em; }
+#tips p { margin:6px 0; }
+#tips .hide { position:absolute; top:14px; right:16px; background:transparent; border:2px solid var(--line); border-radius:12px; padding:6px 14px; font-size:20px; color:var(--muted); }
+ul.costs { list-style:none; padding:0 !important; }
+ul.costs li { display:flex; gap:12px; align-items:center; }
+ul.costs li > span:last-child { margin-left:auto; padding-left:12px; white-space:nowrap; }
+
+/* draft */
+#draft h1 { margin:0 0 4px; font-size:60px; }
+#draft .sub { color:var(--muted); margin:0 0 22px; font-size:30px; }
+#gods { display:grid; grid-template-columns:repeat(4,1fr); gap:22px; }
+.godc { background:var(--surface); border:3px solid var(--line); border-radius:26px; padding:20px; position:relative; }
+.godc .pic { height:136px; display:flex; align-items:center; font-size:84px; }
+.godc .pic img { width:136px; height:136px; border-radius:20px; object-fit:cover; border:3px solid var(--line); }
+.godc h3 { margin:10px 0 0; font-size:36px; }
+.godc .title { color:var(--muted); font-size:22px; }
+.godc .rule { font-size:21px; margin-top:8px; }
+.godc .lvl { position:absolute; top:18px; right:18px; font-size:20px; font-weight:800; padding:4px 12px; border-radius:999px; background:var(--surface2); color:var(--muted); }
+.godc.taken { opacity:.5; }
+.godc .by { position:absolute; bottom:16px; right:16px; background:var(--ink); color:var(--bg); border-radius:999px; padding:4px 14px; font-size:22px; font-weight:800; }
+
+/* game */
+#game { padding:0; }
+#bar { position:absolute; left:0; right:0; top:0; height:112px; display:grid; grid-template-columns:420px 1fr 260px; align-items:center; gap:30px; padding:0 40px; background:linear-gradient(var(--bg2), rgba(31,21,48,.88)); border-bottom:3px solid var(--line); }
+#roundBox b { display:block; font-size:42px; font-weight:900; }
+#roundBox small { color:var(--muted); font-size:24px; }
+#meter { display:flex; gap:4px; align-items:flex-end; height:62px; }
+#meter .seg { flex:1; height:22px; border-radius:6px; background:var(--surface2); position:relative; }
+#meter .seg.past { opacity:.55; }
+#meter .seg.now { height:34px; box-shadow:0 0 0 3px var(--ink); }
+#meter .seg .mk { position:absolute; left:50%; transform:translateX(-50%); bottom:30px; font-size:22px; }
+#meter .seg.now .mk { bottom:42px; }
+#clock { text-align:right; font-variant-numeric:tabular-nums; }
+#clock b { font-size:52px; }
+#clock small { display:block; color:var(--muted); font-size:22px; }
+#clock.low b { color:var(--bad); }
+#boardWrap { position:absolute; left:20px; top:124px; width:1100px; height:760px; }
+#boardWrap svg { position:absolute; inset:0; width:100%; height:100%; }
+.map .hex { stroke:#150e20; stroke-width:.05; }
+.map .hex.sel { stroke:var(--ink); stroke-width:.2; }
+.map .emo { text-anchor:middle; dominant-baseline:central; }
+.map .threat { stroke:#ff6b6b; stroke-width:.09; stroke-dasharray:.14 .09; }
+@media (prefers-reduced-motion: no-preference) {
+  .map .threat { animation:march 1s linear infinite; }
+  @keyframes march { to { stroke-dashoffset:-.46; } }
+  .map .hex.sel { animation:focus .8s ease-in-out infinite alternate; }
+  @keyframes focus { to { stroke-opacity:.35; } }
+}
+#panel { position:absolute; left:1140px; right:24px; top:124px; height:410px; background:rgba(42,29,59,.94); border:3px solid var(--line); border-radius:26px; padding:20px 26px; overflow:hidden; }
+#panel h2 { margin:0 0 10px; font-size:40px; display:flex; gap:14px; align-items:center; }
+#panel h2 .gi { width:52px; height:52px; }
+#panel .sub { color:var(--muted); font-size:24px; margin:-4px 0 12px; }
+.ev { display:grid; grid-template-columns:52px 1fr auto; gap:12px; align-items:center; padding:9px 0; border-bottom:2px solid var(--line); font-size:25px; }
+.ev .av { font-size:36px; text-align:center; }
+.ev .r { font-size:22px; color:var(--muted); }
+.ev.fail { opacity:.7; }
+.ev.fail .r { color:var(--bad); }
+.ev.new { background:rgba(255,138,76,.12); border-radius:12px; }
+@media (prefers-reduced-motion: no-preference) { .ev.new { animation:slide .35s ease-out; } @keyframes slide { from { transform:translateX(40px); opacity:0; } } }
+.chips { display:flex; flex-wrap:wrap; gap:10px; }
+.chip { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:var(--surface2); font-weight:700; font-size:24px; }
+.chip.ok { background:var(--good); color:var(--on-primary); }
+.big { font-size:54px; font-weight:900; }
+#rows { position:absolute; left:1140px; right:24px; top:546px; height:338px; display:flex; flex-direction:column; gap:6px; }
+#rows.compact .st { display:none; }
+#rows.compact .prow .av { font-size:26px; }
+#rows.compact .prow .nm { font-size:22px; }
+#rows.compact .prow .sc { font-size:28px; }
+.prow { display:grid; grid-template-columns:10px 56px 1fr auto; align-items:center; gap:12px; background:var(--surface); border-radius:16px; padding:4px 16px 4px 0; overflow:hidden; flex:1; }
+.prow .bar { align-self:stretch; }
+.prow .av { font-size:34px; text-align:center; }
+.prow .nm { font-weight:800; font-size:25px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.prow .st { font-size:19px; color:var(--muted); }
+.prow .sc { font-size:38px; font-weight:900; text-align:right; }
+
+.prow.off { opacity:.45; }
+.prow.lead { box-shadow:inset 0 0 0 3px var(--gold); }
+#omens { position:absolute; left:0; right:0; bottom:0; height:184px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; padding:16px 30px; background:linear-gradient(rgba(31,21,48,.85), var(--bg2)); border-top:3px solid var(--line); font-size:23px; }
+#omens h4 { margin:0 0 6px; font-size:22px; color:var(--warn); letter-spacing:.06em; text-transform:uppercase; }
+#omens .it { padding:3px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#omens .it small { color:var(--muted); }
+
+/* overlays */
+#banner { position:absolute; left:0; right:0; top:440px; text-align:center; z-index:50; pointer-events:none; }
+#banner div { display:inline-block; background:var(--primary); color:var(--on-primary); font-weight:900; font-size:70px; padding:18px 56px; border-radius:28px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+#banner div.gold { background:var(--gold); }
+#banner div.red { background:var(--bad); }
+#banner .gi { width:1.2em; height:1.2em; }
+#over { z-index:35; background:radial-gradient(ellipse at 40% 30%, #4a3418 0%, var(--bg) 70%); display:grid; grid-template-columns:560px 1fr; gap:56px; align-items:center; padding:50px 90px; }
+#over .trophy { text-align:center; font-size:300px; line-height:1; position:relative; }
+#over .trophy img { max-width:100%; max-height:640px; filter:drop-shadow(0 0 40px rgba(245,196,81,.55)); }
+@media (prefers-reduced-motion: no-preference) { #over .trophy img { animation:float 3s ease-in-out infinite; } @keyframes float { 50% { transform:translateY(-14px); } } }
+#over h1 { font-size:84px; margin:0; line-height:1; color:var(--gold); }
+#over .quip { color:var(--muted); font-size:32px; margin:12px 0 26px; font-style:italic; }
+#over table { border-collapse:collapse; width:100%; font-size:30px; }
+#over th { text-align:right; color:var(--muted); font-size:22px; font-weight:600; padding:0 8px 8px; }
+#over th:first-child { text-align:left; }
+#over td { padding:10px 8px; border-bottom:2px solid var(--line); text-align:right; }
+#over td:first-child { text-align:left; }
+#over td.tot { font-weight:900; font-size:38px; color:var(--gold); }
+#over .stats { margin-top:22px; color:var(--muted); font-size:26px; display:flex; gap:34px; flex-wrap:wrap; }
+.confetti { position:absolute; top:-60px; font-size:48px; pointer-events:none; z-index:36; }
+@media (prefers-reduced-motion: reduce) { .confetti { display:none; } }
+#pause { position:absolute; inset:0; z-index:40; background:rgba(21,14,32,.88); display:grid; place-items:center; text-align:center; font-size:44px; }
+#rules { position:absolute; inset:0; z-index:58; background:rgba(15,10,22,.94); display:grid; place-items:center; }
+#rulesBox { width:1300px; background:var(--surface); border:4px solid var(--primary); border-radius:32px; padding:40px 54px; }
+#rulesBox .kick { color:var(--warn); font-size:26px; font-weight:800; text-transform:uppercase; }
+#rulesBox h2 { font-size:60px; margin:6px 0 16px; display:flex; gap:20px; align-items:center; }
+#rulesBox h2 .gi { width:64px; height:64px; }
+#rulesBox .body { font-size:34px; line-height:1.4; min-height:360px; }
+#rulesBox .nav { display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
+#rulesBox .nav button { background:var(--surface2); border:2px solid var(--line); border-radius:16px; padding:14px 30px; font-size:30px; font-weight:800; }
+#rulesBox .nav button.primary { background:var(--primary); color:var(--on-primary); border-color:var(--primary); }
+#corner { position:absolute; right:30px; top:30px; z-index:55; display:flex; gap:12px; }
+#corner.ingame { top:32px; right:300px; }
+#bar { grid-template-columns:420px 1fr 440px !important; }
+#clock { padding-left:180px; }
+#corner button { background:rgba(42,29,59,.92); border:2px solid var(--line); border-radius:16px; padding:10px 20px; font-size:24px; font-weight:800; }
+#soundGate { position:absolute; left:40px; bottom:24px; z-index:60; background:var(--primary); color:var(--on-primary); font-weight:900; padding:18px 28px; border-radius:20px; font-size:28px; }
+#conn { position:absolute; left:0; right:0; top:0; z-index:70; background:var(--warn); color:#1a1226; text-align:center; font-weight:900; padding:10px; font-size:28px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <section id="lobby" class="screen shade">
+    <div id="lobbyLeft">
+      <div id="logo"><div class="t">Ragnagrok</div><div class="s">The Last Garden Show</div></div>
+      <div id="qrBox"><img id="qr" alt="Scan to join"></div>
+    </div>
+    <div>
+      <div class="label">Scan the code, or go to</div>
+      <div class="url" id="url">Connecting…</div>
+      <div class="label" style="margin-top:18px">and enter</div>
+      <div class="code" id="code">····</div>
+      <div id="lobbyPlayers"></div>
+      <div id="lobbyMode"></div>
+      <div id="tips" hidden></div>
+    </div>
+  </section>
+
+  <section id="draft" class="screen shade" hidden>
+    <h1>Choose your gods</h1>
+    <p class="sub" id="draftSub"></p>
+    <div id="gods"></div>
+  </section>
+
+  <section id="game" class="screen shade" hidden>
+    <header id="bar"><div id="roundBox"></div><div id="meter"></div><div id="clock"></div></header>
+    <div id="boardWrap" class="map"></div>
+    <div id="panel"></div>
+    <div id="rows"></div>
+    <footer id="omens"></footer>
+  </section>
+
+  <section id="over" class="screen" hidden></section>
+  <div id="pause" hidden>⏸ Paused</div>
+  <div id="rules" hidden><div id="rulesBox"></div></div>
+  <div id="corner"><button id="rulesBtn">📖 Rules</button><button id="musicBtn" hidden>🎵 Music</button></div>
+  <div id="banner"></div>
+  <div id="conn" hidden>Reconnecting to the server…</div>
+  <button id="soundGate">🔊 Click to switch on sound</button>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/sfx.js"></script>
+<script src="/board.js"></script>
+<script src="/v2/rules.js"></script>
+<script>
+(() => {
+'use strict';
+const SUP = ['turf', 'fertiliser', 'sprinklers', 'compost', 'gnomeDust'];
+const SUP_EMOJI = { turf: '🌳', fertiliser: '🌾', sprinklers: '🔥', compost: '🍄', gnomeDust: '✨' };
+const SUP_ART = k => 'res-' + (k === 'fertiliser' ? 'fertilizer' : k);
+const GOD_ICON = { thor: '⚡', loki: '🎭', freya: '🌸', hel: '☠️', odin: '👁️', heimdall: '🔭', frigg: '📋', njord: '⛲' };
+const ACT_NAME = ['Fimbulwinter', "Muspell's Fire", 'Ragnarök'];
+const ACT_ICON = { shelter: '🛡️', meddle: '😈', tend: '🌱', claim: '🚩', cultivate: '🌷', carBoot: '🛒' };
+const HEALTH = ['Ruined', 'Withered', 'Healthy', 'Lush'];
+const KEY = 'ragnagrok.tv2';
+const TIPS_KEY = 'ragnagrok.tv2TipsHidden';
+const MUSIC_KEY = 'ragnagrok.tvMusicOff';
+const QUIPS = ['The judges were bribed with homemade chutney.', 'Ragnarök was mostly an inconvenience.', 'Second place gets a strongly worded letter.', 'The marrow alone was worth the apocalypse.', 'Valhalla has a waiting list for allotments now.'];
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+};
+const sfx = (n, o) => { try { if (window.SFX) window.SFX.play(n, Object.assign({ playWhenHidden: true }, o || {})); } catch (e) { /* optional */ } };
+function getJSON(url) {
+  return new Promise(resolve => {
+    try { const x = new XMLHttpRequest(); x.open('GET', url); x.onload = () => { try { resolve(JSON.parse(x.responseText)); } catch (e) { resolve(null); } }; x.onerror = () => resolve(null); x.send(); }
+    catch (e) { resolve(null); }
+  });
+}
+
+let C = null;
+let ART = {};
+let view = null;
+let topo = null;
+let saved = store.get(KEY);
+let clockOffset = 0;
+let tipIndex = 0;
+let theatre = { key: null, start: 0, shown: 0 };
+let lastBoardKey = '';
+const socket = io({ transports: ['websocket', 'polling'] });
+const I = (k, cls) => RagnaBoard.icon(ART, k, cls);
+const sup = k => (ART[SUP_ART(k)] ? I(SUP_ART(k)) : SUP_EMOJI[k]);
+const godIcon = g => (ART['deity-' + g] ? I('deity-' + g) : GOD_ICON[g] || '');
+const DISASTER_SOUND = { frost: 'frost', hail: 'frost', winds: 'frost', ash: 'fire', sprinklers: 'fire', lava: 'fire', smoulder: 'fire', arsonists: 'fire', serpent: 'flood', fenrir: 'flood', uprising: 'gnomes', naglfar: 'gnomes' };
+let lastTick = null;
+const pl = seat => (view && view.players[seat]) || { name: '?', avatar: '❔', colour: '#999' };
+const nm = seat => esc(pl(seat).name);
+const plotById = id => (view && view.board ? view.board.plots.find(p => p.id === id) : null);
+const lenCfg = () => (C && view ? C.lengths[view.config.length] : null);
+const remaining = d => (d ? Math.max(0, Math.ceil((d - (Date.now() + clockOffset)) / 1000)) : null);
+
+/* scale */
+function fit() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080) || 1;
+  $('#stage').style.transform = `translate(${(window.innerWidth - 1920 * s) / 2}px, ${(window.innerHeight - 1080 * s) / 2}px) scale(${s})`;
+}
+['resize', 'load', 'fullscreenchange'].forEach(e => window.addEventListener(e, fit));
+if (window.ResizeObserver) new ResizeObserver(fit).observe(document.documentElement);
+setInterval(fit, 2000);
+fit();
+
+/* connection */
+function showRoom(r) { $('#code').textContent = r.code; $('#url').textContent = r.joinUrl.replace(/^https?:\/\//, ''); $('#qr').src = r.qr; }
+async function create() {
+  const r = await socket.emitWithAck('tv:create', {});
+  if (!r.ok) return;
+  saved = { code: r.code, hostKey: r.hostKey };
+  store.set(KEY, saved);
+  showRoom(r);
+}
+socket.on('connect', async () => {
+  $('#conn').hidden = true;
+  if (saved) { const r = await socket.emitWithAck('tv:attach', saved); if (r.ok) { showRoom(r); return; } }
+  await create();
+});
+socket.on('disconnect', () => { $('#conn').hidden = false; });
+socket.on('roomClosed', () => { saved = null; store.del(KEY); view = null; create(); });
+socket.on('state', v => {
+  if (view && v.stateVersion < view.stateVersion && v.meta.code === view.meta.code) return;
+  if (v.topology) topo = v.topology;
+  if (v.meta && v.meta.serverNow) clockOffset = v.meta.serverNow - Date.now();
+  view = v;
+  const key = `${v.round}:${v.phase.step}`;
+  if (v.phase.step === 'resolve' && theatre.key !== key) theatre = { key, start: Date.now(), shown: 0 };
+  render();
+});
+socket.on('events', list => list.forEach(onEvent));
+
+/* sound */
+function unlockSound() { if (window.SFX) window.SFX.unlock(); Music.unlock(); $('#soundGate').hidden = true; }
+$('#soundGate').addEventListener('click', unlockSound);
+document.addEventListener('keydown', unlockSound);
+document.addEventListener('pointerdown', unlockSound);
+setInterval(() => getJSON('/healthz'), 5 * 60 * 1000);
+
+/* ================= render ================= */
+function render() {
+  if (!view) return;
+  const st = view.phase.stage;
+  $('#lobby').hidden = st !== 'lobby';
+  $('#draft').hidden = st !== 'draft';
+  $('#game').hidden = st !== 'playing';
+  $('#over').hidden = st !== 'gameOver';
+  $('#pause').hidden = !view.meta.paused;
+  $('#corner').classList.toggle('ingame', st === 'playing');
+  if (st === 'lobby') renderLobby();
+  if (st === 'draft') renderDraft();
+  if (st === 'playing' && C) renderGame();
+  if (st === 'gameOver' && C) renderOver();
+  Music.update();
+}
+
+function renderLobby() {
+  const n = view.players.length;
+  let html = '';
+  for (let i = 0; i < Math.max(4, Math.min(8, n + 1)); i++) {
+    const p = view.players[i];
+    html += p ? `<div class="pchip"><span class="av">${esc(p.avatar)}</span>${esc(p.name)}${i === 0 ? ' 👑' : ''}</div>` : '<div class="pchip empty"><span class="av">🌱</span>Open seat</div>';
+  }
+  $('#lobbyPlayers').innerHTML = html;
+  const L = lenCfg();
+  $('#lobbyMode').innerHTML = L ? `<b>${esc(L.name)} game</b> · ${L.rounds} rounds · ${n < 2 ? 'waiting for at least 2 gardeners' : `${esc(view.players[0].name)} starts the game from their phone`}` : '';
+  renderTips();
+  if (ART.logo && !$('#logo').dataset.done) { $('#logo').innerHTML = `<img src="${ART.logo}" alt="Ragnagrok">`; $('#logo').dataset.done = '1'; }
+}
+
+function renderTips() {
+  const box = $('#tips');
+  if (store.get(TIPS_KEY)) { box.hidden = true; return; }
+  const slides = RagnaRules.slides(I);
+  const sl = slides[tipIndex % slides.length];
+  box.hidden = false;
+  box.innerHTML = `<button class="hide" id="tipsHide">Don't show again</button><div class="kick">How to play · ${tipIndex % slides.length + 1} of ${slides.length}</div><h3>${sl.icon} ${esc(sl.title)}</h3><div class="body">${sl.body}</div>`;
+  $('#tipsHide').onclick = () => { store.set(TIPS_KEY, true); renderTips(); };
+}
+setInterval(() => { if (view && view.phase.stage === 'lobby') { tipIndex += 1; renderTips(); } }, 11000);
+
+function renderDraft() {
+  const picker = view.phase.draftQueue[0];
+  $('#draftSub').innerHTML = picker !== undefined ? `${esc(pl(picker).avatar)} <b>${nm(picker)}</b> is choosing on their phone · ${remaining(view.phase.deadline) || 0}s` : '';
+  if (!C) return;
+  $('#gods').innerHTML = Object.entries(C.gods).map(([id, g]) => {
+    const taker = view.players.find(p => p.god === id);
+    return `<div class="godc${taker ? ' taken' : ''}"><span class="lvl">${esc(g.level)}</span>
+      <div class="pic">${ART['deity-' + id] ? `<img src="${ART['deity-' + id]}" alt="">` : GOD_ICON[id]}</div>
+      <h3>${esc(g.name)}</h3><div class="title">${esc(g.title)}</div><div class="rule"><b>${esc(g.power)}:</b> ${esc(g.rule)}</div>
+      ${taker ? `<span class="by">${esc(taker.avatar)} ${esc(taker.name)}</span>` : ''}</div>`;
+  }).join('');
+}
+
+function renderGame() {
+  const L = lenCfg();
+  const act = view.act || 1;
+  const stepName = { omens: 'Omens', plan: 'Everyone is planning', resolve: 'Actions', disasters: 'Disasters strike', harvest: 'Harvest', show: 'The Village Garden Show' }[view.phase.step] || '';
+  $('#roundBox').innerHTML = `<b>Round ${view.round} of ${L.rounds}</b><small>Act ${act}: ${ACT_NAME[act - 1]} · ${stepName}</small>`;
+  let meter = '';
+  for (let r = 1; r <= L.rounds; r++) {
+    const a = Math.min(3, Math.ceil(r / L.actLength));
+    const mk = (L.showRounds.includes(r) ? '🏆' : '') + (L.emergencyRounds.includes(r) ? '🚨' : '');
+    meter += `<div class="seg${r < view.round ? ' past' : ''}${r === view.round ? ' now' : ''}" style="background:var(--act${a})">${mk ? `<span class="mk">${mk}</span>` : ''}</div>`;
+  }
+  $('#meter').innerHTML = meter;
+  tickClock();
+  renderBoard();
+  renderPanel();
+  renderRows();
+  renderOmens();
+}
+
+function focusPlot() {
+  if (view.phase.step !== 'resolve' || !view.resolution) return null;
+  const ev = view.resolution.events[Math.max(0, theatre.shown - 1)];
+  return ev ? ev.target : null;
+}
+
+function renderBoard() {
+  if (!topo || !view.board) return;
+  const threats = view.phase.step === 'plan' || view.phase.step === 'omens' || view.phase.step === 'resolve' || view.phase.step === 'disasters'
+    ? (view.forecast.now || []).filter(d => !d.good).flatMap(d => d.plots) : [];
+  const sel = focusPlot();
+  const key = view.stateVersion + '|' + sel + '|' + threats.length + '|' + Object.keys(ART).length;
+  if (key === lastBoardKey) return;
+  lastBoardKey = key;
+  $('#boardWrap').innerHTML = RagnaBoard.gardenSvg({ topo, plots: view.board.plots, players: view.players, art: ART, threats, sel, idPrefix: 'tv' });
+}
+
+function evLine(e, fresh) {
+  const p = pl(e.seat);
+  const plot = e.target ? plotById(e.target) : null;
+  const where = plot ? ` ${C.terrainNames[plot.terrain]}` : '';
+  let txt;
+  switch (e.kind) {
+    case 'shelter': txt = `sheltered their${where}`; break;
+    case 'meddle': txt = e.victim !== undefined ? `meddled with ${nm(e.victim)}'s${where}${e.took ? ' and pinched ' + sup(e.took) : ''}${e.damage ? ' (trampled!)' : ''}` : `tried to meddle`; break;
+    case 'tend': txt = `tended their${where}${e.cleared ? ' (cleared ' + C.conditions[e.cleared].name + ')' : ''}`; break;
+    case 'claim': txt = `claimed the${where}`; break;
+    case 'cultivate': txt = e.feature ? `planted a ${esc(C.features[e.feature].name)}` : 'tried to plant a feature'; break;
+    case 'carBoot': txt = `went to a car-boot sale ${(e.gained || []).map(sup).join(' ')}`; break;
+    default: txt = e.kind;
+  }
+  return `<div class="ev${e.ok ? '' : ' fail'}${fresh ? ' new' : ''}"><span class="av">${esc(p.avatar)}</span>
+    <span><b>${esc(p.name)}</b> ${ACT_ICON[e.kind] || ''} ${txt}</span><span class="r">${e.ok ? '✔' : '✖ ' + esc(e.reason || '')}</span></div>`;
+}
+
+function renderPanel() {
+  const st = view.phase.step;
+  const panel = $('#panel');
+  if (st === 'omens') {
+    panel.innerHTML = `<h2>🔮 Omens</h2><p class="sub">Read the warnings below. Plots with red dashes get hit this round.</p>
+      ${view.emergency ? `<div class="big" style="color:var(--bad)">🚨 ${esc(view.emergency.name)}</div><p>The street must pledge <b>${view.emergency.target}</b> supplies this round.</p>` : ''}
+      <p style="font-size:28px">Planning starts in a moment. Get your phones ready.</p>`;
+  } else if (st === 'plan') {
+    const ready = view.players.filter(p => p.locked).length;
+    panel.innerHTML = `<h2>📝 Plan your moves</h2><p class="sub">Secretly choose your actions on your phone, then lock in.</p>
+      <div class="big">${ready} of ${view.players.length} ready</div>
+      <div class="chips" style="margin-top:12px">${view.players.map(p => `<span class="chip${p.locked ? ' ok' : ''}">${esc(p.avatar)} ${esc(p.name)} ${p.locked ? '✔' : p.connected ? '…' : 'offline'}</span>`).join('')}</div>
+      ${view.emergency ? `<p style="margin-top:18px;color:var(--bad)"><b>🚨 ${esc(view.emergency.name)}:</b> pledge on your phone. The street needs ${view.emergency.target}.</p>` : ''}
+      ${view.trades.filter(t => t.status === 'open').length ? `<p class="sub" style="margin-top:12px">🤝 ${view.trades.filter(t => t.status === 'open').length} trade offer(s) open</p>` : ''}`;
+  } else if (st === 'resolve' && view.resolution) {
+    const evs = view.resolution.events;
+    const shown = theatreShown();
+    if (shown !== theatre.shown) { theatre.shown = shown; const e = evs[shown - 1]; if (e) { sfx(e.ok || e.power ? e.kind : 'denied'); if (e.power) setTimeout(() => sfx('power-' + e.power), 350); } renderBoard(); }
+    const list = evs.slice(0, shown).slice(-6);
+    panel.innerHTML = `<h2>🎬 Everyone's moves</h2><p class="sub">${shown} of ${evs.length} · in order: Shelter, Meddle, Tend, Claim, Cultivate, Car-Boot</p>
+      ${list.map((e, i) => evLine(e, i === list.length - 1)).join('')}`;
+  } else if (st === 'disasters') {
+    const rep = view.disasterReport || [];
+    const em = view.emergency && view.emergency.result ? view.emergency : null;
+    panel.innerHTML = `<h2>${I('mower')} Disasters strike!</h2>
+      ${rep.map(d => {
+        const dmg = d.hits.filter(h => ['damaged', 'featureLost', 'condition'].includes(h.result) && h.owner !== null && h.owner !== undefined).length;
+        const saved = d.hits.filter(h => ['sheltered', 'absorbed'].includes(h.result)).length;
+        const lost = d.hits.filter(h => h.result === 'featureLost').length;
+        return `<div class="ev"><span class="av">${d.good ? '🌟' : '⚠️'}</span><span><b>${esc(d.name)}</b></span><span class="r">${d.good ? `${d.hits.length} plots blessed` : `${dmg} gardens hit · ${saved} saved${lost ? ' · ' + lost + ' features lost' : ''}`}</span></div>`;
+      }).join('') || '<p class="sub">A quiet round. Suspiciously quiet.</p>'}
+      ${em ? `<div class="ev"><span class="av">🚨</span><span><b>${esc(em.name)}</b>: ${em.result === 'success' ? 'averted!' : 'the street failed'}</span><span class="r">${em.total} / ${em.target}</span></div>
+        <div class="chips" style="margin-top:8px">${Object.entries(em.paid || {}).map(([s, n]) => `<span class="chip">${esc(pl(Number(s)).avatar)} ${nm(Number(s))} ${n}</span>`).join('') || '<span class="chip">Nobody chipped in</span>'}</div>` : ''}`;
+  } else if (st === 'harvest') {
+    const g = view.harvestReport || {};
+    panel.innerHTML = `<h2>🧺 Harvest</h2><p class="sub">Healthy plots yield 1, Lush plots 2.</p>
+      ${view.players.map(p => { const h = g[p.seat]; const items = h ? SUP.filter(r => h[r]).map(r => `<span class="chip">+${h[r]} ${sup(r)}</span>`).join('') : '<span class="chip">nothing</span>'; return `<div class="ev"><span class="av">${esc(p.avatar)}</span><span><b>${esc(p.name)}</b></span><span class="chips">${items}</span></div>`; }).join('')}`;
+  } else if (st === 'show') {
+    const show = view.shows.filter(s => s.results).pop();
+    panel.innerHTML = `<h2>${I('trophy')} Village Garden Show</h2>
+      ${show ? Object.entries(show.results).map(([k, rows]) => `<div style="margin-bottom:12px"><b style="font-size:30px">${esc(C.categories[k].name)}</b> <span class="sub">${esc(C.categories[k].describe)}</span>
+        <div class="chips" style="margin-top:6px">${rows.filter(r => r.points).map(r => { const place = rows.filter(o => o.points > r.points).length; return `<span class="chip${place === 0 ? ' ok' : ''}">${['🥇', '🥈', '🥉', '🏅'][Math.min(3, place)]} ${nm(r.seat)} +${r.points}</span>`; }).join('') || '<span class="chip">Nobody placed</span>'}</div></div>`).join('') : ''}`;
+  }
+}
+
+/* How many of this round's actions the theatre has revealed so far, paced to fill the Resolve step. */
+function theatreShown() {
+  const evs = view.resolution ? view.resolution.events : [];
+  const span = Math.max(1, (view.phase.deadline - (Date.now() + clockOffset)) + (Date.now() - theatre.start));
+  const per = span / Math.max(1, evs.length);
+  return Math.min(evs.length, Math.floor((Date.now() - theatre.start) / per) + 1);
+}
+
+function renderRows() {
+  const ranked = view.players.slice().sort((a, b) => b.score - a.score);
+  const top = ranked[0] ? ranked[0].score : 0;
+  $('#rows').innerHTML = ranked.map(p => `<div class="prow${p.connected ? '' : ' off'}${p.score === top && top > 0 ? ' lead' : ''}">
+    <div class="bar" style="background:${p.colour}"></div><div class="av">${esc(p.avatar)}</div>
+    <div><div class="nm">${esc(p.name)} ${p.god ? godIcon(p.god) : ''}${view.phase.step === 'plan' && p.locked ? ' ✔' : ''}</div><div class="st">${p.plots} plots · ${p.handCount} cards · ${p.goodwill} Goodwill</div></div>
+    <div class="sc">${p.score}</div></div>`).join('');
+  $('#rows').className = view.players.length > 5 ? 'compact' : '';
+}
+
+function renderOmens() {
+  const line = d => {
+    const owners = new Set(d.plots.map(id => (plotById(id) || {}).owner).filter(o => o !== null && o !== undefined));
+    return `<div class="it">${d.good ? '🌟' : '⚠️'} <b>${esc(d.name)}</b> <small>${d.good ? 'good news' : owners.size ? 'hits ' + [...owners].map(o => esc(pl(o).avatar)).join(' ') : 'misses every garden'}</small></div>`;
+  };
+  const show = view.shows.find(s => s.categories && !s.results);
+  $('#omens').innerHTML = `<div><h4>This round</h4>${(view.forecast.now || []).map(line).join('') || '<div class="it">Nothing</div>'}</div>
+    <div><h4>Next round</h4>${(view.forecast.next || []).map(line).join('') || '<div class="it">The end is nigh</div>'}</div>
+    <div><h4>${show ? `🏆 Show after round ${show.after}` : '🏆 Shows'}</h4>${show ? show.categories.map(k => `<div class="it"><b>${esc(C.categories[k].name)}</b> <small>${esc(C.categories[k].describe)}</small></div>`).join('') : nextShowNote()}</div>`;
+}
+
+function nextShowNote() {
+  const L = lenCfg();
+  const i = view.shows.findIndex(s => !s.categories);
+  if (i < 0) return '<div class="it">All shows judged</div>';
+  const at = L.showRounds[i - 1] + 1;
+  return `<div class="it">Show ${i + 1} (after round ${L.showRounds[i]}): categories announced in round ${at}</div>`;
+}
+
+function renderOver() {
+  const f = view.final;
+  if (!f) return;
+  const winners = f.winners.map(s => pl(s));
+  const wTxt = winners.map(p => `${esc(p.avatar)} ${esc(p.name)}`).join(' & ');
+  const mostFeatures = f.scores.slice().sort((a, b) => b.featureCount - a.featureCount)[0];
+  const mostGood = f.scores.slice().sort((a, b) => b.goodwill - a.goodwill)[0];
+  const quip = QUIPS[(view.round + f.scores[0].total) % QUIPS.length];
+  $('#over').innerHTML = `<div class="trophy">${ART.trophy ? `<img src="${ART.trophy}" alt="The Golden Flamingo">` : '🦩'}</div>
+    <div><h1>${wTxt} win${winners.length > 1 ? '' : 's'}!</h1>
+      <div class="quip">${winners.length === 1 && winners[0].god ? godIcon(winners[0].god) + ' ' + esc(C.gods[winners[0].god].name) + ' smiles. ' : ''}${esc(quip)}</div>
+      <table><tr><th>Gardener</th><th>Shows</th><th>Features</th><th>Goodwill</th><th>Total</th></tr>
+      ${f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${nm(s.seat)}</td><td>${s.shows}</td><td>${s.features}</td><td>${s.goodwill}</td><td class="tot">${s.total}</td></tr>`).join('')}</table>
+      <div class="stats">${mostFeatures.featureCount > 0 ? `<span>🌷 Most features: <b>${nm(mostFeatures.seat)}</b> (${mostFeatures.featureCount})</span>` : ''}${mostGood.goodwill > 0 ? `<span>🤝 Best neighbour: <b>${nm(mostGood.seat)}</b> (${mostGood.goodwill} Goodwill)</span>` : ''}<span>🗓️ ${view.round} rounds survived</span></div>
+      <div class="quip" style="margin-top:24px">${nm(0)} can start a rematch from their phone.</div></div>`;
+}
+
+function tickClock() {
+  if (!view) return;
+  if (view.phase.stage === 'draft') { renderDraft(); return; }
+  if (view.phase.stage !== 'playing') return;
+  const left = view.meta.paused ? null : remaining(view.phase.deadline);
+  $('#clock').innerHTML = left === null ? '' : `<b>${left >= 60 ? Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : left + 's'}</b><small>${view.phase.step === 'plan' ? 'to plan' : 'next'}</small>`;
+  $('#clock').className = left !== null && left <= 10 && view.phase.step === 'plan' ? 'low' : '';
+  if (view.phase.step === 'plan' && left !== null && left <= 10 && left !== lastTick) { lastTick = left; sfx(left === 0 ? 'timeUp' : 'timerTick'); }
+  if (view.phase.step === 'resolve' && view.resolution && theatreShown() !== theatre.shown) renderPanel();
+}
+setInterval(tickClock, 250);
+
+/* ================= events, banners, confetti ================= */
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const queue = [];
+let running = false;
+function enqueue(fn) { queue.push(fn); while (queue.length > 3) queue.shift(); if (!running) run(); }
+async function run() { running = true; while (queue.length) { try { await queue.shift()(); } catch (e) { /* never break the TV */ } } running = false; }
+async function banner(html, kind, ms) {
+  const b = $('#banner');
+  b.innerHTML = `<div class="${kind || ''}">${html}</div>`;
+  const d = b.firstChild;
+  if (d.animate) d.animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'scale(1.05)', opacity: 1, offset: .6 }, { transform: 'scale(1)' }], { duration: 350 });
+  await wait(ms || 1300);
+  if (b.firstChild === d) b.innerHTML = '';
+}
+function confetti() {
+  const st = $('#stage');
+  for (let i = 0; i < 26; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.textContent = ['🦩', '🌸', '✨', '🌿', '🏆'][i % 5];
+    el.style.left = (90 + Math.random() * 500) + 'px';
+    st.appendChild(el);
+    if (!el.animate) { el.remove(); continue; }
+    const a = el.animate([{ transform: 'translateY(0) rotate(0)' }, { transform: `translateY(1200px) rotate(${Math.random() * 720 - 360}deg)` }], { duration: 3000 + Math.random() * 2500, delay: Math.random() * 1500, easing: 'ease-in' });
+    a.onfinish = () => el.remove();
+  }
+}
+function onEvent(e) {
+  switch (e.type) {
+    case 'playerJoined': sfx('playerJoined'); break;
+    case 'playerReconnected': sfx('reconnect'); break;
+    case 'resumed': sfx('resume'); break;
+    case 'godPower': sfx('power-' + e.god); enqueue(() => banner(`${godIcon(e.god)} ${C ? esc(C.gods[e.god].power) : ''}!`, '', 1100)); break;
+    case 'featureLost': setTimeout(() => sfx('featureLost'), 600); break;
+    case 'gameStarted': sfx('gameStart'); enqueue(() => banner('The Last Garden Show begins!', 'gold', 1600)); break;
+    case 'godChosen': sfx('factionChosen'); enqueue(() => banner(`${nm(e.seat)} worships ${godIcon(e.god)} ${C ? esc(C.gods[e.god].name) : ''}`, '', 1100)); break;
+    case 'omens': { const newAct = view && view.round > 1 && (view.round - 1) % lenCfg().actLength === 0; sfx(newAct ? 'actChange' : 'omens'); if (e.emergency) setTimeout(() => sfx('emergency'), 900); } enqueue(() => banner(e.act && view && view.round > 1 && (view.round - 1) % lenCfg().actLength === 0 ? `Act ${e.act}: ${ACT_NAME[e.act - 1]}` : `Round ${e.round}`, e.act === 3 ? 'red' : '', 1300)); break;
+    case 'planStart': break;
+    case 'locked': sfx('lockIn'); break;
+    case 'resolve': sfx('resolveStart'); break;
+    case 'disasters': { const k = (e.keys || []).find(x => DISASTER_SOUND[x]); sfx(k ? 'disaster-' + DISASTER_SOUND[k] : 'disasters'); break; }
+    case 'emergency': sfx(e.result === 'success' ? 'emergencyWon' : 'emergencyLost'); enqueue(() => banner(e.result === 'success' ? '🚨 Emergency averted!' : '🚨 The street failed!', e.result === 'success' ? 'gold' : 'red', 1500)); break;
+    case 'harvest': sfx('harvest', { resources: [] }); break;
+    case 'show': sfx('showFanfare'); enqueue(() => banner(`${I('trophy')} The judges have decided`, 'gold', 1400)); break;
+    case 'odinShift': enqueue(() => banner(`${godIcon('odin')} Odin nudges a disaster…`, '', 1200)); break;
+    case 'tradeOffer': sfx('tradeOffer'); break;
+    case 'tradeAccepted': sfx('tradeAccepted'); break;
+    case 'win': sfx('win'); confetti(); enqueue(() => banner(`${I('trophy')} THE GOLDEN FLAMINGO ${I('trophy')}`, 'gold', 2200)); break;
+    case 'paused': sfx('pause'); break;
+    default: break;
+  }
+}
+
+/* ================= rules overlay ================= */
+let rulesPage = 0;
+function openRules() { rulesPage = 0; $('#rules').hidden = false; drawRules(); }
+function closeRules() { $('#rules').hidden = true; }
+function drawRules() {
+  const slides = RagnaRules.slides(I);
+  rulesPage = Math.max(0, Math.min(slides.length - 1, rulesPage));
+  const sl = slides[rulesPage];
+  const last = rulesPage === slides.length - 1;
+  $('#rulesBox').innerHTML = `<div class="kick">How to play · ${rulesPage + 1} of ${slides.length}</div><h2>${sl.icon} ${esc(sl.title)}</h2><div class="body">${sl.body}</div>
+    <div class="nav"><button id="rPrev"${rulesPage === 0 ? ' disabled' : ''}>◀ Back</button><span style="color:var(--muted);font-size:22px">Arrow keys · R or Esc to close</span><button id="rNext" class="primary">${last ? 'Close' : 'Next ▶'}</button></div>`;
+  $('#rPrev').onclick = () => { rulesPage -= 1; drawRules(); };
+  $('#rNext').onclick = () => { if (last) closeRules(); else { rulesPage += 1; drawRules(); } };
+}
+$('#rulesBtn').addEventListener('click', () => ($('#rules').hidden ? openRules() : closeRules()));
+document.addEventListener('keydown', e => {
+  if (e.key === 'r' || e.key === 'R') { $('#rules').hidden ? openRules() : closeRules(); return; }
+  if (e.key === 'm' || e.key === 'M') { Music.toggle(); return; }
+  if ($('#rules').hidden) return;
+  if (e.key === 'Escape') closeRules();
+  if (e.key === 'ArrowRight') { rulesPage += 1; drawRules(); }
+  if (e.key === 'ArrowLeft') { rulesPage -= 1; drawRules(); }
+});
+
+/* ================= music ================= */
+const Music = {
+  tracks: {}, current: null, unlocked: false, off: !!store.get(MUSIC_KEY), levels: { intro: 0.55, ambience: 0.28 },
+  load(map) {
+    [['intro', 'music-intro'], ['ambience', 'music-ambience']].forEach(([k, slot]) => {
+      if (!map[slot] || this.tracks[k]) return;
+      const a = new Audio(map[slot]); a.loop = true; a.volume = 0; this.tracks[k] = a;
+    });
+    $('#musicBtn').hidden = !Object.keys(this.tracks).length;
+    this.update();
+  },
+  update() {
+    $('#musicBtn').textContent = this.off ? '🔇 Music' : '🎵 Music';
+    if (!this.unlocked) return;
+    const want = this.off || !view || view.meta.paused ? null : view.phase.stage === 'playing' ? 'ambience' : 'intro';
+    if (want === this.current) return;
+    if (this.current && this.tracks[this.current]) this.fade(this.tracks[this.current], 0, 1500);
+    this.current = want;
+    const t = want && this.tracks[want];
+    if (t) { const p = t.play(); if (p && p.catch) p.catch(() => {}); this.fade(t, this.levels[want], 2000); }
+  },
+  fade(a, to, ms) {
+    const from = a.volume; const t0 = performance.now();
+    const step = t => { const k = Math.min(1, (t - t0) / ms); a.volume = Math.max(0, Math.min(1, from + (to - from) * k)); if (k < 1) requestAnimationFrame(step); else if (to === 0) a.pause(); };
+    requestAnimationFrame(step);
+  },
+  unlock() { this.unlocked = true; this.current = null; this.update(); },
+  toggle() { this.off = !this.off; store.set(MUSIC_KEY, this.off); Object.values(this.tracks).forEach(a => this.fade(a, 0, 600)); this.current = null; this.update(); }
+};
+$('#musicBtn').addEventListener('click', e => { e.stopPropagation(); Music.toggle(); });
+
+/* boot */
+getJSON('/data/v2.json').then(c => { if (c) { C = c; render(); } });
+getJSON('/art.json').then(a => {
+  ART = RagnaBoard.artMap(a);
+  Music.load(RagnaBoard.audioMap(a));
+  if (window.SFX && window.SFX.loadFromList) window.SFX.loadFromList(a && a.audio);
+  if (ART['background-tv']) { $('#stage').classList.add('bgart'); $('#stage').style.backgroundImage = `url(${ART['background-tv']})`; }
+  lastBoardKey = '';
+  render();
+});
+window.__rgtv = { view: () => view };
+})();
+</script>
+</body>
+</html>

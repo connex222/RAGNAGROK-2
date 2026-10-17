@@ -1281,6 +1281,7 @@ window.__rg = { view: () => view, ui };
 
 getJSON('/data/cards.json').then(c => { if (c) { cards = c; render(); } });
 getJSON('/art.json').then(a => {
+  if (window.SFX && window.SFX.loadFromList) window.SFX.loadFromList(a && a.audio);
   ART = RagnaBoard.artMap(a);
   // Every small icon uses the same artwork as the big ones.
   RES.forEach(r => { R[r].i = I('res-' + r); });

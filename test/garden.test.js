@@ -156,6 +156,7 @@ test('Hedge Maze blocks Meddle, except Loki', () => {
   plan(s2, 0, rest); plan(s2, 1, { kind: 'meddle', target: c, mode: 'trample' }); lockAll(s2);
   assert.strictEqual(plot(s2, c).health, 1, 'Loki tramples through the maze');
   assert.strictEqual(plot(s2, a).health, 2, 'and moves the health to his own plot');
+  assert.strictEqual(evOf(s2, 1, 'meddle').power, 'loki', 'Loki\'s power is announced');
 });
 
 test('Heimdall: Meddle fails and he receives the Gnome Dust', () => {
@@ -166,6 +167,7 @@ test('Heimdall: Meddle fails and he receives the Gnome Dust', () => {
   assert.strictEqual(plot(s, c).health, 2);
   assert.strictEqual(s.players[0].hand.gnomeDust, 10);
   assert.strictEqual(s.players[1].hand.gnomeDust, 8);
+  assert.strictEqual(evOf(s, 1, 'meddle').power, 'heimdall', 'Heimdall\'s power is announced');
 });
 
 test('Tend clears a condition; Freya also adds health', () => {
@@ -250,7 +252,8 @@ test('Show scoring: ties share the higher place', () => {
 test('Odin shifts a sector disaster once per act', () => {
   const s = setup(['odin', 'thor']);
   s.forecast.now = [{ key: 'frost', name: 'Frost', good: false, health: 0, condition: 'frozen', target: { kind: 'sector' }, sector: 2, plots: [] }];
-  ok(E.apply(s, 0, { type: 'odinShift', index: 0, dir: 1 }, 2000));
+  const r = ok(E.apply(s, 0, { type: 'odinShift', index: 0, dir: 1 }, 2000));
+  assert.ok(r.events.some(e => e.type === 'godPower' && e.god === 'odin'), 'Odin\'s power is announced');
   assert.strictEqual(s.forecast.now[0].sector, 3);
   assert.ok(s.forecast.now[0].plots.every(id => s.board.sectors[id] === 3));
   assert.strictEqual(E.apply(s, 0, { type: 'odinShift', index: 0, dir: 1 }, 2000).ok, false);

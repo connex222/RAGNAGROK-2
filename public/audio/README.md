@@ -1,8 +1,16 @@
-# Music slots
+# Sound and music slots
 
-| File name | Plays | Notes |
-|---|---|---|
-| `music-intro.mp3` | TV lobby, god draft and winner screen | Loops |
-| `music-ambience.mp3` | TV during play | Loops quietly under the sound effects |
+Drop files here with these exact names. Anything missing falls back automatically, so
+the game is never silent: a dedicated file → its substitute's file → a code-made sound.
 
-MP3 is safest on every TV. Music plays on the TV only, never on phones.
+## Music (TV only)
+| File | Plays |
+|---|---|
+| `music-intro.mp3` | Lobby, god draft, winner screen |
+| `music-ambience.mp3` | During play |
+
+## Sound effects
+Name every file `sfx-<name>.mp3`. The full list, what each plays for in V2, and
+what it borrows when missing is in the V2 Art & Audio pack PDF.
+
+Rules: MP3, mono, under about 100 KB, silence trimmed from the start, similar loudness.

@@ -17,7 +17,6 @@
    its tap worked and, if not, why. */
 
 const QRCode = require('qrcode');
-const E = require('../src/engine/rules');
 
 const DEFAULT_RATE = { capacity: 30, refillPerSec: 15 };
 
@@ -43,6 +42,7 @@ function baseUrl(socket) {
 }
 
 function attachHandlers(io, rooms, { rate = DEFAULT_RATE } = {}) {
+  const E = rooms.E;
   io.on('connection', socket => {
     socket.data = { code: null, role: null, token: null, isHost: false, layoutSent: null };
     const allowed = makeLimiter(rate);

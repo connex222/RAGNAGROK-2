@@ -307,6 +307,47 @@ const SFX = (() => {
     src.start();
   }
 
+  /* Fallback chain for every sound name the game uses:
+       1. a recorded file with that exact name (public/audio/sfx-<name>.mp3)
+       2. the substitute listed here (its file if present, otherwise its code-made sound)
+       3. the code-made sound of the same name
+     So V2 moments can borrow files made for v0.5.1, and a missing file is never silent. */
+  const ALIASES = {
+    tend: 'buildPath', claim: 'buildShack', cultivate: 'buildManor', meddle: 'steal',
+    carBoot: 'bankTrade', bankTrade: 'tradeAccepted', shelter: 'buildPath',
+    lockIn: 'perkBought', perkBought: 'tap', compost: 'discard', discard: 'tap',
+    resolveStart: 'dice', disasters: 'mower', harvest: 'production', showJudged: 'award', showFanfare: 'award',
+    emergency: 'discardAlarm', emergencyWon: 'award', emergencyLost: 'denied',
+    actChange: 'turnStart', omens: 'turnStart', planStart: 'yourTurn', featureLost: 'sinkhole', finalReveal: 'vpReveal',
+    'disaster-frost': 'disasters', 'disaster-fire': 'disasters', 'disaster-flood': 'disasters', 'disaster-gnomes': 'disasters',
+    timerTick: 'tap', timeUp: 'denied', gameStart: 'turnStart', playerJoined: 'tap', factionChosen: 'buildShack',
+    pause: 'denied', resume: 'turnStart', reconnect: 'offerIn', vpReveal: 'award', tradeDeclined: 'denied',
+    mowerParked: 'tap', militia: 'steal', binDay: 'tradeAccepted', bumperCrop: 'production', mulchSpreader: 'buildPath',
+    'power-thor': 'award', 'power-loki': 'steal', 'power-freya': 'production', 'power-hel': 'denied',
+    'power-odin': 'sinkhole', 'power-heimdall': 'turnStart', 'power-frigg': 'tradeAccepted', 'power-njord': 'production'
+  };
+
+  /* Which source would play for a name: 'file:x', 'synth:x' or null. */
+  function resolve(name, depth = 0) {
+    if (buffers[name]) return 'file:' + name;
+    if (depth < 4 && ALIASES[name]) {
+      const via = resolve(ALIASES[name], depth + 1);
+      if (via) return via;
+    }
+    if (SOUNDS[name]) return 'synth:' + name;
+    return null;
+  }
+
+  /* Loads every sfx-*.mp3 the server lists (from /art.json) under its name. */
+  function loadFromList(audioList) {
+    const map = {};
+    (audioList || []).forEach(f => {
+      const m = /^sfx-(.+)\.(mp3|m4a|ogg|wav)$/i.exec(f);
+      if (m) map[m[1]] = '/audio/' + f;
+    });
+    return Object.keys(map).length ? loadFiles(map) : Promise.resolve({});
+  }
+
   // Vibration lives here so it still fires when a recorded file replaces the synth.
   const VIBE = {
     yourTurn: [80, 60, 120],
@@ -320,10 +361,11 @@ const SFX = (() => {
     if (!init()) return;
     if (document.hidden && opts.playWhenHidden !== true) return;
     if (ctx.state === 'suspended') ctx.resume();
-    if (buffers[name]) { playBuffer(name); return; }
-    const fn = SOUNDS[name];
-    if (!fn) { console.warn('SFX: unknown sound', name); return; }
-    try { fn(opts); } catch (e) { console.warn('SFX error', name, e); }
+    const src = resolve(name);
+    if (!src) return;
+    const [kind, key] = src.split(':');
+    if (kind === 'file') { playBuffer(key); return; }
+    try { SOUNDS[key](opts); } catch (e) { console.warn('SFX error', name, e); }
   }
 
   function setVolume(v) {
@@ -359,7 +401,11 @@ const SFX = (() => {
     isVibration: () => settings.vibration !== false,
     getVolume: () => settings.volume,
     isMuted: () => settings.muted,
-    list: Object.keys(SOUNDS)
+    list: Object.keys(SOUNDS),
+    aliases: ALIASES,
+    resolve,
+    loadFromList,
+    _setBuffer: (name, buf) => { buffers[name] = buf; }
   };
 })();
 

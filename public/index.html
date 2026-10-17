@@ -817,6 +817,7 @@ document.addEventListener('keydown', e => { if (e.key === 'm' || e.key === 'M') 
 /* ================= boot ================= */
 getJSON('/data/cards.json').then(c => { if (c) { cards = c; render(); } });
 getJSON('/art.json').then(a => {
+  if (window.SFX && window.SFX.loadFromList) window.SFX.loadFromList(a && a.audio);
   ART = RagnaBoard.artMap(a);
   Object.keys(R).forEach(r => { R[r] = I('res-' + r); });
   Object.keys(FACTION_ICON).forEach(k => { FACTION_ICON[k] = I('deity-' + k); });

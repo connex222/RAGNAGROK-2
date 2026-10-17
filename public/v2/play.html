@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dusk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a1226">
+<title>Ragnagrok</title>
+<style>
+:root {
+  --bg:#1a1226; --surface:#2a1d3b; --surface2:#3b2a52; --line:#4f3c69;
+  --ink:#f7f0e3; --muted:#c3b5d3; --primary:#ff8a4c; --on-primary:#1a1226;
+  --good:#8cc45e; --bad:#ff7a7a; --warn:#f5c451;
+  --turf:#4fa34a; --fertiliser:#e8b931; --sprinklers:#e5533d; --compost:#9b7bd4; --gnomeDust:#7ec8e3;
+  --radius:16px; --tap:56px;
+  color-scheme:dark;
+}
+html[data-theme="day"] {
+  --bg:#eef2e0; --surface:#ffffff; --surface2:#e3e9cf; --line:#b9c79c;
+  --ink:#142109; --muted:#46563a; --primary:#b8410b; --on-primary:#ffffff;
+  --good:#2f7a1f; --bad:#b3261e; --warn:#8a5a00;
+  color-scheme:light;
+}
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:400 17px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+body { padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); overscroll-behavior:none; }
+button { font:inherit; color:inherit; cursor:pointer; border:0; background:none; }
+button:disabled { cursor:not-allowed; }
+:focus-visible { outline:3px solid var(--primary); outline-offset:2px; }
+[hidden] { display:none !important; }
+.wrap { max-width:560px; margin:0 auto; }
+.gi { width:1.2em; height:1.2em; object-fit:contain; vertical-align:-0.25em; display:inline-block; }
+.gi-round { border-radius:50%; object-fit:cover; }
+
+/* join */
+#joinScreen { padding:28px 20px; }
+.title { font-weight:900; font-size:clamp(34px,10vw,48px); line-height:.95; color:var(--primary); margin:0; }
+.subtitle { color:var(--muted); margin:6px 0 24px; }
+label.f { display:block; font-weight:700; margin:16px 0 6px; }
+input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; border-radius:var(--radius); border:2px solid var(--line); background:var(--surface); color:var(--ink); }
+#joinCode { text-transform:uppercase; letter-spacing:.35em; font-weight:900; font-size:24px; }
+.avatars { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+.avatars button { aspect-ratio:1; font-size:28px; border-radius:14px; background:var(--surface); border:2px solid var(--line); }
+.avatars button[aria-pressed="true"] { border-color:var(--primary); background:var(--surface2); }
+
+/* buttons */
+.btn { display:flex; align-items:center; justify-content:center; gap:8px; min-height:var(--tap); padding:0 18px; border-radius:var(--radius); font-weight:800; background:var(--surface2); border:2px solid var(--line); width:100%; text-align:center; }
+.btn.primary { background:var(--primary); color:var(--on-primary); border-color:var(--primary); }
+.btn.good { background:var(--good); color:var(--on-primary); border-color:var(--good); }
+.btn:disabled { opacity:.42; }
+.btn.small { min-height:44px; font-size:15px; padding:0 12px; width:auto; }
+.btn[aria-pressed="true"] { border-color:var(--primary); color:var(--primary); }
+.row { display:flex; gap:10px; }
+.row > * { flex:1; }
+.stack > * + * { margin-top:10px; }
+
+/* frame */
+#app { height:100%; display:flex; flex-direction:column; }
+#top { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--surface); border-bottom:2px solid var(--line); }
+#top .av { font-size:30px; line-height:1; }
+#top .who { flex:1; min-width:0; }
+#top .who b { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#top .who small { color:var(--muted); font-size:14px; }
+.iconbtn { width:48px; height:48px; border-radius:14px; font-size:22px; background:var(--surface2); }
+#turnLine { padding:8px 14px; font-weight:800; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+#turnLine.mine { background:var(--primary); color:var(--on-primary); }
+#timer { font-variant-numeric:tabular-nums; min-width:3.2em; text-align:right; }
+#timer.low { text-decoration:underline; }
+#hand { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; padding:8px 10px; }
+.res { border-radius:12px; padding:6px 2px 4px; text-align:center; background:var(--surface); border-bottom:5px solid var(--c); }
+.res .i { display:block; line-height:1.1; }
+.res .i .gi { width:28px; height:28px; display:block; margin:0 auto; }
+.res .n { font-weight:900; font-size:20px; font-variant-numeric:tabular-nums; }
+.res.zero { opacity:.45; }
+#handNote { grid-column:1/-1; text-align:center; font-size:14px; color:var(--muted); }
+#handNote.warn { color:var(--warn); font-weight:700; }
+#content { flex:1; overflow-y:auto; padding:12px 14px 20px; }
+#actionBar { padding:10px 14px; background:var(--surface); border-top:2px solid var(--line); }
+#actionBar .wait { text-align:center; color:var(--muted); padding:14px 0; }
+#tabs { display:grid; grid-template-columns:repeat(3,1fr); background:var(--surface); border-top:1px solid var(--line); }
+#tabs button { min-height:60px; font-size:13px; font-weight:700; color:var(--muted); position:relative; }
+#tabs button span { display:block; font-size:22px; }
+#tabs button[aria-current="page"] { color:var(--primary); box-shadow:inset 0 3px 0 var(--primary); }
+.badge { position:absolute; top:6px; right:calc(50% - 30px); min-width:20px; height:20px; border-radius:10px; padding:0 5px; background:var(--bad); color:#fff; font-size:12px; line-height:20px; }
+
+/* blocks */
+.card { background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); padding:14px; }
+.card + .card, .card + .map, .map + .card, .slots + .card, .card + .slots { margin-top:12px; }
+.card h3 { margin:0 0 6px; font-size:18px; display:flex; align-items:center; gap:8px; }
+.card.prompt { border-color:var(--primary); }
+.card.tip { border-style:dashed; border-color:var(--warn); }
+.card.danger { border-color:var(--bad); }
+.muted { color:var(--muted); }
+.small { font-size:14px; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:999px; background:var(--surface2); font-weight:700; font-size:15px; }
+.chip.short { background:transparent; border:2px dashed var(--bad); }
+.chip.ok { background:var(--good); color:var(--on-primary); }
+.lvl { font-size:12px; font-weight:800; padding:2px 8px; border-radius:999px; background:var(--surface2); color:var(--muted); }
+.list { margin:0; padding:0; list-style:none; }
+.list li { padding:8px 0; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:flex-start; }
+.list li:last-child { border-bottom:0; }
+.list .ic { width:1.6em; text-align:center; flex:none; }
+.players { width:100%; border-collapse:collapse; }
+.players td { padding:8px 4px; border-bottom:1px solid var(--line); }
+.players td:last-child { text-align:right; font-weight:800; }
+.players tr.off { opacity:.5; }
+.big { font-size:44px; font-weight:900; letter-spacing:.2em; text-align:center; margin:4px 0; }
+.seg { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px; }
+.seg button { min-height:48px; border-radius:12px; background:var(--surface); border:2px solid var(--line); font-weight:800; }
+.seg button[aria-pressed="true"] { border-color:var(--primary); color:var(--primary); }
+
+/* plan slots */
+.slots { display:grid; gap:10px; }
+.slot { display:grid; grid-template-columns:44px 1fr auto; gap:4px 12px; align-items:center; text-align:left; width:100%; min-height:72px; padding:12px; border-radius:var(--radius); background:var(--surface); border:2px dashed var(--line); }
+.slot.filled { border-style:solid; border-color:var(--primary); }
+.slot.bad { border-color:var(--bad); }
+.slot .num { font-size:26px; text-align:center; grid-row:span 2; }
+.slot b { display:block; }
+.slot .sub { font-size:14px; color:var(--muted); }
+.slot .x { grid-row:span 2; }
+.pick { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+.pick button { min-height:64px; border-radius:12px; background:var(--surface2); border:2px solid var(--line); border-bottom:5px solid var(--c); }
+.pick button .gi { width:30px; height:30px; display:block; margin:0 auto; }
+.pick button small { display:block; font-size:13px; font-weight:800; }
+.pick button[aria-pressed="true"] { border-color:var(--primary); }
+.pick button:disabled, .stepper button:disabled { opacity:.3; }
+.opt { display:grid; grid-template-columns:44px 1fr auto; gap:2px 12px; align-items:center; width:100%; text-align:left; padding:12px; border-radius:var(--radius); background:var(--surface); border:2px solid var(--line); min-height:64px; }
+.opt + .opt { margin-top:8px; }
+.opt .ic { font-size:26px; grid-row:span 2; text-align:center; }
+.opt .ic .gi { width:36px; height:36px; }
+.opt .why { font-size:13px; color:var(--bad); grid-column:2/-1; }
+.opt .cost { grid-column:2/-1; }
+.opt:disabled { opacity:.5; }
+.opt[aria-pressed="true"] { border-color:var(--primary); }
+.trow { display:grid; grid-template-columns:3.2em 1fr 1fr; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
+.trow .i { text-align:center; line-height:1; }
+.trow .i .gi { width:28px; height:28px; display:block; margin:0 auto; }
+.trow .i small { display:block; font-size:11px; color:var(--muted); margin-top:2px; }
+.stepper { display:flex; align-items:center; gap:4px; }
+.stepper button { width:44px; height:44px; border-radius:12px; background:var(--surface2); font-size:22px; font-weight:900; }
+.stepper b { min-width:1.6em; text-align:center; font-size:18px; }
+
+/* map */
+.map { background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); overflow:auto; }
+.map svg { display:block; width:100%; height:auto; }
+.map.zoom svg { width:180%; }
+.map .hex { stroke:var(--bg); stroke-width:.05; }
+.map .hex.dim { fill:#000; fill-opacity:.6; }
+.map .hex.can { stroke:var(--primary); stroke-width:.16; cursor:pointer; }
+.map .hex.sel { stroke:var(--ink); stroke-width:.18; }
+.map .emo { text-anchor:middle; dominant-baseline:central; }
+.map .threat { stroke:#ff6b6b; stroke-width:.08; stroke-dasharray:.12 .08; }
+@media (prefers-reduced-motion: no-preference) { .map .hex.can { animation:pulse 1.4s ease-in-out infinite; } @keyframes pulse { 50% { stroke-opacity:.35; } } }
+.legend { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; color:var(--muted); margin-top:8px; }
+
+/* sheets & overlays */
+#sheetWrap { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; z-index:20; }
+#sheet { width:100%; max-width:560px; margin:0 auto; max-height:92%; overflow-y:auto; background:var(--bg); border-radius:22px 22px 0 0; border-top:3px solid var(--primary); padding:16px 14px calc(16px + env(safe-area-inset-bottom,0px)); }
+#sheet h2 { margin:0 0 4px; font-size:22px; display:flex; gap:8px; align-items:center; }
+#sheet .head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; }
+#sheet .foot { position:sticky; bottom:-16px; background:var(--bg); padding-top:12px; }
+#toasts { position:fixed; left:0; right:0; bottom:calc(150px + env(safe-area-inset-bottom,0px)); display:flex; flex-direction:column; align-items:center; gap:8px; z-index:30; pointer-events:none; padding:0 14px; }
+.toast { background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:14px; font-weight:700; max-width:100%; box-shadow:0 6px 20px rgba(0,0,0,.35); }
+.toast.good { background:var(--good); color:var(--on-primary); }
+.toast.bad { background:var(--bad); color:#1a1226; }
+#flash { position:fixed; inset:0; display:grid; place-items:center; background:var(--primary); color:var(--on-primary); font-size:38px; font-weight:900; z-index:40; text-align:center; padding:20px; }
+#overlay { position:fixed; inset:0; display:grid; place-items:center; background:rgba(26,18,38,.92); z-index:35; padding:24px; text-align:center; }
+#overlay .card { max-width:420px; width:100%; }
+#conn { position:fixed; top:env(safe-area-inset-top,0px); left:0; right:0; background:var(--warn); color:#1a1226; text-align:center; font-weight:800; padding:6px; z-index:50; }
+.rules ul, .rules ol { padding-left:1.2em; margin:8px 0; }
+.rules li { margin:6px 0; }
+.rules ul.costs { list-style:none; padding:0; }
+.rules ul.costs li { display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
+.rules ul.costs li > span:last-child { margin-left:auto; white-space:nowrap; padding-left:8px; }
+.rules h2 .gi { width:48px; height:48px; }
+.dots { display:flex; gap:6px; justify-content:center; margin:14px 0 4px; }
+.dots i { width:9px; height:9px; border-radius:50%; background:var(--line); }
+.dots i.on { background:var(--primary); }
+.check { display:flex; align-items:center; gap:10px; min-height:48px; font-weight:700; }
+.check input { width:24px; height:24px; accent-color:var(--primary); }
+.portrait { width:52px; height:52px; border-radius:12px; object-fit:cover; }
+.god { display:grid; grid-template-columns:56px 1fr; gap:4px 12px; }
+.god .ic { grid-row:span 3; font-size:40px; }
+.god.taken { opacity:.45; }
+</style>
+</head>
+<body>
+
+<section id="joinScreen" class="wrap" hidden>
+  <div id="joinLogo"><p class="title">Ragnagrok</p></div>
+  <p class="subtitle">The Last Garden Show</p>
+  <label class="f" for="joinCode">Room code</label>
+  <input class="f" id="joinCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false">
+  <label class="f" for="joinName">Your name</label>
+  <input class="f" id="joinName" maxlength="16" autocomplete="nickname">
+  <label class="f">Pick a face</label>
+  <div class="avatars" id="avatarGrid"></div>
+  <div style="margin-top:22px"><button class="btn primary" data-act="join">Join the street</button></div>
+  <p class="muted small" id="joinMsg" role="alert" style="min-height:1.4em"></p>
+</section>
+
+<div id="app" class="wrap" hidden>
+  <header id="top"></header>
+  <div id="turnLine"><span id="turnText"></span><span id="timer"></span></div>
+  <div id="hand"></div>
+  <main id="content"></main>
+  <div id="actionBar"></div>
+  <nav id="tabs" aria-label="Sections"></nav>
+</div>
+
+<div id="sheetWrap" hidden><div id="sheet" role="dialog" aria-modal="true"></div></div>
+<div id="overlay" hidden></div>
+<div id="flash" hidden></div>
+<div id="toasts" aria-live="polite"></div>
+<div id="conn" hidden>Reconnecting…</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/sfx.js"></script>
+<script src="/board.js"></script>
+<script src="/v2/rules.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ================= constants ================= */
+const SUP = ['turf', 'fertiliser', 'sprinklers', 'compost', 'gnomeDust'];
+const SUP_NAME = { turf: 'Turf', fertiliser: 'Fertiliser', sprinklers: 'Sprinklers', compost: 'Compost', gnomeDust: 'Gnome Dust' };
+const SUP_EMOJI = { turf: '🌳', fertiliser: '🌾', sprinklers: '🔥', compost: '🍄', gnomeDust: '✨' };
+const SUP_ART = k => 'res-' + (k === 'fertiliser' ? 'fertilizer' : k);
+const ORDER = ['shelter', 'meddle', 'tend', 'claim', 'cultivate', 'carBoot'];
+const ACT = {
+  shelter: { icon: '🛡️', name: 'Shelter', what: 'Protect one of your plots from this round\'s disasters and any meddling.', target: 'one of your plots' },
+  meddle: { icon: '😈', name: 'Meddle', what: 'Trample a neighbour\'s plot (−1 health) or pilfer one of its supply.', target: 'a rival\'s plot next to yours' },
+  tend: { icon: '🌱', name: 'Tend', what: 'Clear a problem from one of your plots; if it has none, +1 health.', target: 'one of your plots' },
+  claim: { icon: '🚩', name: 'Claim', what: 'Take an empty plot next to your garden.', target: 'an empty plot next to your garden' },
+  cultivate: { icon: '🌷', name: 'Cultivate', what: 'Build a garden feature on one of your plots.', target: 'one of your plots without a feature' },
+  carBoot: { icon: '🛒', name: 'Car-Boot Sale', what: 'Take any 2 supplies. Happens last, so it can\'t pay for this round\'s other actions.', target: null }
+};
+const GOD_ICON = { thor: '⚡', loki: '🎭', freya: '🌸', hel: '☠️', odin: '👁️', heimdall: '🔭', frigg: '📋', njord: '⛲' };
+const HEALTH = ['Ruined', 'Withered', 'Healthy', 'Lush'];
+const AVATARS = ['🦩', '🌻', '🔨', '💀', '🐐', '🦔', '🍄', '🐸', '🦉', '🐝', '🌵', '👑'];
+const KEY = 'ragnagrok.player';
+const PREFS = 'ragnagrok.prefs';
+const RULES_KEY = 'ragnagrok.rules2Hidden';
+
+/* ================= helpers ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const empty = () => ({ turf: 0, fertiliser: 0, sprinklers: 0, compost: 0, gnomeDust: 0 });
+const total = h => SUP.reduce((n, r) => n + (h[r] || 0), 0);
+const hasAll = (h, c) => SUP.every(r => (h[r] || 0) >= ((c && c[r]) || 0));
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+};
+const sfx = name => { try { if (window.SFX) window.SFX.play(name); } catch (e) { /* optional */ } };
+function getJSON(url) {
+  return new Promise(resolve => {
+    try {
+      const x = new XMLHttpRequest();
+      x.open('GET', url);
+      x.onload = () => { try { resolve(JSON.parse(x.responseText)); } catch (e) { resolve(null); } };
+      x.onerror = () => resolve(null);
+      x.send();
+    } catch (e) { resolve(null); }
+  });
+}
+
+/* ================= state ================= */
+let C = null;
+let ART = {};
+let view = null;
+let topo = null;
+let clockOffset = 0;
+let saved = store.get(KEY);
+const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(PREFS) || {});
+const params = new URLSearchParams(location.search);
+const ui = { tab: 'plan', sheet: null, tradeSeg: 'inbox', trade: { give: empty(), want: empty(), to: null }, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null };
+const socket = io({ transports: ['websocket', 'polling'] });
+
+const I = (key, cls) => RagnaBoard.icon(ART, key, cls);
+const sup = k => (ART[SUP_ART(k)] ? I(SUP_ART(k)) : SUP_EMOJI[k]);
+const chips = b => SUP.filter(r => b && b[r] > 0).map(r => `<span class="chip">${b[r]} ${sup(r)}</span>`).join('') || '<span class="chip">Free</span>';
+const godIcon = g => (ART['deity-' + g] ? I('deity-' + g) : GOD_ICON[g] || '');
+const featureIcon = f => (ART['feature-' + f] ? I('feature-' + f) : RagnaBoard.FEATURE_ICON[f] || '🌷');
+
+/* ================= derived ================= */
+const me = () => (view && view.me ? view.me : null);
+const mySeat = () => (me() ? me().seat : -1);
+const pl = seat => (view && view.players[seat]) || { name: '?', avatar: '❔', colour: '#999' };
+const nm = seat => esc(pl(seat).name);
+const myGod = () => pl(mySeat()).god;
+const plots = () => (view && view.board ? view.board.plots : []);
+const plotById = id => plots().find(p => p.id === id);
+const myPlots = () => plots().filter(p => p.owner === mySeat());
+const step = () => (view ? view.phase.step : null);
+const planning = () => view && view.phase.stage === 'playing' && step() === 'plan';
+const locked = () => !!pl(mySeat()).locked;
+const threatsNow = () => new Set(((view && view.forecast.now) || []).filter(d => !d.good).flatMap(d => d.plots));
+const neighbours = id => { const h = topo && topo.hexes.find(x => x.id === id); return h ? h.neighbors : []; };
+const remaining = d => (d ? Math.max(0, Math.ceil((d - (Date.now() + clockOffset)) / 1000)) : null);
+const plotName = p => `${C ? C.terrainNames[p.terrain] : p.terrain} (${HEALTH[p.health]})`;
+
+function draftSlots() {
+  const n = me() ? me().slots : 2;
+  const plan = (me() && me().plan) || [];
+  return [...Array(n)].map((x, i) => plan[i] || null);
+}
+
+/* Cost of one action, as the server will charge it. */
+function costOf(slot) {
+  if (!slot || !C) return {};
+  const god = myGod();
+  switch (slot.kind) {
+    case 'shelter': return C.actions.shelter.cost;
+    case 'meddle': return myPlots().some(p => p.feature === 'gnomeBattalion') ? {} : C.actions.meddle.cost;
+    case 'tend': {
+      const near = [slot.target, ...neighbours(slot.target)].map(plotById);
+      return near.some(p => p && p.owner === mySeat() && p.feature === 'beeHotel') ? {} : C.actions.tend.cost;
+    }
+    case 'claim': return god === 'thor' ? { turf: 1 } : C.actions.claim.cost;
+    case 'cultivate': return slot.feature && C.features[slot.feature] ? C.features[slot.feature].cost : {};
+    default: return {};
+  }
+}
+
+/* What your hand looks like after the plan resolves, in the server's order. */
+function projection(slots, exceptIdx) {
+  const hand = Object.assign(empty(), me() ? me().hand : {});
+  const problems = [];
+  ORDER.forEach(kind => slots.forEach((s, i) => {
+    if (!s || s.kind !== kind || i === exceptIdx) return;
+    if (kind === 'carBoot') { (s.supplies || []).forEach(r => { hand[r] += 1; }); return; }
+    const c = costOf(s);
+    if (!hasAll(hand, c)) { problems.push(i); return; }
+    SUP.forEach(r => { hand[r] -= c[r] || 0; });
+  }));
+  return { hand, problems };
+}
+
+function legalTargets(kind, idx, slots) {
+  const m = me();
+  if (!m) return [];
+  const L = m.legal;
+  const others = slots.filter((x, i) => x && i !== idx);
+  const claims = others.filter(x => x.kind === 'claim').map(x => x.target);
+  switch (kind) {
+    case 'shelter': return L.shelter;
+    case 'tend': return L.tend;
+    case 'meddle': return L.meddle;
+    case 'claim': {
+      const earlier = slots.slice(0, idx).filter(x => x && x.kind === 'claim').map(x => x.target);
+      const extra = earlier.flatMap(neighbours).filter(id => { const p = plotById(id); return p && p.owner === null && !claims.includes(id); });
+      return [...new Set([...L.claim.filter(id => !claims.includes(id)), ...extra])];
+    }
+    case 'cultivate': {
+      const taken = others.filter(x => x.kind === 'cultivate').map(x => x.target);
+      return [...L.cultivate, ...claims.filter(id => { const p = plotById(id); return p && !p.feature && p.health >= 1; })].filter(id => !taken.includes(id));
+    }
+    default: return [];
+  }
+}
+
+function describeSlot(s) {
+  if (!s) return { title: 'Choose an action', sub: 'Tap to plan' };
+  const a = ACT[s.kind];
+  const p = s.target ? plotById(s.target) : null;
+  let sub = '';
+  if (s.kind === 'carBoot') sub = 'Take ' + (s.supplies || []).map(sup).join(' ');
+  else if (s.kind === 'cultivate') sub = `${C.features[s.feature].name} on ${p ? plotName(p) : 'a plot'}`;
+  else if (s.kind === 'meddle') sub = `${s.mode === 'pilfer' ? 'Pilfer from' : 'Trample'} ${p ? nm(p.owner) + "'s " + plotName(p) : 'a plot'}`;
+  else sub = p ? plotName(p) : '';
+  return { title: `${a.icon} ${a.name}`, sub };
+}
+
+/* ================= socket ================= */
+async function emit(event, data) {
+  try { return await socket.timeout(6000).emitWithAck(event, data || {}); }
+  catch (e) { return { ok: false, error: 'No reply from the server. Check your connection.' }; }
+}
+async function act(action) {
+  const r = await emit('action', action);
+  if (!r.ok) { toast(esc(r.error), 'bad'); sfx('denied'); }
+  return r;
+}
+async function host(cmd, data) {
+  const r = await emit('host:' + cmd, data);
+  if (!r.ok) toast(esc(r.error), 'bad');
+  return r;
+}
+function forget(msg) { saved = null; view = null; topo = null; ui.sheet = null; store.del(KEY); ui.joinMsg = msg || ''; render(); }
+async function rejoin() {
+  const wanted = (params.get('room') || '').toUpperCase();
+  if (!saved || (wanted && wanted !== saved.code)) { render(); return; }
+  const r = await emit('player:rejoin', saved);
+  if (!r.ok) forget(r.error); else { maybeShowRules(); render(); }
+}
+socket.on('connect', () => { $('#conn').hidden = true; rejoin(); });
+socket.on('disconnect', () => { $('#conn').hidden = false; });
+socket.on('kicked', () => forget('The host removed you from the game.'));
+socket.on('roomClosed', () => forget('The host closed the room.'));
+socket.on('state', v => {
+  if (view && view.meta && v.meta && view.meta.code === v.meta.code && v.stateVersion < view.stateVersion) return;
+  if (v.topology) topo = v.topology;
+  if (v.meta && v.meta.serverNow) clockOffset = v.meta.serverNow - Date.now();
+  const before = view ? `${view.round}:${view.phase.step}` : '';
+  view = v;
+  const now = `${v.round}:${v.phase.step}`;
+  if (before !== now) onStepChange();
+  syncSheets();
+  maybeShowRules();
+  render();
+});
+socket.on('events', list => { list.forEach(handleEvent); render(); });
+
+function onStepChange() {
+  if (step() === 'plan') { ui.tab = 'plan'; }
+  if (ui.sheet && ui.sheet.type === 'slot' && !planning()) ui.sheet = null;
+}
+
+function handleEvent(e) {
+  const seat = mySeat();
+  switch (e.type) {
+    case 'omens': if (e.emergency) sfx('emergency'); break;
+    case 'planStart': sfx('planStart'); flash(`Round ${view.round}: plan your moves`); break;
+    case 'resolve': toast('Watch the TV!'); break;
+    case 'harvest': {
+      const g = e.gains && e.gains[seat];
+      if (g && total(g)) toast('Harvest: ' + SUP.filter(r => g[r]).map(r => `+${g[r]} ${sup(r)}`).join('  '), 'good');
+      break;
+    }
+    case 'emergency': toast(e.result === 'success' ? 'The street pulled together!' : 'The street failed the emergency', e.result === 'success' ? 'good' : 'bad'); break;
+    case 'show': sfx('offerIn'); toast('The Village Garden Show has been judged'); break;
+    case 'tradeOffer': if (e.from !== seat) { sfx('offerIn'); if (ui.tab !== 'trade') ui.unseen += 1; } break;
+    case 'tradeAccepted': if (e.from === seat) toast(`${nm(e.with)} accepted your offer`, 'good'); else if (e.with === seat) toast('Deal done', 'good'); break;
+    case 'tradeDeclined': sfx('tradeDeclined'); toast(`${nm(e.by)} declined your offer`); break;
+    case 'odinShift': toast('Odin has nudged a disaster along the street'); break;
+    case 'win': sfx('yourTurn'); break;
+    default: break;
+  }
+}
+function toast(html, kind) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind ? ' ' + kind : '');
+  el.innerHTML = html;
+  $('#toasts').appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+  while ($('#toasts').children.length > 3) $('#toasts').firstChild.remove();
+}
+function flash(text) { const f = $('#flash'); f.textContent = text; f.hidden = false; setTimeout(() => { f.hidden = true; }, 1300); }
+
+let rulesOffered = false;
+function maybeShowRules() {
+  if (rulesOffered || !saved || !view || !view.me) return;
+  if (!['lobby', 'draft'].includes(view.phase.stage)) return;
+  rulesOffered = true;
+  if (store.get(RULES_KEY) || ui.sheet) return;
+  ui.sheet = { type: 'rules', page: 0 };
+}
+function syncSheets() {
+  if (ui.sheet && ui.sheet.type === 'slot' && (!planning() || locked())) ui.sheet = null;
+}
+function openSheet(s) { ui.sheet = s; render(); }
+
+/* ================= render: frame ================= */
+function render() {
+  document.documentElement.dataset.theme = prefs.day ? 'day' : 'dusk';
+  const joined = !!(saved && view && view.me && C);
+  $('#joinScreen').hidden = joined;
+  $('#app').hidden = !joined;
+  if (!joined) { renderJoin(); renderSheet(); renderOverlay(); return; }
+  const scroll = $('#content').scrollTop;
+  const stage = view.phase.stage;
+  renderTop();
+  renderHand();
+  const playing = stage === 'playing';
+  $('#tabs').hidden = !playing;
+  $('#actionBar').hidden = !(playing && ui.tab === 'plan');
+  if (stage === 'lobby') $('#content').innerHTML = renderLobby();
+  else if (stage === 'draft') $('#content').innerHTML = renderDraft();
+  else if (stage === 'gameOver') $('#content').innerHTML = renderGameOver();
+  else {
+    if (ui.tab === 'trade') ui.unseen = 0;
+    $('#content').innerHTML = ({ plan: renderPlanTab, garden: renderGarden, trade: renderTrade })[ui.tab]();
+    renderActionBar();
+    renderTabs();
+  }
+  $('#content').scrollTop = scroll;
+  renderSheet();
+  renderOverlay();
+  tickTimer();
+}
+
+function renderJoin() {
+  const code = $('#joinCode');
+  if (!code.value && params.get('room')) code.value = params.get('room').toUpperCase();
+  const name = $('#joinName');
+  if (!name.value) name.value = store.get('ragnagrok.name') || '';
+  $('#avatarGrid').innerHTML = AVATARS.map(a => `<button data-act="avatar" data-av="${a}" aria-pressed="${a === ui.avatar}" aria-label="Avatar ${a}">${a}</button>`).join('');
+  $('#joinMsg').textContent = ui.joinMsg;
+  const logo = $('#joinLogo');
+  if (ART.logo && !logo.dataset.done) { logo.innerHTML = `<img src="${ART.logo}" alt="Ragnagrok" style="max-width:100%;max-height:160px">`; logo.dataset.done = '1'; }
+}
+
+function renderTop() {
+  const p = pl(mySeat());
+  const god = p.god && C ? C.gods[p.god] : null;
+  const score = view.phase.stage === 'lobby' ? `Room ${esc(view.meta.code)}` : `${p.score} Prestige`;
+  $('#top').innerHTML = `<span class="av" aria-hidden="true">${esc(p.avatar)}</span>
+    <div class="who"><b>${esc(p.name)}</b><small>${god ? godIcon(p.god) + ' ' + esc(god.name) + ' · ' : ''}${score}</small></div>
+    <button class="iconbtn" data-act="rules" aria-label="How to play">📖</button>
+    <button class="iconbtn" data-act="menu" aria-label="Menu">⚙️</button>`;
+  const mine = view.phase.stage === 'draft' ? view.phase.draftQueue[0] === mySeat() : planning() && !locked();
+  $('#turnLine').className = mine ? 'mine' : '';
+  $('#turnText').innerHTML = turnText();
+}
+
+function turnText() {
+  if (view.meta.paused) return '⏸ Paused';
+  const ph = view.phase;
+  const lenName = C && C.lengths[view.config.length] ? C.lengths[view.config.length].name : '';
+  if (ph.stage === 'lobby') return `Waiting for the host · ${lenName} game`;
+  if (ph.stage === 'draft') return ph.draftQueue[0] === mySeat() ? '▶ Pick your god' : `${nm(ph.draftQueue[0])} is choosing a god`;
+  if (ph.stage === 'gameOver') return '🦩 The show is over';
+  const rounds = C ? C.lengths[view.config.length].rounds : '?';
+  const r = `Round ${view.round}/${rounds}`;
+  switch (ph.step) {
+    case 'omens': return `${r} · Omens: look at the TV`;
+    case 'plan': {
+      if (locked()) { const waiting = view.players.filter(p => !p.locked && p.connected).length; return `${r} · Locked in ✔ · waiting for ${waiting}`; }
+      return `▶ ${r} · Plan your ${me().slots} actions`;
+    }
+    case 'resolve': return `${r} · Watch the TV`;
+    case 'disasters': return `${r} · Disasters strike!`;
+    case 'harvest': return `${r} · Harvest`;
+    case 'show': return `${r} · The Village Garden Show`;
+    default: return r;
+  }
+}
+
+function tickTimer() {
+  const el = $('#timer');
+  if (!el || !view) return;
+  const left = view.meta.paused ? null : remaining(view.phase.deadline);
+  if (left === null || ['lobby', 'gameOver'].includes(view.phase.stage)) { el.textContent = ''; return; }
+  el.textContent = left >= 60 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : `${left}s`;
+  el.className = left <= 10 ? 'low' : '';
+}
+setInterval(tickTimer, 250);
+
+function renderHand() {
+  const show = view.phase.stage === 'playing';
+  $('#hand').hidden = !show;
+  if (!show) return;
+  const h = me().hand;
+  const cap = C ? C.shedCapacity : 10;
+  const n = total(h);
+  $('#hand').innerHTML = SUP.map(r => `<div class="res${h[r] ? '' : ' zero'}" style="--c:var(--${r})" aria-label="${SUP_NAME[r]}: ${h[r]}"><span class="i">${sup(r)}</span><span class="n">${h[r]}</span></div>`).join('') +
+    `<div id="handNote" class="${n > cap ? 'warn' : ''}">${n} supplies${n > cap ? ` · over your shed's ${cap}` : ''}</div>`;
+}
+
+function renderTabs() {
+  const tabs = [['plan', '📝', 'Plan'], ['garden', '🏡', 'Garden'], ['trade', '🤝', 'Trade']];
+  $('#tabs').innerHTML = tabs.map(([id, icon, label]) => {
+    const badge = id === 'trade' && ui.unseen ? `<i class="badge">${ui.unseen}</i>` : '';
+    return `<button data-act="tab" data-tab="${id}"${ui.tab === id ? ' aria-current="page"' : ''}><span aria-hidden="true">${icon}</span>${label}${badge}</button>`;
+  }).join('');
+}
+
+function renderActionBar() {
+  const bar = $('#actionBar');
+  if (view.meta.paused) { bar.innerHTML = '<div class="wait">Paused by the host</div>'; return; }
+  if (!planning()) { bar.innerHTML = `<div class="wait">${turnText()}</div>`; return; }
+  const slots = draftSlots();
+  const filled = slots.filter(Boolean).length;
+  if (locked()) {
+    bar.innerHTML = '<button class="btn" data-act="unlock">✏️ Change my plan</button>';
+    return;
+  }
+  bar.innerHTML = `<button class="btn primary" data-act="lock"${filled === slots.length ? '' : ' disabled'}>${filled === slots.length ? '🔒 Lock in my plan' : `Choose ${slots.length - filled} more action${slots.length - filled > 1 ? 's' : ''}`}</button>`;
+}
+
+/* ================= render: lobby & draft ================= */
+function renderLobby() {
+  const isHost = view.meta.isHost;
+  const len = view.config.length;
+  const rows = view.players.map(p => `<tr class="${p.connected ? '' : 'off'}"><td>${esc(p.avatar)} ${esc(p.name)}${p.seat === 0 ? ' <span class="muted small">host</span>' : ''}</td>
+    <td>${isHost && p.seat !== 0 ? `<button class="btn small" data-act="kick" data-seat="${p.seat}">Remove</button>` : ''}</td></tr>`).join('');
+  const lengths = C ? Object.entries(C.lengths) : [];
+  const timeGuess = { standard: '15–20 min', long: '20–25 min', epic: 'about an hour' };
+  const options = isHost
+    ? `<div class="card"><h3>Game length</h3><div class="stack">${lengths.map(([k, d]) => `<button class="btn" data-act="length" data-len="${k}" aria-pressed="${k === len}">${esc(d.name)}${k === C.defaultLength ? ' (recommended)' : ''} · ${d.rounds} rounds · ${timeGuess[k] || ''}</button>`).join('')}</div>
+       <h3 style="margin-top:14px">Planning time</h3><div class="row">${[null, 45, 90, 120].map(t => `<button class="btn small" data-act="planTime" data-t="${t === null ? 'auto' : t}" aria-pressed="${(view.config.planSec || null) === t}">${t === null ? 'Auto' : t + 's'}</button>`).join('')}</div></div>`
+    : `<div class="card"><h3>${C && C.lengths[len] ? esc(C.lengths[len].name) : ''} game</h3><p class="muted small">${C && C.lengths[len] ? C.lengths[len].rounds + ' rounds · ' + (timeGuess[len] || '') : ''}</p></div>`;
+  return `<div class="card"><div class="muted small">Room code</div><div class="big">${esc(view.meta.code)}</div>
+      <div class="muted small" style="text-align:center">${view.players.length} of ${view.config.maxPlayers} gardeners</div></div>
+    <div class="card"><table class="players">${rows}</table></div>
+    ${options}
+    <div class="stack" style="margin-top:14px">
+      ${isHost ? `<button class="btn primary" data-act="start"${view.players.length < 2 ? ' disabled' : ''}>Start the game</button>` : '<p class="muted" style="text-align:center">The host will start the game</p>'}
+      <button class="btn" data-act="leave">Leave</button>
+    </div>`;
+}
+
+function renderDraft() {
+  const ph = view.phase;
+  const mine = ph.draftQueue[0] === mySeat();
+  const list = C ? Object.entries(C.gods).map(([id, g]) => {
+    const taker = view.players.find(x => x.god === id);
+    const pic = ART['deity-' + id] ? `<img class="portrait" src="${ART['deity-' + id]}" alt="">` : GOD_ICON[id];
+    return `<div class="card god${taker ? ' taken' : ''}"><span class="ic" aria-hidden="true">${pic}</span>
+      <div><b>${esc(g.name)}</b> <span class="lvl">${esc(g.level)}</span><div class="muted small">${esc(g.title)}</div></div>
+      <div class="small"><b>${esc(g.power)}:</b> ${esc(g.rule)}</div>
+      <div>${taker ? `<span class="muted small">Taken by ${esc(taker.name)}</span>` : `<button class="btn small" data-act="pickGod" data-god="${id}"${mine ? '' : ' disabled'}>Pick ${esc(g.name)}</button>`}</div></div>`;
+  }).join('') : '';
+  return `<div class="card prompt"><h3>${mine ? 'Your pick' : 'Waiting for ' + nm(ph.draftQueue[0])}</h3><p class="muted small">Each god bends one rule. Beginner gods are easiest to play.</p></div>${list}`;
+}
+
+/* ================= render: plan tab ================= */
+function forecastLines(list) {
+  const mine = new Set(myPlots().map(p => p.id));
+  return list.map((d, index) => {
+    const hits = d.plots.filter(id => mine.has(id)).length;
+    const eff = d.good ? 'good news' : [d.health ? `${d.health > 0 ? '+' : ''}${d.health} health` : '', d.condition ? C.conditions[d.condition].name : ''].filter(Boolean).join(', ');
+    const shift = myGod() === 'odin' && me().odinCanShift && list === view.forecast.now && !d.good && d.target.kind === 'sector' && planning()
+      ? `<div class="row" style="margin-top:6px"><button class="btn small" data-act="odin" data-i="${index}" data-dir="-1">👁️ Nudge ◀</button><button class="btn small" data-act="odin" data-i="${index}" data-dir="1">Nudge ▶</button></div>` : '';
+    return `<li><span class="ic">${d.good ? '🌟' : '⚠️'}</span><div><b>${esc(d.name)}</b> <span class="muted small">${esc(eff)}</span>
+      <div class="small ${hits && !d.good ? '' : 'muted'}">${d.good ? `Helps ${d.plots.length} plots` : hits ? `<b>Hits ${hits} of your plots</b>` : 'Misses your garden'}</div>${shift}</div></li>`;
+  }).join('') || '<li class="muted small">Nothing forecast</li>';
+}
+
+function renderOmens(compact) {
+  const show = view.shows.find(s => s.categories && !s.results);
+  const cats = show ? show.categories.map(k => `<li><span class="ic">🏆</span><div><b>${esc(C.categories[k].name)}</b><div class="small muted">${esc(C.categories[k].describe)}</div></div></li>`).join('') : '';
+  const odin = me().odinPreview ? `<div class="small muted" style="margin-top:6px">👁️ Odin foresees: ${me().odinPreview.map(d => esc(d.name)).join(', ') || 'nothing'}</div>` : '';
+  return `<div class="card"><h3>⚠️ This round's disasters</h3><ul class="list">${forecastLines(view.forecast.now)}</ul>
+    ${compact ? '' : `<h3 style="margin-top:10px">Next round</h3><ul class="list">${forecastLines(view.forecast.next)}</ul>`}${odin}</div>
+    ${show ? `<div class="card"><h3>🏆 Show after round ${show.after}</h3><ul class="list">${cats}</ul></div>` : ''}`;
+}
+
+function renderTips(slots) {
+  if (!prefs.tips || !planning() || locked() || view.round > 3) return '';
+  const threatened = myPlots().filter(p => threatsNow().has(p.id));
+  const sheltered = slots.filter(s => s && s.kind === 'shelter').length;
+  let tip = '';
+  if (!slots.some(Boolean)) tip = 'Tap an action below to start planning. Nothing happens until everyone locks in.';
+  else if (threatened.length && !sheltered) tip = `${threatened.length} of your plots will be hit this round (red dashed outline on the Garden tab). <b>Shelter</b> protects one for 1 ${sup('turf')}.`;
+  else if (slots.every(Boolean)) tip = 'All set? Tap <b>Lock in</b>. You can still change your mind until the timer ends.';
+  else tip = 'Check the show categories: building matching features scores big at the next show.';
+  return `<div class="card tip small">💡 ${tip} <button class="btn small" data-act="hideTips" style="margin-top:8px">Hide tips</button></div>`;
+}
+
+function renderPlanTab() {
+  const st = step();
+  const god = myGod() && C ? C.gods[myGod()] : null;
+  let html = '';
+  if (st === 'plan') {
+    const slots = draftSlots();
+    const proj = projection(slots);
+    html += renderTips(slots);
+    if (view.emergency) html += renderPledge(proj.hand);
+    if (me().compostOwed) html += renderCompost();
+    html += `<div class="slots">${slots.map((s, i) => {
+      const d = describeSlot(s);
+      const bad = proj.problems.includes(i);
+      return `<button class="slot${s ? ' filled' : ''}${bad ? ' bad' : ''}" data-act="editSlot" data-i="${i}"${locked() ? ' disabled' : ''}>
+        <span class="num">${s ? ACT[s.kind].icon : i + 1}</span><span><b>${s ? esc(ACT[s.kind].name) : 'Action ' + (i + 1)}</b></span>
+        ${s && !locked() ? `<span class="x" role="button" data-act="clearSlot" data-i="${i}" aria-label="Clear action ${i + 1}">✕</span>` : '<span></span>'}
+        <span class="sub">${esc(d.sub)}${s && s.kind !== 'carBoot' && total(costOf(s)) ? ' · costs ' + SUP.filter(r => costOf(s)[r]).map(r => costOf(s)[r] + ' ' + sup(r)).join(' ') : ''}${bad ? '<br><b style="color:var(--bad)">Can\'t afford this when it happens: it will fizzle</b>' : ''}</span></button>`;
+    }).join('')}</div>`;
+    html += `<div class="card small"><b>After your plan</b> <span class="muted">(Car-Boot supplies arrive last)</span><div class="chips" style="margin-top:6px">${SUP.map(r => `<span class="chip${proj.hand[r] < 0 ? ' short' : ''}">${proj.hand[r]} ${sup(r)}</span>`).join('')}</div></div>`;
+    if (god) html += `<div class="card small">${godIcon(myGod())} <b>${esc(god.power)}:</b> ${esc(god.rule)}</div>`;
+    html += renderOmens(false);
+    html += renderLocks();
+    return html;
+  }
+  if (st === 'omens') return `<div class="card prompt"><h3>🔮 Omens</h3><p class="small">Read what's coming. Planning starts in a moment.</p></div>${renderOmens(false)}`;
+  html += renderResults();
+  html += renderOmens(true);
+  return html;
+}
+
+function renderLocks() {
+  return `<div class="card small"><b>Who's ready</b><div class="chips" style="margin-top:6px">${view.players.map(p => `<span class="chip${p.locked ? ' ok' : ''}">${esc(p.avatar)} ${esc(p.name)} ${p.locked ? '✔' : p.connected ? '…' : 'offline'}</span>`).join('')}</div></div>`;
+}
+
+function renderPledge(after) {
+  const em = view.emergency;
+  const mine = me().pledge || empty();
+  const share = Math.ceil(em.target / view.players.length);
+  const n = total(mine);
+  const frigg = myGod() === 'frigg';
+  const fail = em.fail.kind === 'loseSupplies' ? `everyone loses ${em.fail.count} supplies` : `everyone's ${em.fail.count || ''} healthiest plots take damage`.replace('  ', ' ');
+  return `<div class="card danger"><h3>🚨 ${esc(em.name)}</h3>
+    <p class="small">The street needs <b>${em.target}</b> supplies in total, or ${esc(fail)}. A fair share is ${share}. Pledges are secret until the TV reveals them; helpers earn Goodwill.${frigg ? ' <b>Frigg: yours count double.</b>' : ''}</p>
+    ${SUP.map(r => `<div class="trow"><span class="i">${sup(r)}<small>${after[r]} spare</small></span>
+      <div class="stepper"><button data-act="pledgeStep" data-res="${r}" data-d="-1"${mine[r] ? '' : ' disabled'} aria-label="Less ${SUP_NAME[r]}">−</button><b>${mine[r]}</b>
+      <button data-act="pledgeStep" data-res="${r}" data-d="1"${!locked() && after[r] - mine[r] > 0 ? '' : ' disabled'} aria-label="More ${SUP_NAME[r]}">+</button></div><span></span></div>`).join('')}
+    <p class="small" style="margin-bottom:0">Your pledge: <b>${n}</b>${frigg ? ` (counts as ${n * 2})` : ''}</p></div>`;
+}
+
+function renderCompost() {
+  const owed = me().compostOwed;
+  const sel = ui.compost || empty();
+  const n = total(sel);
+  const h = me().hand;
+  return `<div class="card danger"><h3>🗑️ Your shed is full</h3><p class="small">Compost <b>${owed}</b> supplies. If you don't choose, your most-held ones go when planning ends.</p>
+    <div class="pick">${SUP.map(r => `<button data-act="compostAdd" data-res="${r}" style="--c:var(--${r})"${h[r] - sel[r] > 0 && n < owed ? '' : ' disabled'}>${sup(r)}<small>${sel[r]}</small></button>`).join('')}</div>
+    <div class="row" style="margin-top:10px"><button class="btn small" data-act="compostReset">Reset</button><button class="btn small primary" data-act="compostGo"${n === owed ? '' : ' disabled'}>Compost ${owed}</button></div></div>`;
+}
+
+function renderResults() {
+  const seat = mySeat();
+  let html = '';
+  if (view.resolution) {
+    const mineEv = view.resolution.events.filter(e => e.seat === seat);
+    const vsMe = view.resolution.events.filter(e => e.kind === 'meddle' && e.victim === seat);
+    html += `<div class="card"><h3>📋 Your actions</h3><ul class="list">${mineEv.map(e => {
+      const p = e.target ? plotById(e.target) : null;
+      return `<li><span class="ic">${e.ok ? '✔️' : '✖️'}</span><div><b>${esc(ACT[e.kind].name)}</b>${p ? ' · ' + esc(plotName(p)) : ''}${e.feature ? ' · ' + esc(C.features[e.feature].name) : ''}${e.gained ? ' · ' + e.gained.map(sup).join(' ') : ''}
+        ${e.ok ? '' : `<div class="small muted">${esc(e.reason || '')}</div>`}</div></li>`;
+    }).join('') || '<li class="muted">No actions</li>'}
+    ${vsMe.map(e => `<li><span class="ic">😈</span><div>${nm(e.seat)} meddled with you${e.ok ? '' : ` but ${esc(e.reason)}`}</div></li>`).join('')}</ul></div>`;
+  }
+  if (view.disasterReport && ['disasters', 'harvest', 'show'].includes(step())) {
+    const mine = new Set(myPlots().map(p => p.id));
+    const lines = view.disasterReport.map(d => {
+      const hits = d.hits.filter(h => mine.has(h.id));
+      if (!hits.length) return '';
+      const word = { sheltered: 'sheltered', absorbed: 'blessing absorbed it', featureLost: 'feature lost!', damaged: 'damaged', condition: 'affected', blessed: 'blessed' };
+      return `<li><span class="ic">${d.good ? '🌟' : '⚠️'}</span><div><b>${esc(d.name)}</b><div class="small">${hits.map(h => word[h.result] || h.result).join(', ')}</div></div></li>`;
+    }).join('');
+    html += `<div class="card"><h3>🌪️ Disasters</h3><ul class="list">${lines || '<li class="muted">Your garden escaped</li>'}</ul></div>`;
+  }
+  if (view.emergency && view.emergency.result) {
+    const em = view.emergency;
+    html += `<div class="card ${em.result === 'success' ? '' : 'danger'}"><h3>🚨 ${esc(em.name)}: ${em.result === 'success' ? 'averted' : 'failed'}</h3>
+      <p class="small">${em.total} of ${em.target}. ${Object.entries(em.paid || {}).map(([s, n]) => `${nm(Number(s))} ${n}`).join(' · ') || 'Nobody pledged.'}</p></div>`;
+  }
+  if (view.harvestReport && ['harvest', 'show'].includes(step())) {
+    const g = view.harvestReport[seat];
+    html += `<div class="card"><h3>🧺 Harvest</h3><div class="chips">${g ? chips(g) : '<span class="muted">Nothing this time</span>'}</div></div>`;
+  }
+  if (step() === 'show') {
+    const shown = view.shows.filter(s => s.results).pop();
+    if (shown) {
+      html += `<div class="card prompt"><h3>🏆 Village Garden Show</h3>${Object.entries(shown.results).map(([k, rows]) => {
+        const mineRow = rows.find(r => r.seat === seat);
+        return `<p class="small"><b>${esc(C.categories[k].name)}</b>: ${rows.filter(r => r.points).map(r => `${nm(r.seat)} +${r.points}`).join(', ') || 'nobody placed'}${mineRow && mineRow.points ? ` <b>(you +${mineRow.points})</b>` : ''}</p>`;
+      }).join('')}</div>`;
+    }
+  }
+  return html || '<div class="card muted">Watch the TV…</div>';
+}
+
+/* ================= render: garden & trade ================= */
+function mapHtml(opts) {
+  if (!topo || !view.board) return '<div class="card muted">Loading the street…</div>';
+  return `<div class="map${opts.zoom ? ' zoom' : ''}">${RagnaBoard.gardenSvg(Object.assign({ topo, plots: view.board.plots, players: view.players, art: ART, mine: mySeat(), threats: [...threatsNow()], idPrefix: 'ph' }, opts))}</div>`;
+}
+
+function renderGarden() {
+  const rows = myPlots().map(p => {
+    const threat = threatsNow().has(p.id);
+    return `<li><span class="ic">${p.feature ? RagnaBoard.FEATURE_ICON[p.feature] : RagnaBoard.RES_ICON[p.terrain]}</span><div><b>${esc(C.terrainNames[p.terrain])}</b> · ${HEALTH[p.health]}${p.condition ? ' · ' + C.conditions[p.condition].name : ''}
+      ${p.feature ? `<div class="small">${esc(C.features[p.feature].name)} · ${C.features[p.feature].prestige} Prestige</div>` : ''}${threat ? '<div class="small" style="color:var(--bad)"><b>⚠️ Will be hit this round</b></div>' : ''}</div></li>`;
+  }).join('');
+  const board = view.players.slice().sort((a, b) => b.score - a.score).map(p => `<tr class="${p.connected ? '' : 'off'}"><td>${esc(p.avatar)} ${esc(p.name)}${p.seat === mySeat() ? ' (you)' : ''}<div class="small muted">${p.god ? godIcon(p.god) + ' ' + esc(C.gods[p.god].name) + ' · ' : ''}${p.plots} plots · ${p.handCount} cards · ${p.goodwill} Goodwill</div></td><td>${p.score}</td></tr>`).join('');
+  return `${mapHtml({ zoom: ui.zoom })}
+    <div class="legend"><span>Ring = owner</span><span>Gold dots = health</span><span style="color:#ff6b6b">Red dashes = hit this round</span><span>💀 Ruined</span></div>
+    ${topo && topo.radius > 2 ? `<button class="btn small" data-act="zoom" style="margin-top:8px">${ui.zoom ? '🔍 Fit' : '🔍 Zoom'}</button>` : ''}
+    <div class="card"><h3>🏡 Your plots</h3><ul class="list">${rows || '<li class="muted">None</li>'}</ul></div>
+    <div class="card"><h3>📊 Scores</h3><table class="players">${board}</table></div>`;
+}
+
+function renderTrade() {
+  const seg = ui.tradeSeg;
+  let html = `<div class="seg" style="grid-template-columns:repeat(2,1fr)">${[['inbox', `Offers${me().trades.length ? ' (' + me().trades.length + ')' : ''}`], ['new', 'New offer']].map(([id, l]) => `<button data-act="seg" data-seg="${id}" aria-pressed="${seg === id}">${l}</button>`).join('')}</div>`;
+  if (!planning()) html += '<div class="card small">Trading opens during the Plan phase.</div>';
+  html += seg === 'inbox' ? renderInbox() : renderNewOffer();
+  return html;
+}
+
+function renderInbox() {
+  const m = me();
+  if (!m.trades.length) return '<div class="card muted">No offers right now.</div>';
+  return m.trades.map(t => {
+    const mineOffer = t.from === m.seat;
+    const afford = hasAll(m.hand, t.want);
+    const buttons = mineOffer ? `<button class="btn small" data-act="cancelTrade" data-id="${t.id}">Cancel offer</button>`
+      : `<button class="btn small" data-act="declineTrade" data-id="${t.id}">Decline</button><button class="btn small good" data-act="acceptTrade" data-id="${t.id}"${afford ? '' : ' disabled'}>Accept</button>`;
+    return `<div class="card"><b>${mineOffer ? 'You' : nm(t.from)} → ${t.to === null ? 'everyone' : t.to.map(s => (s === m.seat ? 'you' : nm(s))).join(', ')}</b>
+      <div class="small muted" style="margin-top:6px">${mineOffer ? 'You give' : 'They give'}</div><div class="chips">${chips(t.give)}</div>
+      <div class="small muted" style="margin-top:6px">${mineOffer ? 'You want' : 'They want'}</div><div class="chips">${chips(t.want)}</div>
+      <div class="row" style="margin-top:10px;flex-wrap:wrap">${buttons}</div>${!mineOffer && !afford ? '<div class="small muted">You don\'t have what they want</div>' : ''}</div>`;
+  }).join('');
+}
+
+function renderNewOffer() {
+  const m = me();
+  const d = ui.trade;
+  const stepRow = (side, r) => {
+    const n = d[side][r];
+    const max = side === 'give' ? m.hand[r] : 9;
+    const blocked = side === 'give' ? d.want[r] > 0 : d.give[r] > 0;
+    return `<div class="stepper"><button data-act="tstep" data-side="${side}" data-res="${r}" data-d="-1"${n ? '' : ' disabled'} aria-label="Less">−</button><b>${n}</b>
+      <button data-act="tstep" data-side="${side}" data-res="${r}" data-d="1"${n < max && !blocked ? '' : ' disabled'} aria-label="More">+</button></div>`;
+  };
+  const others = view.players.filter(p => p.seat !== m.seat);
+  const ready = total(d.give) > 0 && total(d.want) > 0 && planning();
+  return `<div class="card"><div class="trow"><span></span><span class="muted small">You give</span><span class="muted small">You want</span></div>
+    ${SUP.map(r => `<div class="trow"><span class="i">${sup(r)}<small>have ${m.hand[r]}</small></span>${stepRow('give', r)}${stepRow('want', r)}</div>`).join('')}</div>
+    <div class="card"><div class="muted small">Send to</div><div class="chips" style="margin-top:6px">
+      <button class="btn small" data-act="target" data-to="all" aria-pressed="${d.to === null}">Everyone</button>
+      ${others.map(o => `<button class="btn small" data-act="target" data-to="${o.seat}" aria-pressed="${d.to === o.seat}">${esc(o.avatar)} ${esc(o.name)}</button>`).join('')}</div></div>
+    <div style="margin-top:12px"><button class="btn primary" data-act="sendOffer"${ready ? '' : ' disabled'}>Send offer</button></div>`;
+}
+
+function renderGameOver() {
+  const f = view.final;
+  if (!f) return '';
+  const rows = f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${esc(pl(s.seat).name)}<div class="small muted">Shows ${s.shows} · Features ${s.features} · Goodwill ${s.goodwill}</div></td><td>${s.total}</td></tr>`).join('');
+  const won = f.winners.includes(mySeat());
+  return `<div class="card prompt" style="text-align:center"><div style="font-size:64px">${ART.trophy ? `<img src="${ART.trophy}" alt="" style="width:140px">` : '🦩'}</div>
+      <h3 style="justify-content:center;font-size:22px">${won ? 'You win the Golden Flamingo!' : f.winners.map(nm).join(' & ') + ' win' + (f.winners.length > 1 ? '' : 's') + ' the Golden Flamingo'}</h3></div>
+    <div class="card"><table class="players">${rows}</table></div>
+    <div style="margin-top:14px">${view.meta.isHost ? '<button class="btn primary" data-act="rematch">Rematch</button>' : '<p class="muted" style="text-align:center">Waiting for the host</p>'}</div>`;
+}
+
+/* ================= sheets ================= */
+function renderSheet() {
+  const s = ui.sheet;
+  const wrap = $('#sheetWrap');
+  if (!s || !view || !view.me) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+  $('#sheet').dataset.sheet = s.type;
+  $('#sheet').innerHTML = ({ rules: sheetRules, menu: sheetMenu, slot: sheetSlot })[s.type](s);
+}
+const closeBtn = '<button class="iconbtn" data-act="closeSheet" aria-label="Close">✕</button>';
+
+function sheetSlot(s) {
+  const slots = draftSlots();
+  const others = slots.map((x, i) => (i === s.idx ? null : x));
+  const proj = projection(others);
+  if (!s.kind) {
+    const opts = ORDER.map(kind => {
+      const a = ACT[kind];
+      const targets = kind === 'carBoot' ? [1] : legalTargets(kind, s.idx, slots);
+      const c = kind === 'cultivate' ? null : costOf({ kind, target: targets[0] });
+      let why = '';
+      if (!targets.length) why = `No ${a.target} available`;
+      else if (c && !hasAll(proj.hand, c)) why = 'You can\'t afford this after your other actions';
+      const costTxt = kind === 'cultivate' ? '<span class="small muted">Cost depends on the feature</span>' : kind === 'carBoot' ? '<span class="chip">Free</span>' : chips(c);
+      return `<button class="opt" data-act="pickKind" data-kind="${kind}"${!targets.length ? ' disabled' : ''}><span class="ic">${a.icon}</span>
+        <span><b>${esc(a.name)}</b><div class="small muted">${esc(a.what)}</div></span><span></span><span class="chips cost">${costTxt}</span>${why ? `<span class="why">${esc(why)}</span>` : ''}</button>`;
+    }).join('');
+    return `<div class="head"><div><h2>Action ${s.idx + 1}</h2><p class="muted small">What do you want to do? Actions resolve in this order.</p></div>${closeBtn}</div>${opts}`;
+  }
+  const a = ACT[s.kind];
+  const needsTarget = s.kind !== 'carBoot';
+  if (needsTarget && !s.targetDone) {
+    const legal = legalTargets(s.kind, s.idx, slots);
+    const p = s.target ? plotById(s.target) : null;
+    const info = p ? `<div class="card small" style="margin-top:10px"><b>${esc(plotName(p))}</b>${p.owner !== null ? ' · ' + nm(p.owner) + "'s" : ' · unowned'}${p.condition ? ' · ' + C.conditions[p.condition].name : ''}${p.feature ? ' · ' + esc(C.features[p.feature].name) : ''}${threatsNow().has(p.id) ? '<div style="color:var(--bad)"><b>⚠️ Disasters hit this plot this round</b></div>' : ''}</div>` : '';
+    return `<div class="head"><div><h2>${a.icon} ${esc(a.name)}</h2><p class="muted small">Tap ${esc(a.target)} (glowing).</p></div>${closeBtn}</div>
+      ${mapHtml({ mode: 'hex', legal, sel: s.target, zoom: ui.zoom })}${info}
+      <div class="foot"><div class="row"><button class="btn" data-act="slotBack">Back</button>
+      <button class="btn primary" data-act="targetOk"${s.target ? '' : ' disabled'}>${s.kind === 'meddle' || s.kind === 'cultivate' ? 'Next' : 'Use this plot'}</button></div></div>`;
+  }
+  if (s.kind === 'meddle') {
+    const p = plotById(s.target);
+    const supply = C.terrainSupply[p.terrain];
+    return `<div class="head"><div><h2>😈 Meddle</h2><p class="muted small">With ${nm(p.owner)}'s ${esc(plotName(p))}</p></div>${closeBtn}</div>
+      <button class="opt" data-act="mode" data-mode="trample" aria-pressed="${s.mode === 'trample'}"><span class="ic">🦶</span><span><b>Trample</b><div class="small muted">Their plot loses 1 health${p.feature ? ' (at 0 their ' + esc(C.features[p.feature].name) + ' is destroyed)' : ''}.</div></span><span></span></button>
+      <button class="opt" data-act="mode" data-mode="pilfer" aria-pressed="${s.mode === 'pilfer'}"${supply ? '' : ' disabled'}><span class="ic">🫳</span><span><b>Pilfer</b><div class="small muted">${supply ? `Take 1 ${sup(supply)} from them, if they have one.` : 'Scorched plots have nothing to pilfer.'}</div></span><span></span></button>
+      <div class="foot"><div class="row"><button class="btn" data-act="slotBack">Back</button><button class="btn primary" data-act="saveSlot"${s.mode ? '' : ' disabled'}>Plan this</button></div></div>`;
+  }
+  if (s.kind === 'cultivate') {
+    const p = plotById(s.target);
+    const featureList = Object.entries(C.features).map(([k, f]) => {
+      const afford = hasAll(proj.hand, f.cost);
+      return `<button class="opt" data-act="feature" data-f="${k}" aria-pressed="${s.feature === k}"><span class="ic">${featureIcon(k)}</span>
+        <span><b>${esc(f.name)}</b> · ${f.prestige + (myGod() === 'njord' && f.tags.includes('water') ? C.njordWaterBonus : 0)} Prestige<div class="small muted">${f.tags.map(t => t[0].toUpperCase() + t.slice(1)).join(', ')}${f.immune ? ' · immune to ' + f.immune.join(' and ') : ''}${f.noMeddle ? ' · blocks Meddling' : ''}${f.freeMeddle ? ' · your Meddles are free' : ''}${f.freeTendNearby ? ' · free Tend nearby' : ''}${f.lushYieldBonus ? ' · +1 harvest when Lush' : ''}</div></span><span></span>
+        <span class="chips cost">${chips(f.cost)}</span>${afford ? '' : '<span class="why">Not enough supplies after your other actions</span>'}</button>`;
+    }).join('');
+    return `<div class="head"><div><h2>🌷 Cultivate</h2><p class="muted small">On your ${esc(plotName(p))}. Features score Prestige at the Final Show if they survive.</p></div>${closeBtn}</div>
+      ${featureList}<div class="foot"><div class="row"><button class="btn" data-act="slotBack">Back</button><button class="btn primary" data-act="saveSlot"${s.feature ? '' : ' disabled'}>Plan this</button></div></div>`;
+  }
+  if (s.kind === 'carBoot') {
+    const picks = s.supplies || [];
+    return `<div class="head"><div><h2>🛒 Car-Boot Sale</h2><p class="muted small">Pick 2 supplies (the same twice is fine). They arrive at the end of the round.</p></div>${closeBtn}</div>
+      <div class="pick">${SUP.map(r => `<button data-act="cbPick" data-res="${r}" style="--c:var(--${r})"${picks.length < 2 ? '' : ' disabled'}>${sup(r)}<small>${SUP_NAME[r]}</small></button>`).join('')}</div>
+      <div class="chips" style="margin-top:10px">${picks.map((r, i) => `<button class="chip" data-act="cbUnpick" data-i="${i}">${sup(r)} ✕</button>`).join('') || '<span class="muted small">Nothing picked yet</span>'}</div>
+      <div class="foot"><div class="row"><button class="btn" data-act="slotBack">Back</button><button class="btn primary" data-act="saveSlot"${picks.length === 2 ? '' : ' disabled'}>Plan this</button></div></div>`;
+  }
+  // Shelter, Tend, Claim: confirm.
+  const p = plotById(s.target);
+  const c = costOf(s);
+  const afford = hasAll(proj.hand, c);
+  const result = { shelter: 'Safe from this round\'s disasters and meddling.', tend: p.condition && C.conditions[p.condition].bad ? `Clears ${C.conditions[p.condition].name}.` : `Health ${HEALTH[p.health]} → ${HEALTH[Math.min(3, p.health + (myGod() === 'freya' ? 2 : 1))]}.`, claim: 'It joins your garden at its current health.' }[s.kind];
+  return `<div class="head"><div><h2>${a.icon} ${esc(a.name)}</h2><p class="muted small">${esc(plotName(p))}</p></div>${closeBtn}</div>
+    <div class="card"><p style="margin-top:0">${esc(result)}</p><div class="chips">${chips(c)}</div>${afford ? '' : '<p class="small" style="color:var(--bad)">You won\'t have enough when this happens: it will fizzle.</p>'}</div>
+    <div class="foot"><div class="row"><button class="btn" data-act="slotBack">Back</button><button class="btn primary" data-act="saveSlot">Plan this</button></div></div>`;
+}
+
+function sheetRules(s) {
+  const slides = RagnaRules.slides(I);
+  const i = Math.max(0, Math.min(slides.length - 1, s.page || 0));
+  const sl = slides[i];
+  const last = i === slides.length - 1;
+  return `<div class="rules"><div class="head"><div><p class="muted small" style="margin:0">How to play · ${i + 1} of ${slides.length}</p><h2>${sl.icon} ${esc(sl.title)}</h2></div>${closeBtn}</div>
+    <div>${sl.body}</div><div class="dots">${slides.map((x, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="foot"><label class="check"><input type="checkbox" data-act="rulesHide"${store.get(RULES_KEY) ? ' checked' : ''}> Don't show this again</label>
+    <div class="row"><button class="btn" data-act="rulesPrev"${i === 0 ? ' disabled' : ''}>Back</button>${last ? '<button class="btn primary" data-act="closeSheet">Let\'s play</button>' : '<button class="btn primary" data-act="rulesNext">Next</button>'}</div></div></div>`;
+}
+
+function sheetMenu() {
+  const isHost = view.meta.isHost;
+  const stage = view.phase.stage;
+  const vib = window.SFX && window.SFX.isVibration ? window.SFX.isVibration() : true;
+  return `<div class="head"><div><h2>Menu</h2><p class="muted small">Room ${esc(view.meta.code)}</p></div>${closeBtn}</div>
+    <div class="stack">
+      <button class="btn" data-act="rules">📖 How to play</button>
+      <button class="btn" data-act="toggleTips">${prefs.tips ? '💡 Hide tips' : '💡 Show tips'}</button>
+      <button class="btn" data-act="toggleDay">${prefs.day ? '🌙 Dusk colours' : '☀️ Daylight colours'}</button>
+      <button class="btn" data-act="toggleSound">${prefs.sound ? '🔇 Sound off' : '🔊 Sound on'}</button>
+      <button class="btn" data-act="toggleVibe">${vib ? '📴 Vibration off' : '📳 Vibration on'}</button>
+      ${isHost && stage === 'playing' ? (view.meta.paused ? '<button class="btn primary" data-act="resume">▶ Resume</button>' : '<button class="btn" data-act="pause">⏸ Pause</button>') : ''}
+      ${isHost && stage === 'playing' && step() !== 'plan' ? '<button class="btn" data-act="skip">⏭ Skip animation</button>' : ''}
+      ${isHost ? '<button class="btn" data-act="closeRoom">Close the room</button>' : ''}
+      ${stage === 'lobby' ? '<button class="btn" data-act="leave">Leave</button>' : ''}
+    </div>`;
+}
+
+function renderOverlay() {
+  const o = $('#overlay');
+  if (view && view.meta && view.meta.paused && view.me) {
+    o.hidden = false;
+    o.innerHTML = `<div class="card"><div style="font-size:48px">⏸</div><h3 style="justify-content:center">Paused</h3>${view.meta.isHost ? '<button class="btn primary" data-act="resume">Resume</button>' : ''}</div>`;
+  } else o.hidden = true;
+}
+
+/* ================= input ================= */
+async function sendPlan(slots) {
+  const r = await act({ type: 'plan', slots });
+  return r.ok;
+}
+
+async function onAct(el) {
+  const a = el.dataset.act;
+  const d = el.dataset;
+  const s = ui.sheet;
+  switch (a) {
+    case 'avatar': ui.avatar = d.av; store.set('ragnagrok.avatar', d.av); renderJoin(); return;
+    case 'join': {
+      const code = $('#joinCode').value.trim().toUpperCase();
+      const name = $('#joinName').value.trim();
+      if (code.length !== 4) { ui.joinMsg = 'Enter the 4-letter code from the TV.'; renderJoin(); return; }
+      store.set('ragnagrok.name', name);
+      const r = await emit('player:join', { code, name, avatar: ui.avatar });
+      if (!r.ok) { ui.joinMsg = r.error; renderJoin(); return; }
+      saved = { code: r.code, token: r.token };
+      store.set(KEY, saved);
+      ui.joinMsg = '';
+      maybeShowRules();
+      render();
+      return;
+    }
+    case 'start': await host('start'); return;
+    case 'kick': await host('kick', { seat: Number(d.seat) }); return;
+    case 'leave': await emit('player:leave'); forget(); return;
+    case 'rematch': await host('rematch'); return;
+    case 'length': await act({ type: 'setOption', length: d.len }); return;
+    case 'planTime': await act({ type: 'setOption', planSec: d.t === 'auto' ? null : Number(d.t) }); return;
+    case 'pickGod': await act({ type: 'chooseGod', god: d.god }); return;
+    case 'tab': ui.tab = d.tab; if (d.tab === 'trade') ui.unseen = 0; render(); return;
+    case 'seg': ui.tradeSeg = d.seg; render(); return;
+    case 'menu': openSheet({ type: 'menu' }); return;
+    case 'rules': openSheet({ type: 'rules', page: 0 }); return;
+    case 'rulesNext': s.page = (s.page || 0) + 1; render(); return;
+    case 'rulesPrev': s.page = Math.max(0, (s.page || 0) - 1); render(); return;
+    case 'rulesHide': if (el.checked) store.set(RULES_KEY, true); else store.del(RULES_KEY); return;
+    case 'closeSheet': ui.sheet = null; render(); return;
+    case 'zoom': ui.zoom = !ui.zoom; render(); return;
+    case 'hideTips': case 'toggleTips': prefs.tips = !prefs.tips; store.set(PREFS, prefs); if (a === 'toggleTips') ui.sheet = null; render(); return;
+    case 'toggleDay': prefs.day = !prefs.day; store.set(PREFS, prefs); render(); return;
+    case 'toggleSound': prefs.sound = !prefs.sound; store.set(PREFS, prefs); if (window.SFX) window.SFX.setMuted(!prefs.sound); render(); return;
+    case 'toggleVibe': if (window.SFX) { window.SFX.setVibration(!window.SFX.isVibration()); if (window.SFX.isVibration()) window.SFX.vibrate(60); } render(); return;
+    case 'pause': ui.sheet = null; await host('pause'); return;
+    case 'resume': ui.sheet = null; await host('resume'); return;
+    case 'skip': ui.sheet = null; await act({ type: 'skip' }); return;
+    case 'closeRoom': ui.sheet = null; await host('close'); return;
+
+    /* planning */
+    case 'editSlot': {
+      const slots = draftSlots();
+      const cur = slots[Number(d.i)];
+      ui.sheet = { type: 'slot', idx: Number(d.i), kind: null };
+      if (cur) Object.assign(ui.sheet, { kind: cur.kind, target: cur.target, mode: cur.mode, feature: cur.feature, supplies: cur.supplies ? cur.supplies.slice() : [], targetDone: false });
+      render();
+      return;
+    }
+    case 'clearSlot': {
+      const slots = draftSlots();
+      slots[Number(d.i)] = null;
+      await sendPlan(slots);
+      return;
+    }
+    case 'pickKind': Object.assign(s, { kind: d.kind, target: null, targetDone: false, mode: null, feature: null, supplies: [] }); render(); return;
+    case 'slotBack':
+      if (s.targetDone || (s.kind === 'carBoot')) { if (s.kind === 'carBoot') s.kind = null; else s.targetDone = false; }
+      else s.kind = null;
+      render();
+      return;
+    case 'targetOk': {
+      if (['meddle', 'cultivate'].includes(s.kind)) { s.targetDone = true; render(); return; }
+      s.targetDone = true;
+      render();
+      return;
+    }
+    case 'mode': s.mode = d.mode; render(); return;
+    case 'feature': s.feature = d.f; render(); return;
+    case 'cbPick': s.supplies = (s.supplies || []).concat(d.res).slice(0, 2); render(); return;
+    case 'cbUnpick': s.supplies.splice(Number(d.i), 1); render(); return;
+    case 'saveSlot': {
+      const slot = { kind: s.kind };
+      if (s.target) slot.target = s.target;
+      if (s.kind === 'meddle') slot.mode = s.mode;
+      if (s.kind === 'cultivate') slot.feature = s.feature;
+      if (s.kind === 'carBoot') slot.supplies = s.supplies;
+      const slots = draftSlots();
+      slots[s.idx] = slot;
+      if (await sendPlan(slots)) { ui.sheet = null; sfx('tap'); render(); }
+      return;
+    }
+    case 'lock': { const r = await act({ type: 'lock' }); if (r.ok) sfx('lockIn'); if (r.ok) toast('Locked in. Watch the TV when everyone is ready.', 'good'); return; }
+    case 'unlock': await act({ type: 'unlock' }); return;
+    case 'pledgeStep': {
+      const p = Object.assign(empty(), me().pledge || {});
+      p[d.res] = Math.max(0, p[d.res] + Number(d.d));
+      await act({ type: 'pledge', supplies: p });
+      return;
+    }
+    case 'compostAdd': ui.compost = ui.compost || empty(); ui.compost[d.res] += 1; render(); return;
+    case 'compostReset': ui.compost = empty(); render(); return;
+    case 'compostGo': { const r = await act({ type: 'compost', cards: ui.compost }); if (r.ok) { ui.compost = empty(); sfx('compost'); } return; }
+    case 'odin': await act({ type: 'odinShift', index: Number(d.i), dir: Number(d.dir) }); return;
+
+    /* trading */
+    case 'tstep': { const side = ui.trade[d.side]; side[d.res] = Math.max(0, side[d.res] + Number(d.d)); render(); return; }
+    case 'target': ui.trade.to = d.to === 'all' ? null : Number(d.to); render(); return;
+    case 'sendOffer': {
+      const t = ui.trade;
+      const r = await act({ type: 'offerTrade', to: t.to === null ? null : [t.to], give: t.give, want: t.want });
+      if (r.ok) { ui.trade = { give: empty(), want: empty(), to: null }; ui.tradeSeg = 'inbox'; toast('Offer sent', 'good'); render(); }
+      return;
+    }
+    case 'acceptTrade': await act({ type: 'respondTrade', id: d.id, accept: true }); return;
+    case 'declineTrade': await act({ type: 'respondTrade', id: d.id, accept: false }); return;
+    case 'cancelTrade': await act({ type: 'cancelTrade', id: d.id }); return;
+    default: break;
+  }
+}
+
+function onSpot(id) {
+  const s = ui.sheet;
+  if (!s || s.type !== 'slot') return;
+  s.target = s.target === id ? null : id;
+  sfx('tap');
+  render();
+}
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (!t || !t.closest) return;
+  const spot = t.closest('[data-spot]');
+  if (spot) { onSpot(spot.getAttribute('data-spot')); return; }
+  const el = t.closest('[data-act]');
+  if (!el || el.disabled) return;
+  if (el.dataset.act === 'clearSlot') e.stopPropagation();
+  if (el.dataset.act !== 'join') sfx('tap');
+  onAct(el);
+}, true);
+$('#sheetWrap').addEventListener('click', e => { if (e.target === $('#sheetWrap')) { ui.sheet = null; render(); } });
+
+/* phone niceties */
+let wakeLock = null;
+async function keepAwake() {
+  try {
+    if (navigator.wakeLock && document.visibilityState === 'visible' && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) { /* not supported */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { keepAwake(); if (saved && socket.connected) rejoin(); } });
+document.addEventListener('pointerdown', () => { if (window.SFX) { window.SFX.unlock(); window.SFX.setMuted(!prefs.sound); } keepAwake(); }, { passive: true });
+
+window.__rg = { view: () => view, ui };
+getJSON('/data/v2.json').then(c => { if (c) { C = c; render(); } });
+getJSON('/art.json').then(a => { ART = RagnaBoard.artMap(a); if (window.SFX && window.SFX.loadFromList) window.SFX.loadFromList(a && a.audio); render(); });
+render();
+})();
+</script>
+</body>
+</html>

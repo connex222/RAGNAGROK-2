@@ -33,7 +33,8 @@
   };
 
   function icon(art, key, cls) {
-    const url = art && art[key];
+    // Small god badges use the face-only crop: full portraits are unreadable at icon size.
+    const url = art && ((key.indexOf('deity-') === 0 && art[key + '-face']) || art[key]);
     if (url) {
       const round = key.indexOf('deity-') === 0 ? ' gi-round' : '';
       return `<img class="gi${round}${cls ? ' ' + cls : ''}" src="${url}" alt="" aria-hidden="true">`;
@@ -201,6 +202,89 @@
       (defs ? `<defs>${defs}</defs>` : '') + tiles + marks + '</svg>';
   }
 
+  /* ---------- V2: gardens ---------- */
+  const FEATURE_ICON = {
+    goldenGazebo: '🏛️', prizeMarrow: '🥒', roseArch: '🌹', waterFeature: '⛲', birdBath: '🐦',
+    beeHotel: '🐝', hedgeMaze: '🌿', greenhouse: '🪴', gnomeBattalion: '🧙'
+  };
+  const CONDITION_ICON = { frozen: '❄️', ash: '🌋', flooded: '🌊', infested: '🐛', blessed: '🌟' };
+  const HEALTH_SHADE = [0.62, 0.38, 0.12, 0];
+
+  function glyph(art, slot, emoji, x, y, size) {
+    if (art && art[slot]) return `<image href="${art[slot]}" x="${f3(x - size / 2)}" y="${f3(y - size / 2)}" width="${size}" height="${size}" pointer-events="none"/>`;
+    return `<text class="emo" x="${f3(x)}" y="${f3(y)}" style="font-size:${f3(size * 0.8)}px" pointer-events="none">${emoji}</text>`;
+  }
+
+  /* V2 board: plots with health, owner, condition and feature.
+     Options as svg(), plus: plots (state.board.plots), threats (plot ids hit this round), mine (seat to emphasise). */
+  function gardenSvg(o) {
+    const topo = o.topo;
+    const plots = o.plots;
+    const players = o.players || [];
+    const art = o.art || {};
+    const mode = o.mode || 'view';
+    const legalSet = new Set(o.legal || []);
+    const threats = new Set(o.threats || []);
+    const prefix = o.idPrefix || 'gb';
+    const B = bounds(topo);
+    const byId = {};
+    plots.forEach(p => { byId[p.id] = p; });
+    let defs = '';
+    let tiles = '';
+    let marks = '';
+
+    topo.hexes.forEach((hx, i) => {
+      const p = byId[hx.id];
+      if (!p) return;
+      const slot = art['hex-' + p.terrain];
+      let cls = 'hex';
+      let data = ` data-hex="${hx.id}"`;
+      if (mode === 'hex') {
+        if (legalSet.has(hx.id)) { cls += ' can'; data += ` data-spot="${hx.id}"`; } else cls += ' dim';
+      }
+      if (hx.id === o.sel || hx.id === o.sel2) cls += ' sel';
+      if (slot) {
+        defs += `<clipPath id="${prefix}c${i}"><polygon points="${corners(hx, 0.97)}"/></clipPath>`;
+        tiles += `<image href="${slot}" x="${f3(hx.x - 0.87)}" y="${f3(hx.y - 1)}" width="1.74" height="2" preserveAspectRatio="xMidYMid slice" clip-path="url(#${prefix}c${i})"/>`;
+      } else {
+        tiles += `<polygon points="${corners(hx, 0.97)}" fill="${TERRAIN_COLOUR[p.terrain]}"/>`;
+        tiles += `<text class="emo" x="${hx.x}" y="${f3(hx.y - 0.55)}" pointer-events="none" style="font-size:.28px">${RES_ICON[p.terrain]}</text>`;
+      }
+      // Health: the less healthy, the darker the plot.
+      const shade = HEALTH_SHADE[p.health];
+      if (shade) tiles += `<polygon points="${corners(hx, 0.97)}" fill="#120a1c" fill-opacity="${shade}" pointer-events="none"/>`;
+      if (p.health === 0) tiles += `<text class="emo" x="${hx.x}" y="${f3(hx.y + 0.05)}" style="font-size:.5px;opacity:.8" pointer-events="none">💀</text>`;
+      // Owner: a thick ring in the owner's colour.
+      if (p.owner !== null && p.owner !== undefined) {
+        const colour = (players[p.owner] && players[p.owner].colour) || '#fff';
+        tiles += `<polygon points="${corners(hx, 0.86)}" fill="none" stroke="${colour}" stroke-width="${o.mine === p.owner ? '.15' : '.11'}" pointer-events="none"/>`;
+      }
+      if (threats.has(hx.id)) tiles += `<polygon class="threat" points="${corners(hx, 0.92)}" fill="none" pointer-events="none"/>`;
+      tiles += `<polygon class="${cls}"${data} points="${corners(hx, 0.97)}" fill="transparent"/>`;
+      // Feature in the middle, condition top-right, health pips along the bottom.
+      if (p.feature) {
+        tiles += `<circle cx="${hx.x}" cy="${f3(hx.y - 0.05)}" r=".34" fill="#f7f0e3" fill-opacity=".92" stroke="#2a1d3b" stroke-width=".03" pointer-events="none"/>`;
+        tiles += glyph(art, 'feature-' + p.feature, FEATURE_ICON[p.feature] || '❓', hx.x, hx.y - 0.05, 0.5);
+      }
+      if (p.condition) {
+        tiles += `<circle cx="${f3(hx.x + 0.44)}" cy="${f3(hx.y - 0.5)}" r=".2" fill="#150e20" fill-opacity=".85" pointer-events="none"/>`;
+        tiles += glyph(art, 'cond-' + p.condition, CONDITION_ICON[p.condition] || '', hx.x + 0.44, hx.y - 0.5, 0.3);
+      }
+      for (let k = 0; k < 3; k++) {
+        const filled = k < p.health;
+        tiles += `<circle cx="${f3(hx.x - 0.2 + k * 0.2)}" cy="${f3(hx.y + 0.55)}" r=".075" fill="${filled ? '#f5c451' : '#150e20'}" stroke="#150e20" stroke-width=".025" pointer-events="none"/>`;
+      }
+    });
+
+    if (o.ghost && o.ghost.at && byId[o.ghost.at]) {
+      const h = topo.hexes.find(x => x.id === o.ghost.at);
+      marks += `<polygon class="ghost ghost-hex" points="${corners(h, 0.97)}" fill="none" stroke="${o.ghost.colour}" stroke-width=".14"/>`;
+    }
+
+    return `<svg viewBox="${f3(B.minX)} ${f3(B.minY)} ${f3(B.w)} ${f3(B.h)}" role="img" aria-label="The neighbourhood">` +
+      (defs ? `<defs>${defs}</defs>` : '') + tiles + marks + '</svg>';
+  }
+
   /* Where a hex or corner sits inside the drawn board, as fractions (0..1) of its width and height. */
   function position(topo, id) {
     const B = bounds(topo);
@@ -223,5 +307,5 @@
     return out;
   }
 
-  global.RagnaBoard = { svg, position, bounds, corners, artMap, audioMap, icon, FALLBACK, TERRAIN_COLOUR, RES_ICON };
+  global.RagnaBoard = { svg, gardenSvg, position, bounds, corners, artMap, audioMap, icon, FALLBACK, FEATURE_ICON, CONDITION_ICON, TERRAIN_COLOUR, RES_ICON };
 })(typeof window !== 'undefined' ? window : globalThis);

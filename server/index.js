@@ -24,21 +24,30 @@ function startServer({
   idleMinutes = Number(process.env.IDLE_MINUTES) || 30,
   tickMs = 1000,
   quiet = false,
-  rate = undefined
+  rate = undefined,
+  rules = process.env.RAGNAGROK_RULES || 'v1',
+  gameConfig = {}
 } = {}) {
   const logger = quiet ? { log() {}, error() {} } : console;
   const app = express();
   app.disable('x-powered-by');
 
-  const rooms = new RoomManager({ saveDir, idleMinutes, logger });
+  const rooms = new RoomManager({ saveDir, idleMinutes, logger, rules, gameConfig });
   const restored = rooms.loadAll();
 
   app.get('/healthz', (req, res) => {
     res.set('Cache-Control', 'no-store');
-    res.json({ ok: true, rooms: rooms.rooms.size, uptime: Math.round(process.uptime()) });
+    res.json({ ok: true, rules, rooms: rooms.rooms.size, uptime: Math.round(process.uptime()) });
   });
 
-  app.get('/play', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'play.html')));
+  // V2 pages live in public/v2; v0.5.1 pages stay where they are.
+  const pageDir = rules === 'v2' ? path.join(PUBLIC_DIR, 'v2') : PUBLIC_DIR;
+  app.get('/', (req, res) => res.sendFile(path.join(pageDir, 'index.html')));
+  app.get('/play', (req, res) => res.sendFile(path.join(pageDir, 'play.html')));
+  app.get('/data/v2.json', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=300');
+    res.sendFile(path.join(__dirname, '..', 'src', 'data', 'v2.json'));
+  });
   // Lists the artwork in public/img so screens only ask for images that exist.
   const IMG_DIR = path.join(PUBLIC_DIR, 'img');
   const AUDIO_DIR = path.join(PUBLIC_DIR, 'audio');
@@ -90,7 +99,7 @@ function startServer({
   return new Promise(resolve => {
     server.listen(port, () => {
       const actual = server.address().port;
-      logger.log(`Ragnagrok server on port ${actual}${saveDir ? `, saving to ${saveDir}` : ''}${restored ? `, restored ${restored} game(s)` : ''}`);
+      logger.log(`Ragnagrok server (rules ${rules}) on port ${actual}${saveDir ? `, saving to ${saveDir}` : ''}${restored ? `, restored ${restored} game(s)` : ''}`);
       resolve({ app, server, io, rooms, port: actual, close });
     });
   });

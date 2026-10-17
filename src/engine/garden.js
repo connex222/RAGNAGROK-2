@@ -430,9 +430,11 @@ function doAction(ctx, topo, e, sheltered) {
       if (sheltered.has(plot.id)) return fail('the plot was sheltered');
       if (godOf(s, plot.owner) === 'heimdall') {
         gain(s, plot.owner, cost);
+        ev.power = 'heimdall';
         return fail('Heimdall saw it coming');
       }
       if (plot.feature === 'hedgeMaze' && god !== 'loki') return fail('lost in the Hedge Maze');
+      if (plot.feature === 'hedgeMaze') ev.power = 'loki';
       if (slot.mode === 'pilfer') {
         const sup = C.terrainSupply[plot.terrain];
         const victim = P(s, plot.owner);
@@ -451,7 +453,7 @@ function doAction(ctx, topo, e, sheltered) {
           const mine = topo.hexById[plot.id].neighbors.map(id => plotById(s, id))
             .filter(x => x.owner === seat && x.health < (x.condition === 'ash' ? 2 : 3))
             .sort((a, b) => a.health - b.health)[0];
-          if (mine) { mine.health += 1; capHealth(mine); ev.lokiTo = mine.id; }
+          if (mine) { mine.health += 1; capHealth(mine); ev.lokiTo = mine.id; ev.power = 'loki'; }
         }
       }
       ev.ok = true;
@@ -469,6 +471,7 @@ function doAction(ctx, topo, e, sheltered) {
       } else {
         plot.health += god === 'freya' ? 2 : 1;
       }
+      if (god === 'freya') ev.power = 'freya';
       capHealth(plot);
       s.stats.repaired += 1;
       ev.ok = true;
@@ -481,6 +484,7 @@ function doAction(ctx, topo, e, sheltered) {
       if (!hasAll(p.hand, cost)) return fail('could not afford it');
       pay(s, seat, cost);
       plot.owner = seat;
+      if (god === 'thor') ev.power = 'thor';
       ev.ok = true;
       return ev;
     }
@@ -549,14 +553,16 @@ function strikeDisasters(ctx) {
       if (plot.health < before && hel !== null && plot.owner !== hel && s.roundState.helGained < C.hel.perRoundCap) {
         P(s, hel).hand.compost += 1;
         s.roundState.helGained += 1;
+        if (s.roundState.helGained === 1) emit(ctx, 'godPower', { seat: hel, god: 'hel' });
       }
       hits.push({ id, result: lost ? 'featureLost' : plot.health < before ? 'damaged' : 'condition', owner: plot.owner });
     });
     report.push({ key: d.key, name: d.name, good: d.good, hits });
+    if (hits.some(h => h.result === 'featureLost')) emit(ctx, 'featureLost', { key: d.key });
     s.stats.disasters += 1;
   });
   s.disasterReport = report;
-  emit(ctx, 'disasters', { count: report.length });
+  emit(ctx, 'disasters', { count: report.length, keys: report.map(r => r.key) });
   report.forEach(r => log(ctx, 'disaster', `${r.name}!`));
 
   if (s.emergency) resolveEmergency(ctx);
@@ -589,7 +595,7 @@ function resolveEmergency(ctx) {
       const p = P(s, Number(seatKey));
       p.goodwill += Math.max(1, Math.floor(n / 2));
       if (n === top) p.goodwill += 1;
-      if (p.god === 'frigg') p.goodwill += 1;
+      if (p.god === 'frigg') { p.goodwill += 1; emit(ctx, 'godPower', { seat: p.seat, god: 'frigg' }); }
     });
     log(ctx, 'emergency', `${em.name}: averted! (${total} of ${em.target})`);
   } else {
@@ -646,6 +652,7 @@ function plotYield(s, plot) {
   let n = C.yieldByHealth[plot.health];
   const cond = plot.condition ? C.conditions[plot.condition] : null;
   if (cond && cond.yieldZero && !(plot.condition === 'flooded' && godOf(s, plot.owner) === 'njord')) n = 0;
+  if (plot.condition === 'flooded' && godOf(s, plot.owner) === 'njord' && n > 0) s.roundState.njordPower = true;
   if (cond && cond.yieldBonus) n += cond.yieldBonus;
   if (plot.feature && featureDef(plot.feature).lushYieldBonus && plot.health === 3) n += featureDef(plot.feature).lushYieldBonus;
   return n;
@@ -669,6 +676,7 @@ function harvest(ctx) {
   });
   s.harvestReport = gains;
   emit(ctx, 'harvest', { gains });
+  if (s.roundState.njordPower) emit(ctx, 'godPower', { seat: seatWithGod(s, 'njord'), god: 'njord' });
 }
 
 function metric(s, seat, cat) {
@@ -953,6 +961,7 @@ const ACTIONS = {
     d.plots = targetPlots(s, ctx.topo, d.target, d);
     p.odinUsedAct = s.act;
     emit(ctx, 'odinShift', { seat, index: a.index, sector: d.sector });
+    emit(ctx, 'godPower', { seat, god: 'odin' });
     log(ctx, 'god', `Odin nudges ${d.name} along the street.`, seat);
     return null;
   },

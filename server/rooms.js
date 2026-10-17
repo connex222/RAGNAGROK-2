@@ -12,13 +12,20 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const E = require('../src/engine/rules');
+const ENGINES = {
+  v1: () => require('../src/engine/rules'),
+  v2: () => require('../src/engine/garden')
+};
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O: they look like 1 and 0
 const CODE_LENGTH = 4;
 
 class RoomManager {
-  constructor({ saveDir = null, idleMinutes = 30, finishedMinutes = 60, logger = console } = {}) {
+  constructor({ saveDir = null, idleMinutes = 30, finishedMinutes = 60, logger = console, rules = 'v1', gameConfig = {} } = {}) {
+    this.gameConfig = gameConfig;
+    if (!ENGINES[rules]) throw new Error(`Unknown rules version: ${rules}`);
+    this.rules = rules;
+    this.E = ENGINES[rules]();
     this.rooms = new Map();
     this.saveDir = saveDir;
     this.idleMs = idleMinutes * 60 * 1000;
@@ -43,7 +50,7 @@ class RoomManager {
     const room = {
       code,
       hostKey: crypto.randomBytes(12).toString('hex'),
-      state: E.createGame({ roomCode: code, now }),
+      state: this.E.createGame({ roomCode: code, now, config: { ...this.gameConfig } }),
       paused: null,
       lastActivity: now,
       sockets: new Set(),
@@ -76,7 +83,7 @@ class RoomManager {
 
   seatOf(room, socket) {
     if (socket.data.role !== 'player') return -1;
-    return E.seatForToken(room.state, socket.data.token);
+    return this.E.seatForToken(room.state, socket.data.token);
   }
 
   isHost(room, socket) {
@@ -90,7 +97,7 @@ class RoomManager {
       const seat = this.seatOf(room, s);
       if (seat >= 0) live.add(seat);
     });
-    room.state.players.forEach(p => E.setConnected(room.state, p.seat, live.has(p.seat), now));
+    room.state.players.forEach(p => this.E.setConnected(room.state, p.seat, live.has(p.seat), now));
   }
 
   /* ---------- sending ---------- */
@@ -98,11 +105,11 @@ class RoomManager {
   viewFor(room, socket) {
     const meta = { code: room.code, paused: !!room.paused, serverNow: Date.now() };
     if (socket.data.role === 'tv') {
-      return { ...E.publicView(room.state), meta: { ...meta, isHost: !!socket.data.isHost } };
+      return { ...this.E.publicView(room.state), meta: { ...meta, isHost: !!socket.data.isHost } };
     }
     const seat = this.seatOf(room, socket);
     if (seat < 0) return null;
-    return { ...E.privateView(room.state, seat), meta: { ...meta, isHost: seat === 0 } };
+    return { ...this.E.privateView(room.state, seat), meta: { ...meta, isHost: seat === 0 } };
   }
 
   /* Push the latest state (and any events) to every screen in the room. */
@@ -120,7 +127,7 @@ class RoomManager {
 
       // Send the static board geometry once per socket per layout.
       if (layoutId && socket.data.layoutSent !== layoutId) {
-        view.topology = E.clientTopology(layoutId);
+        view.topology = this.E.clientTopology(layoutId);
         socket.data.layoutSent = layoutId;
       }
       socket.emit('state', view);
@@ -141,7 +148,7 @@ class RoomManager {
   tickAll(now = Date.now()) {
     this.rooms.forEach(room => {
       if (!room.paused) {
-        const r = E.tick(room.state, now);
+        const r = this.E.tick(room.state, now);
         if (r.changed) this.sync(room, r.events);
       }
 
@@ -184,9 +191,12 @@ class RoomManager {
   rematch(room, now = Date.now()) {
     if (room.state.phase.stage !== 'gameOver') return 'Finish the current game first';
     const old = room.state;
-    const fresh = E.createGame({ roomCode: room.code, config: { maxPlayers: old.config.maxPlayers }, now });
+    const keep = { ...this.gameConfig, maxPlayers: old.config.maxPlayers };
+    if (old.config.length) keep.length = old.config.length;
+    if (old.config.planSec !== undefined) keep.planSec = old.config.planSec;
+    const fresh = this.E.createGame({ roomCode: room.code, config: keep, now });
     old.players.forEach(p => {
-      const res = E.addPlayer(fresh, { name: p.name, avatar: p.avatar }, now);
+      const res = this.E.addPlayer(fresh, { name: p.name, avatar: p.avatar }, now);
       fresh.secrets.playerTokens[res.seat] = old.secrets.playerTokens[p.seat];
     });
     fresh.stateVersion = old.stateVersion + 1;
@@ -251,11 +261,11 @@ class RoomManager {
           const data = JSON.parse(fs.readFileSync(file, 'utf8'));
           if (data.format !== 'ragnagrok.room') return;
           // Never load a save made by a different rules version: it would corrupt the game.
-          if (!data.state || data.state.schemaVersion !== E.SCHEMA_VERSION) {
+          if (!data.state || data.state.schemaVersion !== this.E.SCHEMA_VERSION) {
             const shelf = path.join(this.saveDir, 'incompatible');
             fs.mkdirSync(shelf, { recursive: true });
             fs.renameSync(file, path.join(shelf, f));
-            this.log.log(`Skipped save ${f}: made by rules version ${data.state && data.state.schemaVersion}, this server runs version ${E.SCHEMA_VERSION}. Moved to saves/incompatible.`);
+            this.log.log(`Skipped save ${f}: made by rules version ${data.state && data.state.schemaVersion}, this server runs version ${this.E.SCHEMA_VERSION}. Moved to saves/incompatible.`);
             return;
           }
           const room = {
@@ -281,4 +291,4 @@ class RoomManager {
   }
 }
 
-module.exports = { RoomManager, CODE_CHARS, CODE_LENGTH };
+module.exports = { RoomManager, CODE_CHARS, CODE_LENGTH, ENGINES };
