@@ -16,7 +16,7 @@ const { getTopology, clientTopology } = require('./topology');
 const { LAYOUTS } = require('./board');
 const C = require('../data/v2.json');
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 const SUP = C.supplies;
 const ORDER = C.actions.order;
 const GOD_IDS = Object.keys(C.gods);
@@ -104,7 +104,7 @@ function touchesGarden(s, topo, seat, plotId, extra) {
     return (p && p.owner === seat) || (extra && extra.includes(n));
   });
 }
-const featureDef = key => C.features[key] || null;
+const featureDef = key => typeof key === 'string' && Object.hasOwn(C.features, key) ? C.features[key] : null;
 const hasTag = (plot, tag) => !!(plot.feature && featureDef(plot.feature).tags.includes(tag));
 
 function capHealth(plot) {
@@ -285,7 +285,7 @@ function beginRound(ctx, round) {
     s.emergency = { key: def.key, name: def.name, act: s.act, target: Math.ceil(def.perPlayer * s.players.length), fail: def.fail, result: null, total: null, paid: null };
   }
 
-  s.players.forEach(p => { p.locked = false; });
+  s.players.forEach(p => { p.locked = false; p.disconnectedAt = p.connected ? null : (p.disconnectedAt || ctx.now); });
   s.secrets.plans = {};
   s.secrets.pledges = {};
   s.trades = [];
@@ -343,14 +343,22 @@ function endPlan(ctx) {
   emit(ctx, 'resolve', { round: s.round });
 }
 
-function autoCompost(s, seat) {
-  const owed = s.secrets.compostOwed[seat] || 0;
-  if (!owed) return;
-  const h = P(s, seat).hand;
-  for (let i = 0; i < owed; i++) {
-    const most = SUP.slice().sort((a, b) => h[b] - h[a])[0];
-    if (h[most] > 0) h[most] -= 1;
+function compostedHand(s, seat) {
+  // Work from a copy, reserving what an already committed plan will need.
+  // If the player has traded below shed capacity, there is nothing to discard.
+  const hand = { ...P(s, seat).hand };
+  const amount = Math.min(s.secrets.compostOwed[seat] || 0, Math.max(0, handTotal(hand) - C.shedCapacity));
+  const due = P(s, seat).locked ? planCommitment(s, seat) : emptyHand();
+  for (let i = 0; i < amount; i++) {
+    const pick = SUP.filter(r => hand[r] > 0).sort((a, b) =>
+      (hand[b] - due[b]) - (hand[a] - due[a]) || hand[b] - hand[a])[0];
+    if (pick) hand[pick] -= 1;
   }
+  return hand;
+}
+function autoCompost(s, seat) {
+  if (!s.secrets.compostOwed[seat]) return;
+  P(s, seat).hand = compostedHand(s, seat);
   delete s.secrets.compostOwed[seat];
 }
 
@@ -467,7 +475,8 @@ function doAction(ctx, topo, e, sheltered) {
       if (plot.condition && C.conditions[plot.condition].bad) {
         ev.cleared = plot.condition;
         plot.condition = null;
-        if (god === 'freya') plot.health += 1;
+        // Clearing a hazard also restores the plot; Freya remains twice as effective.
+        plot.health += god === 'freya' ? 2 : 1;
       } else {
         plot.health += god === 'freya' ? 2 : 1;
       }
@@ -717,6 +726,22 @@ function scoreShow(ctx, showIndex) {
   log(ctx, 'show', `Village Garden Show ${showIndex + 1} judged.`);
 }
 
+/* Garden Design: small, transparent placement bonuses for intentional layouts.
+   They score only at final / interim leaderboard, not during Shows. */
+function gardenDesignBonus(s, seat) {
+  const topo = getTopology(s.board.layoutId);
+  let points = 0;
+  ownedBy(s, seat).forEach(p => {
+    if (!p.feature || p.condition === 'infested') return;
+    const adjacent = topo.hexById[p.id].neighbors.map(id => plotById(s, id))
+      .filter(other => other && other.owner === seat && other.feature && other.condition !== 'infested');
+    if (p.feature === 'beeHotel' && adjacent.some(x => ['roseArch', 'prizeMarrow'].includes(x.feature))) points++;
+    if (p.feature === 'waterFeature' && adjacent.some(x => x.feature === 'roseArch')) points++;
+    if (p.feature === 'hedgeMaze' && adjacent.length >= 2) points++;
+  });
+  return points;
+}
+
 function featurePrestige(s, seat) {
   const njord = godOf(s, seat) === 'njord';
   return ownedBy(s, seat).reduce((n, p) => {
@@ -728,8 +753,9 @@ function featurePrestige(s, seat) {
 
 function scoreOf(s, seat) {
   const p = P(s, seat);
-  const features = featurePrestige(s, seat);
-  return { seat, shows: p.showPoints, features, goodwill: p.goodwill, total: p.showPoints + features + p.goodwill,
+  const designBonus = gardenDesignBonus(s, seat);
+  const features = featurePrestige(s, seat) + designBonus;
+  return { seat, designBonus, shows: p.showPoints, features, goodwill: p.goodwill, total: p.showPoints + features + p.goodwill,
     featureCount: ownedBy(s, seat).filter(x => x.feature).length, health: ownedBy(s, seat).reduce((n, x) => n + x.health, 0) };
 }
 
@@ -832,8 +858,25 @@ function cleanSlot(slot) {
 }
 
 function allLocked(s) {
-  return s.players.every(p => p.locked || !p.connected);
+  // Disconnection is not consent: an offline player keeps their planning time.
+  // An uncommitted plan is resolved only when the deadline (and any grace) expires.
+  return s.players.length > 0 && s.players.every(p => p.locked);
 }
+
+function planCommitment(s, seat) {
+  const due = emptyHand();
+  for (const slot of s.secrets.plans[seat] || []) {
+    const plot = slot.target ? plotById(s, slot.target) : null;
+    const cost = actionCost(s, seat, slot, plot) || {};
+    SUP.forEach(r => { due[r] += cost[r] || 0; });
+  }
+  // Emergency pledges are spent after actions. Reserve them as well; a pledged
+  // card must not be double-spent on a garden action.
+  const pledge = s.secrets.pledges[seat] || {};
+  SUP.forEach(r => { due[r] += pledge[r] || 0; });
+  return due;
+}
+
 
 /* ---------- actions ---------- */
 
@@ -842,14 +885,12 @@ const ACTIONS = {
     const s = ctx.state;
     if (s.phase.stage !== 'lobby') return 'Options can only change in the lobby';
     if (seat !== 0) return 'Only the host can change options';
-    if (a.length !== undefined) {
-      if (!C.lengths[a.length]) return 'Unknown game length';
-      s.config.length = a.length;
-    }
-    if (a.planSec !== undefined) {
-      if (a.planSec !== null && (!Number.isInteger(a.planSec) || a.planSec < 30 || a.planSec > 180)) return 'Plan timer must be 30–180 seconds';
-      s.config.planSec = a.planSec;
-    }
+    // Validate the *whole* transaction before changing any setting.
+    if (a.length !== undefined && !Object.hasOwn(C.lengths, a.length)) return 'Unknown game length';
+    if (a.planSec !== undefined && a.planSec !== null &&
+        (!Number.isInteger(a.planSec) || a.planSec < 30 || a.planSec > 180)) return 'Plan timer must be 30–180 seconds';
+    if (a.length !== undefined) s.config.length = a.length;
+    if (a.planSec !== undefined) s.config.planSec = a.planSec;
     return null;
   },
 
@@ -912,7 +953,11 @@ const ACTIONS = {
     const s = ctx.state;
     if (s.phase.step !== 'plan') return 'Nothing to lock in';
     if (!planComplete(s, s.secrets.plans[seat])) return 'Choose all your actions first';
+    if (!hasAll(compostedHand(s, seat), planCommitment(s, seat)))
+      return 'Your plan and emergency pledge need more supplies than you hold. Edit the plan or trade before locking.';
     P(s, seat).locked = true;
+    // Open outgoing offers cannot remove supplies after commitment.
+    s.trades.forEach(t => { if (t.from === seat && t.status === 'open') t.status = 'expired'; });
     emit(ctx, 'locked', { seat });
     if (allLocked(s)) endPlan(ctx);
     return null;
@@ -940,6 +985,7 @@ const ACTIONS = {
     const s = ctx.state;
     const owed = s.secrets.compostOwed[seat];
     if (!owed) return 'Your shed is not over capacity';
+    if (P(s, seat).locked) return 'Unlock your plan before changing supplies';
     const b = cleanBundle(a.cards);
     if (!b || handTotal(b) !== owed) return `Compost exactly ${owed}`;
     if (!hasAll(P(s, seat).hand, b)) return "You don't have those supplies";
@@ -954,6 +1000,7 @@ const ACTIONS = {
     if (p.god !== 'odin') return 'Only Odin can do that';
     if (s.phase.step !== 'plan') return 'Only during the Plan phase';
     if (p.odinUsedAct === s.act) return 'Already used this act';
+    if (p.locked) return 'Unlock your plan before changing the forecast';
     const d = s.forecast.now[a.index];
     if (!d || d.target.kind !== 'sector') return 'Pick a sector disaster';
     if (a.dir !== 1 && a.dir !== -1) return 'Choose a direction';
@@ -977,6 +1024,7 @@ const ACTIONS = {
   offerTrade(ctx, seat, a) {
     const s = ctx.state;
     if (s.phase.step !== 'plan') return 'Trading happens during the Plan phase';
+    if (P(s, seat).locked) return 'Unlock your plan before offering a trade';
     const give = cleanBundle(a.give);
     const want = cleanBundle(a.want);
     if (!give || !want || !handTotal(give) || !handTotal(want)) return 'Choose what to give and what you want';
@@ -997,6 +1045,7 @@ const ACTIONS = {
 
   respondTrade(ctx, seat, a) {
     const s = ctx.state;
+    if (s.phase.step !== 'plan') return 'Trading happens during the Plan phase';
     const t = s.trades.find(x => x.id === a.id);
     if (!t || t.status !== 'open') return 'That offer has closed';
     if (t.from === seat) return "You can't answer your own offer";
@@ -1006,6 +1055,8 @@ const ACTIONS = {
       emit(ctx, 'tradeDeclined', { id: t.id, by: seat, privateTo: [t.from] });
       return null;
     }
+    if (P(s, seat).locked || P(s, t.from).locked)
+      return 'Unlock your plan before trading; locked players cannot exchange supplies';
     if (!hasAll(P(s, seat).hand, t.want)) return "You don't have the supplies they want";
     if (!hasAll(P(s, t.from).hand, t.give)) {
       t.status = 'void';
@@ -1066,7 +1117,7 @@ function addPlayer(state, { name, avatar } = {}, now = Date.now()) {
   const clean = String(name || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16) || `Gardener ${seat + 1}`;
   state.players.push({
     seat, name: clean, avatar: String(avatar || '🌱').slice(0, 8), colour: COLOURS[seat],
-    god: null, connected: true, hand: emptyHand(), showPoints: 0, goodwill: 0, locked: false, odinUsedAct: null
+    god: null, connected: true, disconnectedAt: null, hand: emptyHand(), showPoints: 0, goodwill: 0, locked: false, odinUsedAct: null
   });
   const token = crypto.randomBytes(12).toString('hex');
   state.secrets.playerTokens[seat] = token;
@@ -1098,6 +1149,7 @@ function setConnected(state, seat, connected, now = Date.now()) {
   const p = state.players[seat];
   if (!p || p.connected === connected) return;
   p.connected = connected;
+  p.disconnectedAt = connected ? null : now;
   state.stateVersion += 1;
   state.updatedAt = now;
 }
@@ -1108,7 +1160,7 @@ function finalize(ctx) {
 }
 
 function apply(state, seat, action, now = Date.now()) {
-  if (!action || typeof action.type !== 'string' || !ACTIONS[action.type]) return { ok: false, error: 'Unknown action', events: [] };
+  if (!action || typeof action.type !== 'string' || !Object.hasOwn(ACTIONS, action.type)) return { ok: false, error: 'Unknown action', events: [] };
   if (state.phase.stage === 'gameOver') return { ok: false, error: 'The game is over', events: [] };
   if (!Number.isInteger(seat) || !state.players[seat]) return { ok: false, error: 'Unknown player', events: [] };
   const ctx = mkCtx(state, now);
@@ -1133,7 +1185,14 @@ function tick(state, now = Date.now()) {
     changed = true;
   }
   if (ph.deadline && now >= ph.deadline && ph.stage !== 'gameOver') {
-    if (ph.stage === 'draft') autoDraft(ctx);
+    // A recently disconnected planner gets at most the configured grace period
+    // after dropping. A disconnect never shortens the original plan timer.
+    const graceUntil = ph.stage === 'playing' && ph.step === 'plan'
+      ? Math.max(0, ...state.players.filter(p => !p.connected && !p.locked)
+        .map(p => (p.disconnectedAt || now) + state.config.disconnectGraceSec * 1000))
+      : 0;
+    if (graceUntil > now) ph.deadline = Math.max(ph.deadline, graceUntil);
+    else if (ph.stage === 'draft') autoDraft(ctx);
     else advanceStep(ctx);
     changed = true;
   }
@@ -1208,5 +1267,5 @@ function privateView(state, seat) {
 module.exports = {
   createGame, addPlayer, removePlayer, seatForToken, setConnected,
   apply, tick, advance, publicView, privateView, clientTopology, legalTargets,
-  scoreOf, plotYield, slotCount, SCHEMA_VERSION, SUPPLIES: SUP, CONTENT: C
+  scoreOf, gardenDesignBonus, plotYield, slotCount, SCHEMA_VERSION, SUPPLIES: SUP, CONTENT: C
 };

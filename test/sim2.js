@@ -17,7 +17,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const E = require('../src/engine/garden');
-const { next } = require('../src/engine/rng');
+const { next, shuffle } = require('../src/engine/rng');
 
 const C = E.CONTENT;
 const SUP = E.SUPPLIES;
@@ -54,6 +54,15 @@ function makePlan(state, seat, strat, rand) {
   const v = E.privateView(state, seat);
   const me = v.me;
   const hand = { ...me.hand };
+  // Plan against spendable supplies, not cards that the shed must discard
+  // before resolution. This prevents the robot from repeatedly locking an
+  // unaffordable plan and defaulting to Car-Boot Sales in long matches.
+  const pendingCompost = Math.min(me.compostOwed || 0,
+    Math.max(0, SUP.reduce((n, r) => n + hand[r], 0) - C.shedCapacity));
+  for (let i = 0; i < pendingCompost; i++) {
+    const largest = SUP.slice().sort((a, b) => hand[b] - hand[a])[0];
+    if (hand[largest] > 0) hand[largest] -= 1;
+  }
   const L = me.legal;
   const plots = v.board.plots;
   const byId = Object.fromEntries(plots.map(p => [p.id, p]));
@@ -200,7 +209,7 @@ function playGame(gameNo, n, length = LENGTH) {
   const ok = r => { if (!r.ok) throw new Error(r.error); return r; };
   ok(E.apply(state, 0, { type: 'setOption', length }, state.updatedAt));
   ok(E.apply(state, 0, { type: 'start' }, state.updatedAt));
-  const gods = GODS.slice().sort(() => rand() - 0.5).slice(0, n);
+  const gods = shuffle(rand, GODS.slice()).slice(0, n);
   while (state.phase.stage === 'draft') ok(E.apply(state, state.phase.draftQueue[0], { type: 'chooseGod', god: gods[state.phase.draftQueue[0]] }, state.updatedAt));
 
   let steps = 0;
@@ -214,7 +223,22 @@ function playGame(gameNo, n, length = LENGTH) {
         const r = E.apply(state, seat, { type: 'plan', slots }, state.updatedAt);
         if (!r.ok) ok(E.apply(state, seat, { type: 'plan', slots: slots.map(() => ({ kind: 'carBoot', supplies: ['turf', 'compost'] })) }, state.updatedAt));
         if (pledge && state.emergency) E.apply(state, seat, { type: 'pledge', supplies: pledge }, state.updatedAt);
-        if (state.phase.step === 'plan') ok(E.apply(state, seat, { type: 'lock' }, state.updatedAt));
+        if (state.phase.step === 'plan') {
+          let locked = E.apply(state, seat, { type: 'lock' }, state.updatedAt);
+          // Robots must respect the same affordability/oversized-shed checks as
+          // human players, including reserved emergency pledges. If denied,
+          // revise the pledge first and then replace the plan with safe sales.
+          if (!locked.ok && pledge && state.emergency) {
+            ok(E.apply(state, seat, { type: 'pledge', supplies: {} }, state.updatedAt));
+            locked = E.apply(state, seat, { type: 'lock' }, state.updatedAt);
+          }
+          if (!locked.ok) {
+            const safe = slots.map(() => ({ kind: 'carBoot', supplies: ['turf', 'compost'] }));
+            ok(E.apply(state, seat, { type: 'plan', slots: safe }, state.updatedAt));
+            locked = E.apply(state, seat, { type: 'lock' }, state.updatedAt);
+          }
+          ok(locked);
+        }
       }
       if (state.resolution) roundsEvents.push({ events: state.resolution.events.length, slots: E.slotCount(state) });
     } else {

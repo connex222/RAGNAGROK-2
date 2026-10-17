@@ -11,14 +11,14 @@
         body: `<p>The world is ending. The Village Garden Show is going ahead anyway.</p>
           <p>Score the most <b>Prestige</b> by the Final Show:</p>
           <ul><li><b>Shows</b> judge categories like "most Water features". Each show's categories are announced rounds ahead.</li>
-          <li><b>Garden features</b> still standing at the end score their Prestige.</li>
+          <li><b>Garden features</b> still standing at the end score their Prestige. Garden Design bonuses reward placing Bee Hotels beside Rose Arches or Prize Marrows, Water Features beside Rose Arches, and Hedge Mazes beside two other features of your own.</li>
           <li><b>Goodwill</b> from helping the street in emergencies.</li></ul>`
       },
       {
         icon: I('icon-dice'),
         title: 'Every round',
         body: `<ol><li><b>Omens:</b> the TV shows which plots next round's disasters will hit.</li>
-          <li><b>Plan:</b> everyone secretly picks <b>2 actions</b> on their phone at the same time, then taps <b>Lock in</b>.</li>
+          <li><b>Plan:</b> everyone secretly picks <b>2 actions</b> on their phone at the same time (Epic later increases to 3, then 4), then taps <b>Lock in</b>.</li>
           <li><b>Watch the TV</b> as everyone's actions play out.</li>
           <li><b>Disasters</b> strike, then your plots <b>harvest</b> supplies.</li></ol>
           <p>No waiting for other players' turns.</p>`
@@ -40,7 +40,7 @@
         title: 'Plots and health',
         body: `<p>The healthier a plot, the more it harvests: <b>Lush 2 · Healthy 1 · Withered 0</b>. Gold dots under each plot show its health.</p>
           <p>A <b>Ruined</b> plot (💀) loses its feature. Tend it to bring it back.</p>
-          <p>Problems like ❄️ Frozen, 🌋 Ash, 🌊 Flooded or 🐛 Infested stop a plot working until you Tend it. 🌟 Blessed is good news.</p>`
+          <p>❄️ Frozen, 🌊 Flooded and 🐛 Infested prevent ordinary harvests; 🌋 Ash caps plot health at Healthy but does not stop harvesting. 🐛 Infested also disables feature scoring. Tend clears a bad condition and restores 1 health (2 as Freya). 🌟 Blessed is good news.</p>`
       },
       {
         icon: I('mower'),
@@ -59,7 +59,7 @@
       {
         icon: I('icon-perk'),
         title: 'Trading and your god',
-        body: `<p>Trade supplies with anyone during the Plan phase from the <b>Trade</b> tab. It doesn't use an action.</p>
+        body: `<p>Trade supplies before locking in during the Plan phase from the <b>Trade</b> tab. Trades do not use an action, but a locked player cannot offer or accept them.</p>
           <p>Your <b>god bends one rule</b> in your favour; it's shown on your Plan screen.</p>
           <p><b>You can change your plan until you lock in.</b> The phone warns you if you can't afford something.</p>`
       }

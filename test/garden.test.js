@@ -115,15 +115,111 @@ test('Two chained Claims: slot 1 then slot 2', () => {
   assert.strictEqual(plot(s, a).owner, 0); assert.strictEqual(plot(s, c).owner, 0);
 });
 
-test('An action you cannot pay for fizzles at no cost', () => {
+test('An unaffordable plan cannot be locked or double-spend a later Car-Boot', () => {
   const s = setup(['freya', 'hel']);
   const c = centre(s); own(s, c, 0);
   s.players[0].hand = none();
   plan(s, 0, { kind: 'cultivate', target: c, feature: 'goldenGazebo' }, { kind: 'carBoot', supplies: ['turf', 'compost'] });
-  plan(s, 1, rest); lockAll(s);
-  assert.strictEqual(evOf(s, 0, 'cultivate').ok, false);
+  plan(s, 1, rest);
+  const rejected = E.apply(s, 0, { type: 'lock' }, 2000);
+  assert.strictEqual(rejected.ok, false);
+  assert.match(rejected.error, /more supplies/);
+  assert.strictEqual(s.players[0].locked, false);
   assert.strictEqual(plot(s, c).feature, null);
-  assert.deepStrictEqual(s.players[0].hand, { ...none(), turf: 1, compost: 1 });
+  // The player can edit the plan instead of losing the whole action to a fizzle.
+  plan(s, 0, rest); lockAll(s);
+  assert.strictEqual(evOf(s, 0, 'carBoot').ok, true);
+});
+
+
+test('Disconnect never counts as a lock and the grace period is honoured', () => {
+  const s = setup(['freya', 'hel']);
+  plan(s, 0, rest);
+  const originalDeadline = s.phase.deadline;
+  E.setConnected(s, 1, false, originalDeadline - 1000);
+  ok(E.apply(s, 0, { type: 'lock' }, originalDeadline - 500));
+  assert.strictEqual(s.phase.step, 'plan');
+  E.tick(s, originalDeadline);
+  assert.strictEqual(s.phase.step, 'plan');
+  assert.ok(s.phase.deadline >= originalDeadline + 7000);
+  E.advance(s);
+  assert.strictEqual(s.phase.step, 'resolve');
+  assert.ok(s.resolution.events.some(e => e.seat === 1 && e.kind === 'carBoot'));
+});
+
+test('Reconnected player keeps an unfinished plan and can lock it', () => {
+  const s = setup(['freya', 'hel']);
+  plan(s, 0, rest); plan(s, 1, rest);
+  E.setConnected(s, 1, false, 2000);
+  ok(E.apply(s, 0, { type: 'lock' }, 2000));
+  assert.strictEqual(s.phase.step, 'plan');
+  E.setConnected(s, 1, true, 3000);
+  assert.strictEqual(s.players[1].disconnectedAt, null);
+  assert.strictEqual(s.secrets.plans[1][0].kind, 'carBoot');
+  ok(E.apply(s, 1, { type: 'lock' }, 3000));
+  assert.strictEqual(s.phase.step, 'resolve');
+});
+
+test('Locking closes outgoing trade offers, and trading cannot change a locked hand', () => {
+  const s = setup(['freya', 'hel']);
+  plan(s, 0, rest); plan(s, 1, rest);
+  const offer = { type: 'offerTrade', give: { turf: 1 }, want: { compost: 1 } };
+  ok(E.apply(s, 0, offer, 2000));
+  const id = s.trades[0].id;
+  ok(E.apply(s, 0, { type: 'lock' }, 2000));
+  assert.strictEqual(s.trades[0].status, 'expired');
+  const a = JSON.stringify(s.players.map(p => p.hand));
+  assert.strictEqual(E.apply(s, 1, { type: 'respondTrade', id, accept: true }, 2000).ok, false);
+  assert.strictEqual(E.apply(s, 0, offer, 2000).ok, false);
+  assert.strictEqual(JSON.stringify(s.players.map(p => p.hand)), a);
+});
+
+test('Locked recipient cannot accept trade while unlocked proposer remains available', () => {
+  const s = setup(['freya', 'hel']);
+  plan(s, 0, rest); plan(s, 1, rest);
+  ok(E.apply(s, 0, { type: 'offerTrade', give: { turf: 1 }, want: { compost: 1 } }, 2000));
+  ok(E.apply(s, 1, { type: 'lock' }, 2000));
+  const before = JSON.stringify(s.players.map(p => p.hand));
+  const r = E.apply(s, 1, { type: 'respondTrade', id: s.trades[0].id, accept: true }, 2000);
+  assert.strictEqual(r.ok, false);
+  assert.deepStrictEqual(JSON.stringify(s.players.map(p => p.hand)), before);
+});
+
+test('Prototype property names cannot be used as commands or features', () => {
+  const s = setup(['freya', 'hel']);
+  const initial = JSON.stringify(s);
+  for (const type of ['toString', 'constructor', '__proto__']) {
+    const r = E.apply(s, 0, { type }, 3000);
+    assert.strictEqual(r.ok, false, type + ' was accepted');
+  }
+  assert.strictEqual(JSON.stringify(s), initial, 'invalid command mutated state');
+  const c = centre(s); own(s, c, 0);
+  for (const feature of ['toString', 'constructor', '__proto__']) {
+    assert.strictEqual(E.apply(s, 0, { type: 'plan', slots: [{ kind: 'cultivate', target: c, feature }, rest] }, 3000).ok, false);
+  }
+});
+
+test('Invalid combined lobby settings do not partly update game state', () => {
+  const s = E.createGame({ seed: 1, now: 1000 });
+  E.addPlayer(s, { name: 'One' }, 1000);
+  const before = JSON.stringify(s);
+  const r = E.apply(s, 0, { type: 'setOption', length: 'epic', planSec: -1 }, 2000);
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(JSON.stringify(s), before);
+  ok(E.apply(s, 0, { type: 'setOption', length: 'epic', planSec: 120 }, 2000));
+  assert.strictEqual(s.config.length, 'epic');
+  assert.strictEqual(s.config.planSec, 120);
+});
+
+test('Lock rejects a pledge that would double-spend planned supplies', () => {
+  const s = setup(['frigg', 'hel']);
+  const c = centre(s); own(s, c, 0);
+  s.emergency = { target: 2, result: null };
+  s.players[0].hand = { ...none(), turf: 1, compost: 1 };
+  plan(s, 0, { kind: 'shelter', target: c });
+  ok(E.apply(s, 0, { type: 'pledge', supplies: { turf: 1 } }, 2000));
+  const res = E.apply(s, 0, { type: 'lock' }, 2000);
+  assert.strictEqual(res.ok, false);
 });
 
 test('Trample ruins a plot at 0 and destroys its feature', () => {
@@ -175,8 +271,52 @@ test('Tend clears a condition; Freya also adds health', () => {
   const c = centre(s); const [a] = nb(s, c);
   own(s, c, 0, { condition: 'frozen', health: 1 }); own(s, a, 1, { condition: 'frozen', health: 1 });
   plan(s, 0, { kind: 'tend', target: c }); plan(s, 1, { kind: 'tend', target: a }); lockAll(s);
-  assert.strictEqual(plot(s, c).condition, null); assert.strictEqual(plot(s, c).health, 2, 'Freya +1');
-  assert.strictEqual(plot(s, a).condition, null); assert.strictEqual(plot(s, a).health, 1, 'others clear only');
+  assert.strictEqual(plot(s, c).condition, null); assert.strictEqual(plot(s, c).health, 3, 'Freya +2');
+  assert.strictEqual(plot(s, a).condition, null); assert.strictEqual(plot(s, a).health, 2, 'others clear and heal 1');
+});
+
+test('Tend clears a hazard and repairs the plot in the same action', () => {
+  const s = setup(['thor', 'freya']);
+  const c = centre(s); const [a] = nb(s, c);
+  own(s, c, 0, { health: 1, condition: 'frozen' });
+  own(s, a, 1, { health: 1, condition: 'frozen' });
+  plan(s, 0, { kind: 'tend', target: c });
+  plan(s, 1, { kind: 'tend', target: a });
+  lockAll(s);
+  assert.strictEqual(plot(s, c).condition, null);
+  assert.strictEqual(plot(s, c).health, 2);
+  assert.strictEqual(plot(s, a).condition, null);
+  assert.strictEqual(plot(s, a).health, 3);
+});
+
+test('Garden Design rewards intentional neighbouring features only', () => {
+  const s = setup(['freya', 'hel']);
+  const c = centre(s); const [a, b, d] = nb(s, c);
+  own(s, c, 0, { feature: 'beeHotel' });
+  own(s, a, 0, { feature: 'roseArch' });
+  own(s, b, 0, { feature: 'waterFeature' });
+  own(s, d, 0, { feature: 'hedgeMaze' });
+  assert.strictEqual(E.gardenDesignBonus(s, 0), 3, 'bee, water and hedge placements each score 1');
+  // A Hedge Maze needs TWO neighbouring owned features, not just plots.
+  const hb = nb(s, d).find(x => x !== c && x !== a && x !== b);
+  if (hb) own(s, hb, 0, { feature: 'prizeMarrow' });
+  assert.strictEqual(E.gardenDesignBonus(s, 0), 3);
+  assert.strictEqual(E.scoreOf(s, 0).designBonus, 3);
+  plot(s, a).condition = 'infested';
+  assert.strictEqual(E.gardenDesignBonus(s, 0), 1, 'infestation disables linked bonuses');
+});
+
+test('Automatic overflow composting preserves locked action supplies if possible', () => {
+  const s = setup(['freya', 'hel']);
+  const c = centre(s); own(s, c, 0);
+  s.players[0].hand = { turf: 1, fertiliser: 2, sprinklers: 4, compost: 4, gnomeDust: 1 };
+  s.secrets.compostOwed[0] = 2;
+  plan(s, 0, { kind: 'shelter', target: c });
+  plan(s, 1, rest);
+  lockAll(s);
+  assert.strictEqual(evOf(s, 0, 'shelter').ok, true);
+  assert.strictEqual(s.players[0].hand.turf, 2, 'Shelter paid before the Car-Boot Sale restored 2 Turf');
+  assert.strictEqual(s.secrets.compostOwed[0], undefined);
 });
 
 test('Ash caps health at Healthy; Greenhouse is immune to Ash', () => {
@@ -291,7 +431,7 @@ test('Save and reload mid-plan keeps everything', () => {
   const s = setup(['thor', 'freya']);
   plan(s, 0, { kind: 'carBoot', supplies: ['compost', 'compost'] });
   const t = JSON.parse(JSON.stringify(s));
-  assert.strictEqual(t.schemaVersion, 2);
+  assert.strictEqual(t.schemaVersion, 3);
   plan(t, 1, rest); lockAll(t);
   assert.strictEqual(t.phase.step, 'resolve');
 });

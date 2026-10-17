@@ -40,7 +40,9 @@ const baseUrl = socket => joinBase(socket.handshake.headers);
 const WRONG_LIMIT = 20;
 const wrongCodes = new Map();
 function addressOf(socket) {
-  const fwd = socket.handshake.headers['x-forwarded-for'];
+  // An arbitrary socket client can spoof X-Forwarded-For. Trust it only when
+  // the operator explicitly configures a trusted reverse proxy.
+  const fwd = process.env.TRUST_PROXY === '1' ? socket.handshake.headers['x-forwarded-for'] : null;
   return (fwd ? String(fwd).split(',')[0] : socket.handshake.address || 'unknown').trim();
 }
 function tooManyWrong(socket) {

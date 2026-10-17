@@ -1,57 +1,57 @@
 # V2 balance report: epic game
 
-500 seeded robot games (2–8 players), 129 s. Every rules check passed on every step.
+80 seeded robot games (2–8 players), 17 s. Every rules check passed on every step.
 
 ## Targets
 
 | Measure | Result | Target met |
 | --- | --- | --- |
 | God win rates within ±40% of fair share | all within | Yes |
-| Leader after Show 1 wins 35–55% | 34.0% | **No** |
-| Median winner's margin under 15% | 16.0% | **No** |
-| Shows 40–60% of points | 60.9% | **No** |
-| Features 25–45% of points | 27.6% | Yes |
-| Goodwill 5–20% of points | 11.5% | Yes |
-| Emergencies succeed 40–70% | 50.8% | Yes |
-| Actions fizzling under 10% | 7.6% | Yes |
-| Owned plots Ruined at end 10–30% | 39.4% | **No** |
-| Car-Boot Sale under 35% of actions | 26.6% | Yes |
+| Leader after Show 1 wins 35–55% | 36.3% | Yes |
+| Median winner's margin under 15% | 14.7% | Yes |
+| Shows 40–60% of points | 55.3% | Yes |
+| Features 25–45% of points | 32.4% | Yes |
+| Goodwill 5–20% of points | 12.3% | Yes |
+| Emergencies succeed 40–70% | 57.5% | Yes |
+| Actions fizzling under 10% | 4.7% | Yes |
+| Owned plots Ruined at end 10–30% | 26.9% | Yes |
+| Car-Boot Sale under 35% of actions | 26.4% | Yes |
 
-Winner's margin in games with no random robot: median 14.7% (174 games).
+Winner's margin in games with no random robot: median 14.5% (26 games).
 
 ## Gods (win rate when picked)
 
 | God | Games | Win rate | Fair share | Ratio | Avg score |
 | --- | --- | --- | --- | --- | --- |
-| Freya | 342 | 27.5% | 20.5% | 1.34 | 45.5 |
-| Heimdall | 300 | 24.7% | 19.6% | 1.26 | 43.1 |
-| Frigg | 294 | 23.5% | 19.0% | 1.23 | 45.5 |
-| Hel | 312 | 20.0% | 19.9% | 1.01 | 42.2 |
-| Odin | 288 | 17.4% | 20.5% | 0.85 | 41.7 |
-| Njord | 331 | 17.1% | 20.4% | 0.84 | 39.3 |
-| Thor | 335 | 17.0% | 20.5% | 0.83 | 39.9 |
-| Loki | 292 | 12.7% | 19.9% | 0.64 | 39.4 |
+| Heimdall | 51 | 25.5% | 20.0% | 1.28 | 48.6 |
+| Frigg | 46 | 23.9% | 19.0% | 1.26 | 49.8 |
+| Freya | 49 | 22.4% | 19.8% | 1.14 | 50.4 |
+| Odin | 45 | 20.0% | 18.4% | 1.09 | 48.8 |
+| Hel | 48 | 22.9% | 21.9% | 1.05 | 50.6 |
+| Thor | 53 | 20.8% | 22.5% | 0.92 | 46.9 |
+| Loki | 50 | 14.0% | 19.7% | 0.71 | 42.6 |
+| Njord | 52 | 13.5% | 20.9% | 0.65 | 44.7 |
 
 ## Robot play styles
 
 | Style | Ratio to fair share |
 | --- | --- |
-| chaser | 1.67 |
-| baron | 1.50 |
-| gardener | 1.15 |
-| menace | 0.57 |
-| random | 0.10 |
+| baron | 1.83 |
+| gardener | 1.32 |
+| chaser | 1.30 |
+| menace | 0.50 |
+| random | 0.00 |
 
 ## Action mix
 
 | Action | Share |
 | --- | --- |
-| carBoot | 26.6% |
-| tend | 22.7% |
-| shelter | 21.1% |
-| cultivate | 11.9% |
-| meddle | 11.8% |
-| claim | 5.9% |
+| carBoot | 26.4% |
+| tend | 22.5% |
+| shelter | 22.4% |
+| meddle | 12.0% |
+| cultivate | 10.9% |
+| claim | 5.7% |
 
 ## Estimated real length (minutes)
 
@@ -66,4 +66,3 @@ Winner's margin in games with no random robot: median 14.7% (174 games).
 | 8 | 42 | 54 |
 
 Estimate: 45 s real planning per round, animated resolution, plus 2 minutes setup. Real tables will vary.
-

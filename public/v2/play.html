@@ -820,7 +820,7 @@ function renderNewOffer() {
 function renderGameOver() {
   const f = view.final;
   if (!f) return '';
-  const rows = f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${esc(pl(s.seat).name)}<div class="small muted">Shows ${s.shows} · Features ${s.features} · Goodwill ${s.goodwill}</div></td><td>${s.total}</td></tr>`).join('');
+  const rows = f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${esc(pl(s.seat).name)}<div class="small muted">Shows ${s.shows} · Features ${s.features}${s.designBonus ? ` (Garden Design +${s.designBonus})` : ''} · Goodwill ${s.goodwill}</div></td><td>${s.total}</td></tr>`).join('');
   const won = f.winners.includes(mySeat());
   return `<div class="card prompt" style="text-align:center"><div style="font-size:64px">${ART.trophy ? `<img src="${ART.trophy}" alt="" style="width:140px">` : '🦩'}</div>
       <h3 style="justify-content:center;font-size:22px">${won ? 'You win the Golden Flamingo!' : f.winners.map(nm).join(' & ') + ' win' + (f.winners.length > 1 ? '' : 's') + ' the Golden Flamingo'}</h3></div>
@@ -881,7 +881,7 @@ function sheetSlot(s) {
     const featureList = Object.entries(C.features).map(([k, f]) => {
       const afford = hasAll(proj.hand, f.cost);
       return `<button class="opt" data-act="feature" data-f="${k}" aria-pressed="${s.feature === k}"><span class="ic">${featureIcon(k)}</span>
-        <span><b>${esc(f.name)}</b> · ${f.prestige + (myGod() === 'njord' && f.tags.includes('water') ? C.njordWaterBonus : 0)} Prestige<div class="small muted">${f.tags.map(t => t[0].toUpperCase() + t.slice(1)).join(', ')}${f.immune ? ' · immune to ' + f.immune.join(' and ') : ''}${f.noMeddle ? ' · blocks Meddling' : ''}${f.freeMeddle ? ' · your Meddles are free' : ''}${f.freeTendNearby ? ' · free Tend nearby' : ''}${f.lushYieldBonus ? ' · +1 harvest when Lush' : ''}</div></span><span></span>
+        <span><b>${esc(f.name)}</b> · ${f.prestige + (myGod() === 'njord' && f.tags.includes('water') ? C.njordWaterBonus : 0)} Prestige<div class="small muted">${f.tags.map(t => t[0].toUpperCase() + t.slice(1)).join(', ')}${f.immune ? ' · immune to ' + f.immune.join(' and ') : ''}${f.noMeddle ? ' · blocks Meddling' : ''}${f.freeMeddle ? ' · your Meddles are free' : ''}${f.freeTendNearby ? ' · free Tend nearby' : ''}${f === C.features.beeHotel ? ' · +1 Prestige when beside your Rose Arch or Prize Marrow' : ''}${f === C.features.waterFeature ? ' · +1 Prestige beside your Rose Arch' : ''}${f === C.features.hedgeMaze ? ' · +1 Prestige beside 2 of your features' : ''}${f.lushYieldBonus ? ' · +1 harvest when Lush' : ''}</div></span><span></span>
         <span class="chips cost">${chips(f.cost)}</span>${afford ? '' : '<span class="why">Not enough supplies after your other actions</span>'}</button>`;
     }).join('');
     return `<div class="head"><div><h2>🌷 Cultivate</h2><p class="muted small">On your ${esc(plotName(p))}. Features score Prestige at the Final Show if they survive.</p></div>${closeBtn}</div>

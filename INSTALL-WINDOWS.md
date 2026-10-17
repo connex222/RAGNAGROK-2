@@ -10,10 +10,10 @@ You need one Windows computer (the server), a TV or screen, and everyone's phone
 ## Every game night
 
 1. Double-click **Start Ragnagrok.bat** in the folder. The first time, it spends a minute installing.
-2. A black window opens and stays open. **Keep it open while you play.** Your browser opens the TV screen.
+2. The launcher starts a separate **Ragnagrok Server** window and checks when the game is ready. Keep the server window open while playing. The TV browser opens after readiness is confirmed.
 3. Show the browser on your TV: drag it to the TV screen, use an HDMI cable, or cast the tab. Press **F11** for full screen.
 4. Everyone scans the QR code on the TV with their phone camera.
-5. To stop, close the black window.
+5. To stop, close the **Ragnagrok Server** window. The initial launcher window may close automatically.
 
 ## If the first time Windows asks about the firewall
 

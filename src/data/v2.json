@@ -254,7 +254,7 @@
       "title": "Floral Queen",
       "level": "Beginner",
       "power": "Late Bloomer",
-      "rule": "Tend gives +2 health, or clears a condition and gives +1.",
+      "rule": "Tend restores 2 health, and also clears a harmful condition when present.",
       "flavour": "Even dead soil owes her a favour."
     },
     "heimdall": {

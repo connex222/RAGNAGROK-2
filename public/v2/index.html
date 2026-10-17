@@ -510,7 +510,7 @@ function renderOver() {
     <div><h1>${wTxt} win${winners.length > 1 ? '' : 's'}!</h1>
       <div class="quip">${winners.length === 1 && winners[0].god ? godIcon(winners[0].god) + ' ' + esc(C.gods[winners[0].god].name) + ' smiles. ' : ''}${esc(quip)}</div>
       <table><tr><th>Gardener</th><th>Shows</th><th>Features</th><th>Goodwill</th><th>Total</th></tr>
-      ${f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${nm(s.seat)}</td><td>${s.shows}</td><td>${s.features}</td><td>${s.goodwill}</td><td class="tot">${s.total}</td></tr>`).join('')}</table>
+      ${f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${nm(s.seat)}</td><td>${s.shows}</td><td title="Includes ${s.designBonus || 0} Garden Design points">${s.features}${s.designBonus ? ` (🌿+${s.designBonus})` : ''}</td><td>${s.goodwill}</td><td class="tot">${s.total}</td></tr>`).join('')}</table>
       <div class="stats">${mostFeatures.featureCount > 0 ? `<span>🌷 Most features: <b>${nm(mostFeatures.seat)}</b> (${mostFeatures.featureCount})</span>` : ''}${mostGood.goodwill > 0 ? `<span>🤝 Best neighbour: <b>${nm(mostGood.seat)}</b> (${mostGood.goodwill} Goodwill)</span>` : ''}<span>🗓️ ${view.round} rounds survived</span></div>
       <div class="quip" style="margin-top:24px">${nm(0)} can start a rematch from their phone.</div></div>`;
 }
