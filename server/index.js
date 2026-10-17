@@ -25,7 +25,7 @@ function startServer({
   tickMs = 1000,
   quiet = false,
   rate = undefined,
-  rules = process.env.RAGNAGROK_RULES || 'v1',
+  rules = process.env.RAGNAGROK_RULES || 'v2',
   gameConfig = {}
 } = {}) {
   const logger = quiet ? { log() {}, error() {} } : console;
@@ -100,6 +100,10 @@ function startServer({
     server.listen(port, () => {
       const actual = server.address().port;
       logger.log(`Ragnagrok server (rules ${rules}) on port ${actual}${saveDir ? `, saving to ${saveDir}` : ''}${restored ? `, restored ${restored} game(s)` : ''}`);
+      const lan = require('./network').lanAddresses();
+      logger.log(`  TV:     open http://localhost:${actual} on this computer`);
+      if (lan.length) logger.log(`  Phones: scan the QR code, or go to http://${lan[0]}:${actual}/play`);
+      else logger.log('  Phones: no home-network address found. Is this computer on Wi-Fi or Ethernet?');
       resolve({ app, server, io, rooms, port: actual, close });
     });
   });

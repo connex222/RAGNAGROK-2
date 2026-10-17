@@ -33,12 +33,27 @@ function makeLimiter(RATE) {
   };
 }
 
-function baseUrl(socket) {
-  if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/+$/, '');
-  const h = socket.handshake.headers;
-  const proto = (h['x-forwarded-proto'] || 'http').split(',')[0].trim();
-  const host = h['x-forwarded-host'] || h.host || 'localhost';
-  return `${proto}://${host}`;
+const { joinBase } = require('./network');
+const baseUrl = socket => joinBase(socket.handshake.headers);
+
+/* Slows down anyone guessing room codes: 20 wrong codes a minute per address, then a pause. */
+const WRONG_LIMIT = 20;
+const wrongCodes = new Map();
+function addressOf(socket) {
+  const fwd = socket.handshake.headers['x-forwarded-for'];
+  return (fwd ? String(fwd).split(',')[0] : socket.handshake.address || 'unknown').trim();
+}
+function tooManyWrong(socket) {
+  const w = wrongCodes.get(addressOf(socket));
+  return !!w && w.count >= WRONG_LIMIT && Date.now() < w.until;
+}
+function noteWrong(socket) {
+  const key = addressOf(socket);
+  const now = Date.now();
+  const w = wrongCodes.get(key);
+  if (!w || now > w.until) wrongCodes.set(key, { count: 1, until: now + 60000 });
+  else w.count += 1;
+  if (wrongCodes.size > 5000) wrongCodes.clear();
 }
 
 function attachHandlers(io, rooms, { rate = DEFAULT_RATE } = {}) {
@@ -108,8 +123,9 @@ function attachHandlers(io, rooms, { rate = DEFAULT_RATE } = {}) {
     /* ---------- phones ---------- */
 
     on('player:join', ({ code, name, avatar }) => {
+      if (tooManyWrong(socket)) return { ok: false, error: 'Too many wrong codes. Wait a minute and try again.' };
       const room = rooms.get(code);
-      if (!room) return { ok: false, error: 'No room with that code' };
+      if (!room) { noteWrong(socket); return { ok: false, error: 'No room with that code' }; }
       const res = E.addPlayer(room.state, { name, avatar });
       if (!res.ok) return res;
       enter(room, 'player', { token: res.token, isHost: false });
@@ -118,10 +134,11 @@ function attachHandlers(io, rooms, { rate = DEFAULT_RATE } = {}) {
     });
 
     on('player:rejoin', ({ code, token }) => {
+      if (tooManyWrong(socket)) return { ok: false, error: 'Too many wrong codes. Wait a minute and try again.' };
       const room = rooms.get(code);
       if (!room) return { ok: false, error: 'That room has closed' };
       const seat = E.seatForToken(room.state, token);
-      if (seat < 0) return { ok: false, error: 'This phone is not in that game' };
+      if (seat < 0) { noteWrong(socket); return { ok: false, error: 'This phone is not in that game' }; }
       enter(room, 'player', { token, isHost: false });
       rooms.autoResumeIfReady(room);
       rooms.sync(room, [{ type: 'playerReconnected', seat }]);

@@ -160,7 +160,7 @@ function checkScreen(p) {
 }
 
 async function main() {
-  const srv = await startServer({ port: 0, quiet: true, tickMs: 250, rate: FAST });
+  const srv = await startServer({ port: 0, quiet: true, tickMs: 250, rate: FAST, rules: 'v1' });
   const base = `http://localhost:${srv.port}`;
   console.log('Phone UI test');
 

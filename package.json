@@ -1,18 +1,15 @@
 {
   "name": "ragnagrok",
-  "version": "0.8.0-alpha",
+  "version": "1.0.0-rc1",
   "description": "Ragnagrok: Lawn Care at the End of Days \u2014 multi-screen hex resource game",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "test": "node test/sim.js && node test/server.test.js && node test/ui.test.js && node test/garden.test.js && node test/sim2.js 140",
-    "test:engine": "node test/sim.js",
-    "test:server": "node test/server.test.js",
-    "test:ui": "node test/ui.test.js",
-    "test:v2": "node test/garden.test.js && node test/ui2.test.js && node test/sim2.js 300",
-    "balance:v2": "node test/sim2.js 2000",
-    "start:v2": "RAGNAGROK_RULES=v2 node server/index.js",
-    "test:ui2": "node test/ui2.test.js"
+    "start:v1": "RAGNAGROK_RULES=v1 node server/index.js",
+    "test": "node test/garden.test.js && node test/server2.test.js && node test/ui2.test.js && node test/sim2.js 300",
+    "test:all": "npm test && node test/sim.js && node test/server.test.js && node test/ui.test.js",
+    "test:v1": "node test/sim.js && node test/server.test.js && node test/ui.test.js",
+    "balance": "node test/sim2.js 2000 long && node test/sim2.js 700 standard && node test/sim2.js 500 epic"
   },
   "engines": {
     "node": ">=18"

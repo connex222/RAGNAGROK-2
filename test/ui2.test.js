@@ -63,7 +63,9 @@ function botStep(p) {
       // Prefer real actions; Car-Boot sometimes.
       const opts = qa(p, '[data-act="pickKind"]').filter(enabled).filter(b => !b.querySelector('.why'));
       const real = opts.filter(b => b.dataset.kind !== 'carBoot');
-      const choice = real.length && rand() < 0.75 ? pick(real) : opts.find(b => b.dataset.kind === 'carBoot');
+      // Prefer action types not tried yet, so every action gets exercised.
+      const fresh = real.filter(b => !seen.has('kind:' + b.dataset.kind));
+      const choice = fresh.length ? pick(fresh) : real.length && rand() < 0.75 ? pick(real) : opts.find(b => b.dataset.kind === 'carBoot');
       return tap(p, choice || q(p, '[data-act="pickKind"][data-kind="carBoot"]'));
     }
     seen.add('kind:' + s.kind);

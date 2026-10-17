@@ -7,3 +7,6 @@ services:
     startCommand: npm start
     healthCheckPath: /healthz
     autoDeploy: true
+    envVars:
+      - key: RAGNAGROK_RULES
+        value: v2   # set to v1 for the original v0.5 game

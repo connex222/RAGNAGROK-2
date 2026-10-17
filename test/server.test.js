@@ -235,7 +235,7 @@ function check(label) {
 
 async function main() {
   const saveDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ragnagrok-'));
-  let srv = await startServer({ port: 0, saveDir, quiet: true, tickMs: 200, rate: FAST });
+  let srv = await startServer({ port: 0, saveDir, quiet: true, tickMs: 200, rate: FAST, rules: 'v1' });
   let url = `http://localhost:${srv.port}`;
   console.log('Server test');
 
@@ -305,7 +305,7 @@ async function main() {
   await srv.close();
   srv.server.close();
 
-  srv = await startServer({ port: 0, saveDir, quiet: true, tickMs: 200, rate: FAST });
+  srv = await startServer({ port: 0, saveDir, quiet: true, tickMs: 200, rate: FAST, rules: 'v1' });
   url = `http://localhost:${srv.port}`;
   const tv2 = client(url, 'tv');
   await connected(tv2);
