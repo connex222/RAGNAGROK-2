@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Feature: greenhouse">
+<title>Feature: greenhouse</title>
+<path d="M42 212V105L127 43L213 105V212Z" fill="#92dce4" fill-opacity=".45" stroke="#446c6d" stroke-width="14" stroke-linejoin="round"/><path d="M42 105H213M127 43V212M84 75V211M171 75V211" stroke="#446c6d" stroke-width="9"/><path d="M62 199Q100 129 122 202Q148 116 193 199" stroke="#398553" stroke-width="16" fill="none"/><path d="M75 177Q65 143 87 131Q105 149 90 169M155 174Q169 128 191 145Q196 168 175 182" fill="#77cc76"/>
+</svg>

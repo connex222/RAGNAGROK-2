@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Feature: hedgeMaze">
+<title>Feature: hedgeMaze</title>
+<path d="M42 50H210V205H42Z" fill="#346d3e" stroke="#214b35" stroke-width="14"/><path d="M70 78H181V176H77V105H151V148H106" fill="none" stroke="#b1e980" stroke-width="24" stroke-linecap="square" stroke-linejoin="miter"/><path d="M110 205V174" stroke="#b1e980" stroke-width="24"/><path d="M70 78H181V176H77V105H151V148H106" fill="none" stroke="#2e8e4f" stroke-width="5" stroke-linecap="square"/>
+</svg>

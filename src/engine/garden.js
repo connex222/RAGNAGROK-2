@@ -658,6 +658,9 @@ function applyEmergencyFailure(s, fail) {
 function plotYield(s, plot) {
   const sup = C.terrainSupply[plot.terrain];
   if (!sup) return 0;
+  // A ruined plot cannot harvest even when Blessed. The blessing boosts
+  // a living garden; it must not revive a dead one via a yield bonus.
+  if (plot.health <= 0) return 0;
   let n = C.yieldByHealth[plot.health];
   const cond = plot.condition ? C.conditions[plot.condition] : null;
   if (cond && cond.yieldZero && !(plot.condition === 'flooded' && godOf(s, plot.owner) === 'njord')) n = 0;
@@ -712,7 +715,9 @@ function scoreShow(ctx, showIndex) {
     const cat = C.categories[key];
     const lowerBetter = cat.measure === 'undamaged';
     const rows = s.players.map(p => ({ seat: p.seat, value: metric(s, p.seat, cat), plots: ownedBy(s, p.seat).length }))
-      .filter(r => (cat.minPlots ? r.plots >= cat.minPlots : r.value >= 1));
+      // For Hardy Perennial fewer damaged plots is better, including ZERO.
+      // The old value>=1 filter perversely excluded a pristine garden.
+      .filter(r => cat.minPlots ? r.plots >= cat.minPlots : r.value >= 1);
     rows.forEach(r => {
       const better = rows.filter(o => (lowerBetter ? o.value < r.value : o.value > r.value)).length;
       r.points = better < pts.length ? pts[better] : 0;

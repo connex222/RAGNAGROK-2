@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Feature: roseArch">
+<title>Feature: roseArch</title>
+<path d="M63 221V118Q66 42 130 42Q195 42 195 120V221" stroke="#2d693c" stroke-width="24" fill="none" stroke-linecap="round"/><path d="M88 218V119Q87 75 130 75Q170 75 171 119V218" stroke="#80bd68" stroke-width="12" fill="none"/><g fill="#ed5986" stroke="#833659" stroke-width="7"><circle cx="61" cy="116" r="26"/><circle cx="94" cy="64" r="25"/><circle cx="152" cy="55" r="27"/><circle cx="197" cy="108" r="25"/></g><g fill="#ffe7a2"><circle cx="61" cy="116" r="9"/><circle cx="94" cy="64" r="9"/><circle cx="152" cy="55" r="9"/><circle cx="197" cy="108" r="9"/></g>
+</svg>

@@ -100,3 +100,18 @@ At the end, every player's Prestige is: **Show points + surviving feature Presti
 ## Important caveats for current build
 
 This is an automated-test-backed **development build**, not a commercially certified ruleset. Reconnect behaviour, cross-device UI, human negotiation balance, actual game durations and accessibility still need independent testing. See `RELEASE-NOTES.md` and `PLAYTEST.md`.
+
+## v1.1.0-dev.3 balance clarification
+
+Act III retains the wide-area disasters of the original design, but its normal
+number of simultaneous disasters is now **one with 2–4 players** and **two with
+5–8 players**. Surtur's Mower now deals one health damage to affected plots.
+These are provisional playtest values, not a guarantee of fairness. They were
+chosen to reduce excessive irreversible ruin while retaining the end-of-world
+threat. Large groups still face multiple simultaneous events.
+
+**Hardy Perennial** judges the fewest owned Withered or Ruined plots among
+gardens with at least three owned plots. A garden with **zero** damaged plots
+qualifies and beats one with any damaged plots.
+
+A Ruined plot (health zero) cannot harvest, even if it has the Blessed condition.

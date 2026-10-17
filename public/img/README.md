@@ -29,3 +29,15 @@ images when they load (allow up to 30 seconds).
 Tips
 - Convert to WebP for files 5–10× smaller than PNG at the same quality.
 - Keep each file under about 300 KB so phones load quickly.
+
+## V2 vector gameplay icons (dev.2)
+
+The V2 build now includes `feature-<featureKey>.svg` for all nine buildable
+features and `cond-<conditionKey>.svg` for all five conditions. They are original,
+editable SVG illustrations with transparent backgrounds and thick silhouettes
+for small TV-board placements. `/art.json` automatically includes SVG files.
+The corresponding emoji fallbacks remain as a safety net for missing assets.
+
+If replacing any of these with final art, keep the same filename stem and remove
+or rename the old SVG so the artwork directory does not contain two files with
+the same stem (the browser asset mapping would otherwise depend on file order).

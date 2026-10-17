@@ -387,6 +387,7 @@ async function rejoin() {
 
 socket.on('connect', () => { $('#conn').hidden = true; rejoin(); });
 socket.on('disconnect', () => { $('#conn').hidden = false; });
+socket.on('sessionReplaced', () => forget('This gardener is now open on another device. Use that device to play.'));
 socket.on('kicked', () => forget('The host removed you from the game.'));
 socket.on('roomClosed', () => forget('The host closed the room.'));
 socket.on('state', v => {

@@ -258,6 +258,10 @@
       if (p.owner !== null && p.owner !== undefined) {
         const colour = (players[p.owner] && players[p.owner].colour) || '#fff';
         tiles += `<polygon points="${corners(hx, 0.86)}" fill="none" stroke="${colour}" stroke-width="${o.mine === p.owner ? '.15' : '.11'}" pointer-events="none"/>`;
+        // Seat numbers distinguish ownership without reliance on colour alone.
+        // Keep the marker in a fixed position independent of feature/condition icons.
+        tiles += `<circle cx="${f3(hx.x - 0.46)}" cy="${f3(hx.y - 0.48)}" r=".19" fill="#160e23" stroke="#f7f0e3" stroke-width=".025" pointer-events="none"/>`;
+        tiles += `<text class="owner-seat" x="${f3(hx.x - 0.46)}" y="${f3(hx.y - 0.41)}" font-size=".23" font-weight="900" text-anchor="middle" fill="#fff" pointer-events="none">${p.owner + 1}</text>`;
       }
       if (threats.has(hx.id)) tiles += `<polygon class="threat" points="${corners(hx, 0.92)}" fill="none" pointer-events="none"/>`;
       tiles += `<polygon class="${cls}"${data} points="${corners(hx, 0.97)}" fill="transparent"/>`;

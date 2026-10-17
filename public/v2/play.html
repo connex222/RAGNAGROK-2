@@ -111,13 +111,20 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 
 /* plan slots */
 .slots { display:grid; gap:10px; }
-.slot { display:grid; grid-template-columns:44px 1fr auto; gap:4px 12px; align-items:center; text-align:left; width:100%; min-height:72px; padding:12px; border-radius:var(--radius); background:var(--surface); border:2px dashed var(--line); }
+.slot-row { display:flex; gap:8px; min-width:0; }
+.slot { display:grid; grid-template-columns:44px minmax(0,1fr); gap:4px 12px; align-items:center; text-align:left; flex:1; min-width:0; min-height:72px; padding:12px; border-radius:var(--radius); background:var(--surface); border:2px dashed var(--line); }
 .slot.filled { border-style:solid; border-color:var(--primary); }
 .slot.bad { border-color:var(--bad); }
 .slot .num { font-size:26px; text-align:center; grid-row:span 2; }
 .slot b { display:block; }
-.slot .sub { font-size:14px; color:var(--muted); }
-.slot .x { grid-row:span 2; }
+.slot .sub { grid-column:2; font-size:14px; color:var(--muted); }
+.slot-clear { flex:none; align-self:stretch; width:48px; min-height:56px; background:var(--surface2); border:2px solid var(--line); border-radius:var(--radius); font-size:24px; font-weight:800; }
+.plan-brief { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+.plan-brief > div { padding:10px; border-radius:12px; border:2px solid var(--line); background:var(--surface); }
+.plan-brief .risk { border-color:var(--bad); }
+.plan-brief b { display:block; font-size:15px; }
+.plan-brief small { color:var(--muted); font-size:12px; }
+@media (max-width:355px) { .plan-brief { grid-template-columns:1fr; } }
 .pick { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
 .pick button { min-height:64px; border-radius:12px; background:var(--surface2); border:2px solid var(--line); border-bottom:5px solid var(--c); }
 .pick button .gi { width:30px; height:30px; display:block; margin:0 auto; }
@@ -155,7 +162,7 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 
 /* sheets & overlays */
 #sheetWrap { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; z-index:20; }
-#sheet { width:100%; max-width:560px; margin:0 auto; max-height:92%; overflow-y:auto; background:var(--bg); border-radius:22px 22px 0 0; border-top:3px solid var(--primary); padding:16px 14px calc(16px + env(safe-area-inset-bottom,0px)); }
+#sheet { width:100%; max-width:560px; margin:0 auto; max-height:92%; max-height:92dvh; overflow-y:auto; background:var(--bg); border-radius:22px 22px 0 0; border-top:3px solid var(--primary); padding:16px 14px calc(16px + env(safe-area-inset-bottom,0px)); }
 #sheet h2 { margin:0 0 4px; font-size:22px; display:flex; gap:8px; align-items:center; }
 #sheet .head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; }
 #sheet .foot { position:sticky; bottom:-16px; background:var(--bg); padding-top:12px; }
@@ -231,7 +238,7 @@ const ORDER = ['shelter', 'meddle', 'tend', 'claim', 'cultivate', 'carBoot'];
 const ACT = {
   shelter: { icon: '🛡️', name: 'Shelter', what: 'Protect one of your plots from this round\'s disasters and any meddling.', target: 'one of your plots' },
   meddle: { icon: '😈', name: 'Meddle', what: 'Trample a neighbour\'s plot (−1 health) or pilfer one of its supply.', target: 'a rival\'s plot next to yours' },
-  tend: { icon: '🌱', name: 'Tend', what: 'Clear a problem from one of your plots; if it has none, +1 health.', target: 'one of your plots' },
+  tend: { icon: '🌱', name: 'Tend', what: 'Restore 1 health and clear one harmful condition. Freya restores 2 health.', target: 'one of your plots' },
   claim: { icon: '🚩', name: 'Claim', what: 'Take an empty plot next to your garden.', target: 'an empty plot next to your garden' },
   cultivate: { icon: '🌷', name: 'Cultivate', what: 'Build a garden feature on one of your plots.', target: 'one of your plots without a feature' },
   carBoot: { icon: '🛒', name: 'Car-Boot Sale', what: 'Take any 2 supplies. Happens last, so it can\'t pay for this round\'s other actions.', target: null }
@@ -377,7 +384,7 @@ function describeSlot(s) {
 /* ================= socket ================= */
 async function emit(event, data) {
   try { return await socket.timeout(6000).emitWithAck(event, data || {}); }
-  catch (e) { return { ok: false, error: 'No reply from the server. Check your connection.' }; }
+  catch (e) { return { ok: false, transient: true, error: 'No reply from the server. Check your connection.' }; }
 }
 async function act(action) {
   const r = await emit('action', action);
@@ -389,15 +396,37 @@ async function host(cmd, data) {
   if (!r.ok) toast(esc(r.error), 'bad');
   return r;
 }
-function forget(msg) { saved = null; view = null; topo = null; ui.sheet = null; store.del(KEY); ui.joinMsg = msg || ''; render(); }
+let rejoinPending = false;
+let rejoinRetry = null;
+function forget(msg) {
+  clearTimeout(rejoinRetry); rejoinRetry = null;
+  saved = null; view = null; topo = null; ui.sheet = null;
+  store.del(KEY); ui.joinMsg = msg || ''; render();
+}
 async function rejoin() {
+  if (rejoinPending) return;
   const wanted = (params.get('room') || '').toUpperCase();
   if (!saved || (wanted && wanted !== saved.code)) { render(); return; }
-  const r = await emit('player:rejoin', saved);
-  if (!r.ok) forget(r.error); else { maybeShowRules(); render(); }
+  rejoinPending = true;
+  try {
+    const r = await emit('player:rejoin', saved);
+    if (r.ok) {
+      clearTimeout(rejoinRetry); rejoinRetry = null;
+      $('#conn').hidden = true;
+      maybeShowRules(); render();
+    } else if (r.transient || /slow down|too many wrong codes/i.test(r.error || '')) {
+      // A lost acknowledgement must never delete the player's seat token.
+      // A connected socket may recover without another 'connect' event.
+      $('#conn').textContent = 'Connection interrupted — retrying…';
+      $('#conn').hidden = false;
+      clearTimeout(rejoinRetry);
+      rejoinRetry = setTimeout(() => { if (socket.connected && saved) rejoin(); }, 3000);
+    } else forget(r.error); // Definitive invalid room or revoked token.
+  } finally { rejoinPending = false; }
 }
-socket.on('connect', () => { $('#conn').hidden = true; rejoin(); });
-socket.on('disconnect', () => { $('#conn').hidden = false; });
+socket.on('connect', () => { $('#conn').textContent = 'Reconnecting…'; $('#conn').hidden = true; rejoin(); });
+socket.on('disconnect', () => { $('#conn').textContent = 'Reconnecting…'; $('#conn').hidden = false; });
+socket.on('sessionReplaced', () => forget('This gardener is now open on another device. Use that device to play.'));
 socket.on('kicked', () => forget('The host removed you from the game.'));
 socket.on('roomClosed', () => forget('The host closed the room.'));
 socket.on('state', v => {
@@ -658,16 +687,22 @@ function renderPlanTab() {
   if (st === 'plan') {
     const slots = draftSlots();
     const proj = projection(slots);
+    const risks = myPlots().filter(p => threatsNow().has(p.id)).length;
+    const upcoming = view.shows.find(show => show.categories && !show.results);
+    const showNames = upcoming ? upcoming.categories.map(k => C.categories[k].name).join(' / ') : 'Categories not announced';
+    html += `<div class="plan-brief" aria-label="Planning priorities">
+      <div class="${risks ? 'risk' : ''}"><b>⚠️ ${risks} of your plots at risk</b><small>${risks ? 'Check the forecast before you commit' : 'No forecast hits on your garden'}</small></div>
+      <div><b>🏆 Next Garden Show</b><small>${esc(showNames)}</small></div></div>`;
     html += renderTips(slots);
     if (view.emergency) html += renderPledge(proj.hand);
     if (me().compostOwed) html += renderCompost();
     html += `<div class="slots">${slots.map((s, i) => {
       const d = describeSlot(s);
       const bad = proj.problems.includes(i);
-      return `<button class="slot${s ? ' filled' : ''}${bad ? ' bad' : ''}" data-act="editSlot" data-i="${i}"${locked() ? ' disabled' : ''}>
+      return `<div class="slot-row"><button class="slot${s ? ' filled' : ''}${bad ? ' bad' : ''}" data-act="editSlot" data-i="${i}" aria-label="${s ? 'Edit' : 'Choose'} action ${i + 1}"${locked() ? ' disabled' : ''}>
         <span class="num">${s ? ACT[s.kind].icon : i + 1}</span><span><b>${s ? esc(ACT[s.kind].name) : 'Action ' + (i + 1)}</b></span>
-        ${s && !locked() ? `<span class="x" role="button" data-act="clearSlot" data-i="${i}" aria-label="Clear action ${i + 1}">✕</span>` : '<span></span>'}
-        <span class="sub">${esc(d.sub)}${s && s.kind !== 'carBoot' && total(costOf(s)) ? ' · costs ' + SUP.filter(r => costOf(s)[r]).map(r => costOf(s)[r] + ' ' + sup(r)).join(' ') : ''}${bad ? '<br><b style="color:var(--bad)">Can\'t afford this when it happens: it will fizzle</b>' : ''}</span></button>`;
+        <span class="sub">${esc(d.sub)}${s && s.kind !== 'carBoot' && total(costOf(s)) ? ' · costs ' + SUP.filter(r => costOf(s)[r]).map(r => costOf(s)[r] + ' ' + sup(r)).join(' ') : ''}${bad ? '<br><b style="color:var(--bad)">Can\'t afford this when it happens: it will fizzle</b>' : ''}</span></button>
+        ${s && !locked() ? `<button class="slot-clear" data-act="clearSlot" data-i="${i}" aria-label="Clear action ${i + 1}" title="Clear action ${i + 1}">✕</button>` : ''}</div>`;
     }).join('')}</div>`;
     html += `<div class="card small"><b>After your plan</b> <span class="muted">(Car-Boot supplies arrive last)</span><div class="chips" style="margin-top:6px">${SUP.map(r => `<span class="chip${proj.hand[r] < 0 ? ' short' : ''}">${proj.hand[r]} ${sup(r)}</span>`).join('')}</div></div>`;
     if (god) html += `<div class="card small">${godIcon(myGod())} <b>${esc(god.power)}:</b> ${esc(god.rule)}</div>`;
@@ -763,12 +798,12 @@ function mapHtml(opts) {
 function renderGarden() {
   const rows = myPlots().map(p => {
     const threat = threatsNow().has(p.id);
-    return `<li><span class="ic">${p.feature ? RagnaBoard.FEATURE_ICON[p.feature] : RagnaBoard.RES_ICON[p.terrain]}</span><div><b>${esc(C.terrainNames[p.terrain])}</b> · ${HEALTH[p.health]}${p.condition ? ' · ' + C.conditions[p.condition].name : ''}
+    return `<li><span class="ic">${p.feature ? featureIcon(p.feature) : RagnaBoard.RES_ICON[p.terrain]}</span><div><b>${esc(C.terrainNames[p.terrain])}</b> · ${HEALTH[p.health]}${p.condition ? ' · ' + C.conditions[p.condition].name : ''}
       ${p.feature ? `<div class="small">${esc(C.features[p.feature].name)} · ${C.features[p.feature].prestige} Prestige</div>` : ''}${threat ? '<div class="small" style="color:var(--bad)"><b>⚠️ Will be hit this round</b></div>' : ''}</div></li>`;
   }).join('');
-  const board = view.players.slice().sort((a, b) => b.score - a.score).map(p => `<tr class="${p.connected ? '' : 'off'}"><td>${esc(p.avatar)} ${esc(p.name)}${p.seat === mySeat() ? ' (you)' : ''}<div class="small muted">${p.god ? godIcon(p.god) + ' ' + esc(C.gods[p.god].name) + ' · ' : ''}${p.plots} plots · ${p.handCount} cards · ${p.goodwill} Goodwill</div></td><td>${p.score}</td></tr>`).join('');
+  const board = view.players.slice().sort((a, b) => b.score - a.score).map(p => `<tr class="${p.connected ? '' : 'off'}"><td><b>#${p.seat + 1}</b> ${esc(p.avatar)} ${esc(p.name)}${p.seat === mySeat() ? ' (you)' : ''}<div class="small muted">${p.god ? godIcon(p.god) + ' ' + esc(C.gods[p.god].name) + ' · ' : ''}${p.plots} plots · ${p.handCount} cards · ${p.goodwill} Goodwill</div></td><td>${p.score}</td></tr>`).join('');
   return `${mapHtml({ zoom: ui.zoom })}
-    <div class="legend"><span>Ring = owner</span><span>Gold dots = health</span><span style="color:#ff6b6b">Red dashes = hit this round</span><span>💀 Ruined</span></div>
+    <div class="legend"><span>Coloured ring + number = player seat</span><span>Gold dots = health</span><span style="color:#ff6b6b">Red dashes = hit this round</span><span>💀 Ruined</span></div>
     ${topo && topo.radius > 2 ? `<button class="btn small" data-act="zoom" style="margin-top:8px">${ui.zoom ? '🔍 Fit' : '🔍 Zoom'}</button>` : ''}
     <div class="card"><h3>🏡 Your plots</h3><ul class="list">${rows || '<li class="muted">None</li>'}</ul></div>
     <div class="card"><h3>📊 Scores</h3><table class="players">${board}</table></div>`;
@@ -832,10 +867,24 @@ function renderGameOver() {
 function renderSheet() {
   const s = ui.sheet;
   const wrap = $('#sheetWrap');
+  const sheet = $('#sheet');
   if (!s || !view || !view.me) { wrap.hidden = true; return; }
+  const opening = wrap.hidden || sheet.dataset.sheet !== s.type;
+  const scroll = opening ? 0 : sheet.scrollTop;
+  const focused = sheet.contains(document.activeElement) ? document.activeElement : null;
+  const focusMatch = focused ? [...sheet.querySelectorAll('button,input')].indexOf(focused) : -1;
   wrap.hidden = false;
-  $('#sheet').dataset.sheet = s.type;
-  $('#sheet').innerHTML = ({ rules: sheetRules, menu: sheetMenu, slot: sheetSlot })[s.type](s);
+  sheet.dataset.sheet = s.type;
+  sheet.innerHTML = ({ rules: sheetRules, menu: sheetMenu, slot: sheetSlot })[s.type](s);
+  sheet.scrollTop = scroll;
+  // Keep keyboard focus in the modal when state syncs or options are selected.
+  if (focusMatch >= 0) {
+    const replacement = [...sheet.querySelectorAll('button,input')][focusMatch];
+    if (replacement && !replacement.disabled) replacement.focus({ preventScroll: true });
+  } else if (opening) {
+    const close = sheet.querySelector('[data-act="closeSheet"]');
+    if (close) close.focus({ preventScroll: true });
+  }
 }
 const closeBtn = '<button class="iconbtn" data-act="closeSheet" aria-label="Close">✕</button>';
 
@@ -898,7 +947,7 @@ function sheetSlot(s) {
   const p = plotById(s.target);
   const c = costOf(s);
   const afford = hasAll(proj.hand, c);
-  const result = { shelter: 'Safe from this round\'s disasters and meddling.', tend: p.condition && C.conditions[p.condition].bad ? `Clears ${C.conditions[p.condition].name}.` : `Health ${HEALTH[p.health]} → ${HEALTH[Math.min(3, p.health + (myGod() === 'freya' ? 2 : 1))]}.`, claim: 'It joins your garden at its current health.' }[s.kind];
+  const result = { shelter: 'Safe from this round\'s disasters and meddling.', tend: `${p.condition && C.conditions[p.condition].bad ? 'Clears ' + C.conditions[p.condition].name + ' and restores health. ' : ''}Health ${HEALTH[p.health]} → ${HEALTH[Math.min(3, p.health + (myGod() === 'freya' ? 2 : 1))]}${p.condition === 'ash' ? ' (Ash removed)' : ''}.`, claim: 'It joins your garden at its current health.' }[s.kind];
   return `<div class="head"><div><h2>${a.icon} ${esc(a.name)}</h2><p class="muted small">${esc(plotName(p))}</p></div>${closeBtn}</div>
     <div class="card"><p style="margin-top:0">${esc(result)}</p><div class="chips">${chips(c)}</div>${afford ? '' : '<p class="small" style="color:var(--bad)">You won\'t have enough when this happens: it will fizzle.</p>'}</div>
     <div class="foot"><div class="row"><button class="btn" data-act="slotBack">Back</button><button class="btn primary" data-act="saveSlot">Plan this</button></div></div>`;
@@ -1078,11 +1127,13 @@ document.addEventListener('click', e => {
   if (spot) { onSpot(spot.getAttribute('data-spot')); return; }
   const el = t.closest('[data-act]');
   if (!el || el.disabled) return;
-  if (el.dataset.act === 'clearSlot') e.stopPropagation();
   if (el.dataset.act !== 'join') sfx('tap');
   onAct(el);
 }, true);
 $('#sheetWrap').addEventListener('click', e => { if (e.target === $('#sheetWrap')) { ui.sheet = null; render(); } });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && ui.sheet) { e.preventDefault(); ui.sheet = null; render(); }
+});
 
 /* phone niceties */
 let wakeLock = null;

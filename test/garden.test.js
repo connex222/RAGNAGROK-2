@@ -389,6 +389,39 @@ test('Show scoring: ties share the higher place', () => {
   assert.strictEqual(s.players[2].showPoints, 0, 'no Flora feature: does not place');
 });
 
+test('Act III disaster intensity stays bounded across player counts', () => {
+  assert.strictEqual(C.disastersPerRound.small['3'], 1);
+  assert.strictEqual(C.disastersPerRound.large['3'], 2);
+  assert.strictEqual(C.disasters['3'].find(x => x.key === 'mower').health, -1);
+  assert.ok(C.disasters['3'].some(x => x.key === 'twilight' && x.target.kind === 'half'),
+    'large-scale apocalyptic targeting is deliberately preserved');
+});
+
+test('Hardy Perennial rewards zero damaged plots over one damaged plot', () => {
+  const s = setup(['thor', 'freya', 'hel']);
+  const ids = nb(s, centre(s));
+  // Both qualify with at least three owned plots, but Thor's are pristine.
+  for (const id of ids.slice(0, 3)) own(s, id, 0, { health: 3 });
+  for (const id of ids.slice(3, 6)) own(s, id, 1, { health: 3 });
+  plot(s, ids[3]).health = 1;
+  s.shows[0].categories = ['hardyPerennial'];
+  s.round = 3;
+  [0, 1, 2].forEach(seat => plan(s, seat, rest));
+  lockAll(s); toHarvestEnd(s); E.advance(s);
+  assert.strictEqual(s.players[0].showPoints, C.showPoints['3'][0], 'zero damaged plots wins');
+  assert.strictEqual(s.players[1].showPoints, C.showPoints['3'][1], 'one damaged plot is runner-up');
+  assert.strictEqual(s.players[2].showPoints, 0, 'ineligible fewer-than-3 plot garden excluded');
+});
+
+test('A ruined Blessed plot never harvests, but a living Blessed plot does', () => {
+  const s = setup(['thor', 'freya']);
+  const [a, b] = nb(s, centre(s));
+  own(s, a, 0, { health: 0, condition: 'blessed', terrain: 'turf' });
+  own(s, b, 0, { health: 1, condition: 'blessed', terrain: 'turf' });
+  assert.strictEqual(E.plotYield(s, plot(s, a)), 0, 'ruined cannot harvest by blessing alone');
+  assert.strictEqual(E.plotYield(s, plot(s, b)), 1, 'blessing adds yield to living withered plot');
+});
+
 test('Odin shifts a sector disaster once per act', () => {
   const s = setup(['odin', 'thor']);
   s.forecast.now = [{ key: 'frost', name: 'Frost', good: false, health: 0, condition: 'frozen', target: { kind: 'sector' }, sector: 2, plots: [] }];

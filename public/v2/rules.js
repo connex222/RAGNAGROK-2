@@ -29,7 +29,7 @@
         body: `<ul class="costs">
           <li><span><b>Shelter</b> a plot from disasters and meddling</span><span>${r('turf')}</span></li>
           <li><span><b>Meddle</b> with a neighbour: trample their plot or pilfer a card</span><span>${r('gnomeDust')}</span></li>
-          <li><span><b>Tend</b> a plot: clear a problem or improve its health</span><span>${r('compost')}</span></li>
+          <li><span><b>Tend</b> a plot: restore health and clear one harmful condition</span><span>${r('compost')}</span></li>
           <li><span><b>Claim</b> an empty plot next to your garden</span><span>${r('turf')} ${r('fertilizer')}</span></li>
           <li><span><b>Cultivate</b> a garden feature on your plot</span><span>varies</span></li>
           <li><span><b>Car-Boot Sale:</b> take any 2 supplies</span><span>free</span></li></ul>
@@ -47,7 +47,7 @@
         title: 'Disasters',
         body: `<p>Plots with a <b>red dashed outline</b> will be hit by disasters <b>this round</b>.</p>
           <p>Shelter them, Tend them afterwards, or take the gamble. Big gardens have more to protect.</p>
-          <p>Ragnarök gets worse in three acts: frost, then fire, then the end of everything.</p>`
+          <p>Ragnarök escalates through three acts: frost, fire and apocalyptic hazards. The final act has wider dangers, but fewer simultaneous strikes so gardens remain playable.</p>`
       },
       {
         icon: I('icon-bank'),

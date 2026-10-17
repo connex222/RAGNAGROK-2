@@ -116,6 +116,7 @@ ul.costs li > span:last-child { margin-left:auto; padding-left:12px; white-space
 .prow { display:grid; grid-template-columns:10px 56px 1fr auto; align-items:center; gap:12px; background:var(--surface); border-radius:16px; padding:4px 16px 4px 0; overflow:hidden; flex:1; }
 .prow .bar { align-self:stretch; }
 .prow .av { font-size:34px; text-align:center; }
+.prow .seat { display:inline-block; margin-right:8px; font-size:21px; border:2px solid var(--muted); border-radius:8px; padding:0 6px; }
 .prow .nm { font-weight:800; font-size:25px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .prow .st { font-size:19px; color:var(--muted); }
 .prow .sc { font-size:38px; font-weight:900; text-align:right; }
@@ -164,6 +165,8 @@ ul.costs li > span:last-child { margin-left:auto; padding-left:12px; white-space
 #clock { padding-left:180px; }
 #corner button { background:rgba(42,29,59,.92); border:2px solid var(--line); border-radius:16px; padding:10px 20px; font-size:24px; font-weight:800; }
 #soundGate { position:absolute; left:40px; bottom:24px; z-index:60; background:var(--primary); color:var(--on-primary); font-weight:900; padding:18px 28px; border-radius:20px; font-size:28px; }
+#roomError { margin-top:12px; padding:12px 18px; background:#522e35; border:2px solid var(--bad); border-radius:16px; font-size:23px; }
+#retryRoom { margin-top:12px; padding:12px 20px; font-size:23px; background:var(--primary); color:var(--on-primary); border-radius:12px; font-weight:800; }
 #conn { position:absolute; left:0; right:0; top:0; z-index:70; background:var(--warn); color:#1a1226; text-align:center; font-weight:900; padding:10px; font-size:28px; }
 </style>
 </head>
@@ -179,6 +182,8 @@ ul.costs li > span:last-child { margin-left:auto; padding-left:12px; white-space
       <div class="url" id="url">Connecting…</div>
       <div class="label" style="margin-top:18px">and enter</div>
       <div class="code" id="code">····</div>
+      <div id="roomError" role="alert" hidden></div>
+      <button id="retryRoom" hidden>↻ Retry room connection</button>
       <div id="lobbyPlayers"></div>
       <div id="lobbyMode"></div>
       <div id="tips" hidden></div>
@@ -274,21 +279,50 @@ setInterval(fit, 2000);
 fit();
 
 /* connection */
-function showRoom(r) { $('#code').textContent = r.code; $('#url').textContent = r.joinUrl.replace(/^https?:\/\//, ''); $('#qr').src = r.qr; }
-async function create() {
-  const r = await socket.emitWithAck('tv:create', {});
-  if (!r.ok) return;
-  saved = { code: r.code, hostKey: r.hostKey };
-  store.set(KEY, saved);
-  showRoom(r);
+function showRoom(r) {
+  $('#code').textContent = r.code;
+  $('#url').textContent = r.joinUrl.replace(/^https?:\/\//, '');
+  $('#qr').src = r.qr;
+  $('#roomError').hidden = true; $('#retryRoom').hidden = true;
 }
-socket.on('connect', async () => {
-  $('#conn').hidden = true;
-  if (saved) { const r = await socket.emitWithAck('tv:attach', saved); if (r.ok) { showRoom(r); return; } }
-  await create();
-});
+function roomError(message) {
+  $('#roomError').textContent = message;
+  $('#roomError').hidden = false;
+  $('#retryRoom').hidden = false;
+}
+async function roomRequest(type, data) {
+  try { return await socket.timeout(8000).emitWithAck(type, data || {}); }
+  catch (e) { return { ok:false, transient:true, error:'Server did not respond. Try again.' }; }
+}
+let roomRequestPending = false;
+async function attachOrCreate() {
+  if (roomRequestPending || !socket.connected) return;
+  roomRequestPending = true;
+  try {
+    if (saved) {
+      const r = await roomRequest('tv:attach', saved);
+      if (r.ok) { showRoom(r); return; }
+      // Do not erase a valid host key because of a temporary network timeout.
+      if (r.transient) { roomError('Cannot reconnect to your room yet. Your host key is safe.'); return; }
+      saved = null; store.del(KEY);
+    }
+    let r = await roomRequest('tv:create', {});
+    if (!r.ok) {
+      // A room might exist despite a lost acknowledgement: recover securely
+      // using the server's current authenticated TV connection before retrying.
+      const recovery = await roomRequest('tv:recover', {});
+      if (recovery.ok) r = recovery;
+      else { roomError(r.error || 'Could not create a room.'); return; }
+    }
+    saved = { code:r.code, hostKey:r.hostKey };
+    store.set(KEY, saved);
+    showRoom(r);
+  } finally { roomRequestPending = false; }
+}
+$('#retryRoom').addEventListener('click', attachOrCreate);
+socket.on('connect', () => { $('#conn').hidden = true; attachOrCreate(); });
 socket.on('disconnect', () => { $('#conn').hidden = false; });
-socket.on('roomClosed', () => { saved = null; store.del(KEY); view = null; create(); });
+socket.on('roomClosed', () => { saved = null; store.del(KEY); view = null; attachOrCreate(); });
 socket.on('state', v => {
   if (view && v.stateVersion < view.stateVersion && v.meta.code === view.meta.code) return;
   if (v.topology) topo = v.topology;
@@ -474,7 +508,7 @@ function renderRows() {
   const top = ranked[0] ? ranked[0].score : 0;
   $('#rows').innerHTML = ranked.map(p => `<div class="prow${p.connected ? '' : ' off'}${p.score === top && top > 0 ? ' lead' : ''}">
     <div class="bar" style="background:${p.colour}"></div><div class="av">${esc(p.avatar)}</div>
-    <div><div class="nm">${esc(p.name)} ${p.god ? godIcon(p.god) : ''}${view.phase.step === 'plan' && p.locked ? ' ✔' : ''}</div><div class="st">${p.plots} plots · ${p.handCount} cards · ${p.goodwill} Goodwill</div></div>
+    <div><div class="nm"><span class="seat">${p.seat + 1}</span>${esc(p.name)} ${p.god ? godIcon(p.god) : ''}${view.phase.step === 'plan' && p.locked ? ' ✔' : ''}</div><div class="st">${p.plots} plots · ${p.handCount} cards · ${p.goodwill} Goodwill</div></div>
     <div class="sc">${p.score}</div></div>`).join('');
   $('#rows').className = view.players.length > 5 ? 'compact' : '';
 }
