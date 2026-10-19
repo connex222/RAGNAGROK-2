@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const BUILD_VERSION = require('../package.json').version;
 const ENGINES = {
   v1: () => require('../src/engine/rules'),
   v2: () => require('../src/engine/garden')
@@ -20,9 +21,39 @@ const ENGINES = {
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O: they look like 1 and 0
 const CODE_LENGTH = 4;
 
+// Schema-version matching is necessary but not sufficient: a truncated or
+// hand-edited save can still have the right number and crash the room timer.
+// Check the core structural invariants before restoring a game to live rooms.
+function validSave(data, filename, rules, schemaVersion) {
+  if (!data || data.format !== 'ragnagrok.room' || data.version !== 1) return false;
+  if (typeof data.code !== 'string' || data.code.length !== CODE_LENGTH ||
+      [...data.code].some(c => !CODE_CHARS.includes(c)) || filename !== `${data.code}.json`) return false;
+  if (typeof data.hostKey !== 'string' || !/^[a-f0-9]{24}$/i.test(data.hostKey)) return false;
+  const s = data.state;
+  if (!s || s.schema !== 'ragnagrok.gamestate' || s.schemaVersion !== schemaVersion ||
+      !s.room || s.room.code !== data.code || !s.config || !s.phase ||
+      !['lobby', 'factions', 'setup', 'draft', 'playing', 'gameOver'].includes(s.phase.stage) ||
+      (s.phase.deadline !== null && s.phase.deadline !== undefined && !Number.isFinite(s.phase.deadline)) ||
+      !Number.isSafeInteger(s.stateVersion) || s.stateVersion < 0 ||
+      !Array.isArray(s.players) || s.players.length > 8 ||
+      !Array.isArray(s.trades) || !Array.isArray(s.log) ||
+      !s.secrets || !s.secrets.playerTokens || !s.secrets.rng ||
+      !Number.isInteger(s.secrets.rng.s)) return false;
+  if (!s.players.every((p, i) => p && p.seat === i && typeof p.name === 'string' &&
+      typeof s.secrets.playerTokens[i] === 'string' && s.secrets.playerTokens[i].length >= 16)) return false;
+  if (s.phase.stage !== 'lobby') {
+    if (!s.board || !s.board.layoutId) return false;
+    if (rules === 'v2' && (!Array.isArray(s.board.plots) || !s.board.index || !Array.isArray(s.shows) ||
+        !s.stats || !s.forecast || !s.secrets.plans || !s.secrets.pledges)) return false;
+    if (rules === 'v1' && (!Array.isArray(s.board.hexes) || !s.dice || !s.bank)) return false;
+  }
+  return true;
+}
+
 class RoomManager {
-  constructor({ saveDir = null, idleMinutes = 30, finishedMinutes = 60, logger = console, rules = 'v1', gameConfig = {} } = {}) {
+  constructor({ saveDir = null, idleMinutes = 30, finishedMinutes = 60, maxRooms = 100, logger = console, rules = 'v1', gameConfig = {} } = {}) {
     this.gameConfig = gameConfig;
+    this.maxRooms = Math.max(1, Math.min(1000, Number.isInteger(maxRooms) ? maxRooms : 100));
     if (!ENGINES[rules]) throw new Error(`Unknown rules version: ${rules}`);
     this.rules = rules;
     this.E = ENGINES[rules]();
@@ -31,7 +62,7 @@ class RoomManager {
     this.idleMs = idleMinutes * 60 * 1000;
     this.finishedMs = finishedMinutes * 60 * 1000;
     this.log = logger;
-    if (this.saveDir) fs.mkdirSync(this.saveDir, { recursive: true });
+    if (this.saveDir) fs.mkdirSync(this.saveDir, { recursive: true, mode: 0o700 });
   }
 
   /* ---------- lifecycle ---------- */
@@ -40,12 +71,16 @@ class RoomManager {
     for (let attempt = 0; attempt < 1000; attempt++) {
       let code = '';
       for (let i = 0; i < CODE_LENGTH; i++) code += CODE_CHARS[crypto.randomInt(CODE_CHARS.length)];
-      if (!this.rooms.has(code)) return code;
+      // Save files skipped during restore (e.g. MAX_ROOMS was reduced) still
+      // own their room codes. Never overwrite a dormant saved match.
+      if (!this.rooms.has(code) && (!this.saveDir ||
+          (!fs.existsSync(this.filePath(code)) && !fs.existsSync(`${this.filePath(code)}.tmp`)))) return code;
     }
     throw new Error('No free room codes');
   }
 
   create(now = Date.now()) {
+    if (this.rooms.size >= this.maxRooms) throw new Error('Game server is full');
     const code = this.newCode();
     const room = {
       code,
@@ -103,7 +138,7 @@ class RoomManager {
   /* ---------- sending ---------- */
 
   viewFor(room, socket) {
-    const meta = { code: room.code, paused: !!room.paused, serverNow: Date.now() };
+    const meta = { code: room.code, paused: !!room.paused, serverNow: Date.now(), version: BUILD_VERSION };
     if (socket.data.role === 'tv') {
       return { ...this.E.publicView(room.state), meta: { ...meta, isHost: !!socket.data.isHost } };
     }
@@ -180,6 +215,12 @@ class RoomManager {
     const pausedFor = now - room.paused.at;
     const s = room.state;
     if (s.phase.deadline) s.phase.deadline += pausedFor;
+    // Pause stops disconnect-grace countdowns too. When a player dropped during
+    // the pause, start their remaining grace only after the game resumes.
+    s.players.forEach(p => {
+      if (!p.connected && p.disconnectedAt !== null && p.disconnectedAt !== undefined)
+        p.disconnectedAt = p.disconnectedAt >= room.paused.at ? now : p.disconnectedAt + pausedFor;
+    });
     s.trades.forEach(t => { if (t.status === 'open') t.expiresAt += pausedFor; });
     room.paused = null;
     s.stateVersion += 1;
@@ -233,7 +274,9 @@ class RoomManager {
     const file = this.filePath(room.code);
     const tmp = `${file}.tmp`;
     try {
-      fs.writeFileSync(tmp, this.serialize(room));
+      fs.writeFileSync(tmp, this.serialize(room), { mode: 0o600 });
+      // An old temporary file might have been created with looser permissions.
+      fs.chmodSync(tmp, 0o600);
       fs.renameSync(tmp, file); // atomic: a crash never leaves a half-written save
     } catch (err) {
       this.log.error(`Save failed for room ${room.code}:`, err.message);
@@ -248,6 +291,15 @@ class RoomManager {
 
   saveAll() {
     this.rooms.forEach(room => this.saveNow(room));
+  }
+
+  quarantineSave(filename, reason) {
+    const shelf = path.join(this.saveDir, 'corrupt');
+    fs.mkdirSync(shelf, { recursive: true });
+    const destination = path.join(shelf, filename);
+    fs.renameSync(path.join(this.saveDir, filename),
+      fs.existsSync(destination) ? path.join(shelf, `${Date.now()}-${filename}`) : destination);
+    this.log.error(`Invalid save ${filename}: ${reason}; moved to saves/corrupt.`);
   }
 
   loadAll(now = Date.now()) {
@@ -268,6 +320,16 @@ class RoomManager {
             this.log.log(`Skipped save ${f}: made by rules version ${data.state && data.state.schemaVersion}, this server runs version ${this.E.SCHEMA_VERSION}. Moved to saves/incompatible.`);
             return;
           }
+          if (!validSave(data, f, this.rules, this.E.SCHEMA_VERSION)) {
+            this.quarantineSave(f, 'invalid structure');
+            return;
+          }
+          // Restored rooms count toward the same capacity as newly created rooms.
+          // Do not discard a valid save merely because this instance is full.
+          if (this.rooms.size >= this.maxRooms) {
+            this.log.error(`Skipping restore of ${f}: MAX_ROOMS limit (${this.maxRooms}); save retained.`);
+            return;
+          }
           const room = {
             code: data.code,
             hostKey: data.hostKey,
@@ -284,7 +346,12 @@ class RoomManager {
           this.rooms.set(room.code, room);
           loaded++;
         } catch (err) {
-          this.log.error(`Could not load ${f}:`, err.message);
+          // Invalid JSON with a room-code filename must not be retried on every
+          // restart. Other .json files do not belong to us: leave them alone.
+          if (/^[A-HJ-NP-Z]{4}\.json$/.test(f) && err instanceof SyntaxError) {
+            try { this.quarantineSave(f, 'invalid JSON'); }
+            catch (quarantineErr) { this.log.error(`Could not quarantine ${f}:`, quarantineErr.message); }
+          } else this.log.error(`Could not load ${f}:`, err.message);
         }
       });
     return loaded;

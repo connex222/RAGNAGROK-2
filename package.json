@@ -1,7 +1,7 @@
 {
   "name": "ragnagrok",
-  "version": "1.1.0-dev.4",
-  "description": "Ragnagrok V2: The Last Garden Show — multiplayer garden survival strategy game",
+  "version": "1.1.0-dev.5",
+  "description": "RAGNAGROK V2: The Last Garden Show — multiplayer garden survival strategy game",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
@@ -12,10 +12,11 @@
     "balance": "node test/sim2.js 2000 long && node test/sim2.js 700 standard && node test/sim2.js 500 epic",
     "test:rules": "node test/garden.test.js",
     "test:core": "npm run test:offline && node test/sim2.js 60 standard",
-    "test:offline": "node test/garden.test.js && node test/rooms-protocol.test.js && node test/assets.test.js && node test/ux-protocol.test.js",
+    "test:offline": "node test/garden.test.js && node test/rooms-protocol.test.js && node test/assets.test.js && node test/ux-protocol.test.js && node test/branding.test.js && node test/cache-policy.test.js && node test/build-version.test.js",
     "test:modes": "node test/modes-smoke.js",
     "test:balance-lab": "node test/balance-lab.js baseline 35 && node test/balance-lab.js candidate 35",
-    "test:ux": "node test/ux-protocol.test.js"
+    "test:ux": "node test/ux-protocol.test.js",
+    "test:branding": "node test/branding.test.js"
   },
   "engines": {
     "node": ">=18"

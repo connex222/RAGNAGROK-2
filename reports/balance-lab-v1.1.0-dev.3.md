@@ -1,4 +1,4 @@
-# Ragnagrok v1.1.0-dev.3 — Exploratory paired-seed balance comparison
+# RAGNAGROK v1.1.0-dev.3 — Exploratory paired-seed balance comparison
 
 ## Method
 

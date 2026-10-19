@@ -72,7 +72,7 @@ See `reports/balance-v2-dev4-check.md` and `Ragnagrok-v1.1.0-dev.4-Changes.md` i
 
 ---
 
-# Ragnagrok v1.1.0-dev.1 — Development Work Report
+# RAGNAGROK v1.1.0-dev.1 — Development Work Report
 
 **Status: internal playtesting only; not a final commercial release.**
 

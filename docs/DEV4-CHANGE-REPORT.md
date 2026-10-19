@@ -1,4 +1,4 @@
-# Ragnagrok v1.1.0-dev.4 — Engineering and game-design progress
+# RAGNAGROK v1.1.0-dev.4 — Engineering and game-design progress
 
 **17 October 2026 · Internal playtesting build, not a commercial release**
 

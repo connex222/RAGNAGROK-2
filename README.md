@@ -1,4 +1,4 @@
-# Ragnagrok: The Last Garden Show
+# RAGNAGROK: The Last Garden Show
 
 A party strategy game for one shared TV and 2–8 phones. The Norse apocalypse is
 destroying the neighbourhood; the Village Garden Show is going ahead anyway.
@@ -6,6 +6,12 @@ destroying the neighbourhood; the Village Garden Show is going ahead anyway.
 - **Play at home on Windows:** see `INSTALL-WINDOWS.md` (double-click `Start Ragnagrok.bat`).
 - **Rules:** How to Play is built into the game (📖 button), and the full rulebook is the included
   `docs/RULEBOOK-V2.md`.
+
+## Development build v1.1.0-dev.5
+
+The official product name is **RAGNAGROK**. See `docs/BRAND-GUIDE.md` for naming standards. TV and phone clients now warn when a deployment changes the live server version, and gameplay scripts/rules revalidate their browser cache.
+
+Dependency-free verification: `npm run test:offline` (includes the brand, asset, cache and version-guard tests) and `npm run test:modes` (63 seeded matches). Full server/browser tests require `npm ci` first. See `docs/DEV5-CHANGE-REPORT.md` for verified results and outstanding issues.
 
 ## Folders
 

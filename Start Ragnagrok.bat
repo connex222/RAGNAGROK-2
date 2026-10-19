@@ -1,5 +1,5 @@
 @echo off
-title Ragnagrok server
+title RAGNAGROK server
 cd /d "%~dp0"
 where node >nul 2>nul
 if errorlevel 1 (
@@ -20,11 +20,11 @@ if not exist "node_modules\express\package.json" (
   )
 )
 echo.
-echo Starting Ragnagrok. Keep this window open while you play.
+echo Starting RAGNAGROK. Keep this window open while you play.
 echo Close it to stop the game.
 echo.
 rem The server starts in a separate window so this launcher can check readiness.
-start "Ragnagrok Server" cmd /k "node server\index.js"
+start "RAGNAGROK Server" cmd /k "node server\index.js"
 set "GAME_READY="
 for /l %%I in (1,1,30) do (
   if not defined GAME_READY (
@@ -34,10 +34,10 @@ for /l %%I in (1,1,30) do (
   )
 )
 if not defined GAME_READY (
-  echo The server did not start. Check the Ragnagrok Server window for errors.
+  echo The server did not start. Check the RAGNAGROK Server window for errors.
   pause
   exit /b 1
 )
-echo Ragnagrok is ready at http://localhost:3000
+echo RAGNAGROK is ready at http://localhost:3000
 start "" http://localhost:3000
 exit /b 0

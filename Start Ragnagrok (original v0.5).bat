@@ -1,5 +1,5 @@
 @echo off
-title Ragnagrok server (original version)
+title RAGNAGROK server (original version)
 cd /d "%~dp0"
 set RAGNAGROK_RULES=v1
 if not exist node_modules call npm install --omit=dev

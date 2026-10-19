@@ -31,8 +31,20 @@ const isLocalHost = host => /^(localhost|127\.\d+\.\d+\.\d+|\[::1\]|0\.0\.0\.0)(
 /* The address phones should use, from the request that loaded the TV page. */
 function joinBase(headers, env = process.env, ifaces) {
   if (env.PUBLIC_URL) return env.PUBLIC_URL.replace(/\/+$/, '');
-  const proto = String(headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
-  let host = String(headers['x-forwarded-host'] || headers.host || 'localhost').split(',')[0].trim();
+  // Forwarded headers are client-controlled unless a trusted reverse proxy
+  // sanitises them. Follow the same opt-in rule as room-code rate limiting.
+  const trusted = env.TRUST_PROXY === '1';
+  let proto = trusted ? String(headers['x-forwarded-proto'] || 'http').split(',')[0].trim() : 'http';
+  let host = String((trusted && headers['x-forwarded-host']) || headers.host || 'localhost').split(',')[0].trim();
+  // When an HTTPS hosting service terminates TLS, browser Origin reveals the
+  // scheme of the actual site. Accept it only for exactly the same host, so
+  // unrelated origins cannot generate misleading cross-domain join QR codes.
+  if (!trusted && headers.origin) {
+    try {
+      const origin = new URL(headers.origin);
+      if (origin.host === host && ['http:', 'https:'].includes(origin.protocol)) proto = origin.protocol.slice(0, -1);
+    } catch (_) { /* Invalid Origin: keep the direct scheme. */ }
+  }
   if (isLocalHost(host)) {
     const ip = lanAddresses(ifaces)[0];
     if (ip) host = ip + (host.includes(':') && !host.startsWith('[') ? ':' + host.split(':').pop() : '');

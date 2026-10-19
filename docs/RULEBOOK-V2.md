@@ -1,10 +1,10 @@
-# Ragnagrok V2 — The Last Garden Show
+# RAGNAGROK V2 — The Last Garden Show
 
 **Development rules reference, v1.1.0-dev.1.** This document describes the supplied implementation, including the new Garden Design rule. Where there is a contradiction, report it as a defect rather than assuming an unwritten rule.
 
 ## The story and objective
 
-Ragnarök is ravaging a suburban village, but the residents' gardening competition will still go ahead. Build and protect your own garden, survive forecast disasters, compete for Garden Shows, and collect Goodwill by assisting during neighbourhood emergencies. Whoever finishes with the most **Prestige** wins the Golden Flamingo.
+The end of the world is ravaging a suburban village, but the residents' gardening competition will still go ahead. Build and protect your own garden, survive forecast disasters, compete for Garden Shows, and collect Goodwill by assisting during neighbourhood emergencies. Whoever finishes with the most **Prestige** wins the Golden Flamingo.
 
 ## Players, displays and setup
 

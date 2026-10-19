@@ -16,7 +16,8 @@
    Every reply goes through the ack callback, so a phone always knows whether
    its tap worked and, if not, why. */
 
-const QRCode = require('qrcode');
+// QR-code generator is injectable so the Socket.io protocol can be tested without
+// starting an HTTP server or requiring browser-only test dependencies.
 
 const DEFAULT_RATE = { capacity: 30, refillPerSec: 15 };
 
@@ -58,11 +59,13 @@ function noteWrong(socket) {
   if (wrongCodes.size > 5000) wrongCodes.clear();
 }
 
-function attachHandlers(io, rooms, { rate = DEFAULT_RATE } = {}) {
+function attachHandlers(io, rooms, { rate = DEFAULT_RATE, qrCode = null } = {}) {
   const E = rooms.E;
+  const QRCode = qrCode || require('qrcode');
   io.on('connection', socket => {
     socket.data = { code: null, role: null, token: null, isHost: false, layoutSent: null };
     const allowed = makeLimiter(rate);
+    let creatingTv = false; // QR generation awaits; reject overlapping create calls.
 
     // Wraps every handler: safe ack, rate limit, and no crash can take the server down.
     const on = (event, fn) => {
@@ -94,7 +97,18 @@ function attachHandlers(io, rooms, { rate = DEFAULT_RATE } = {}) {
 
     function enter(room, role, extra = {}) {
       if (socket.data.code && socket.data.code !== room.code) leaveCurrent();
-      Object.assign(socket.data, { code: room.code, role, layoutSent: null, ...extra });
+      // A seat has one active controller. Otherwise an old tab and a replacement
+      // phone can both issue actions using the same valid reconnect token.
+      if (role === 'player') {
+        for (const previous of [...room.sockets]) {
+          if (previous === socket || previous.data.role !== 'player' || previous.data.token !== extra.token) continue;
+          room.sockets.delete(previous);
+          Object.assign(previous.data, { code: null, role: null, token: null, isHost: false, layoutSent: null });
+          previous.emit('sessionReplaced', { message: 'Your gardener was opened on another device.' });
+        }
+      }
+      Object.assign(socket.data, { code: room.code, role, token: role === 'player' ? extra.token : null,
+        isHost: role === 'tv' ? !!extra.isHost : false, layoutSent: null });
       room.sockets.add(socket);
       rooms.refreshConnected(room);
       rooms.touch(room);
@@ -103,21 +117,49 @@ function attachHandlers(io, rooms, { rate = DEFAULT_RATE } = {}) {
     /* ---------- TV ---------- */
 
     on('tv:create', async () => {
-      const room = rooms.create();
-      enter(room, 'tv', { isHost: true });
+      if (creatingTv || currentRoom()) return { ok: false, error: 'A room is already being created or is open on this TV' };
+      if (rooms.rooms.size >= rooms.maxRooms) return { ok: false, error: 'The game server is full. Try again later.' };
+      creatingTv = true;
+      let room = null;
+      try {
+        room = rooms.create();
+        const joinUrl = `${baseUrl(socket)}/play?room=${room.code}`;
+        const qr = await QRCode.toDataURL(joinUrl, { margin: 1, width: 480, errorCorrectionLevel: 'M' });
+        // QR creation is asynchronous; a TV can disconnect while it is pending.
+        if (socket.disconnected === true) throw new Error('Host disconnected during room creation');
+        enter(room, 'tv', { isHost: true });
+        rooms.sync(room);
+        return { ok: true, code: room.code, hostKey: room.hostKey, joinUrl, qr };
+      } catch (err) {
+        // A failed QR must not leave an unreachable room consuming server capacity.
+        if (room) rooms.remove(room);
+        throw err;
+      } finally {
+        creatingTv = false;
+      }
+    });
+
+    // Recover a QR/host key only over the original authenticated TV socket.
+    // Useful if the initial create acknowledgement was lost after the room was made.
+    on('tv:recover', async () => {
+      const room = currentRoom();
+      if (!room || socket.data.role !== 'tv' || !socket.data.isHost)
+        return { ok: false, error: 'No active host session on this TV connection' };
       const joinUrl = `${baseUrl(socket)}/play?room=${room.code}`;
       const qr = await QRCode.toDataURL(joinUrl, { margin: 1, width: 480, errorCorrectionLevel: 'M' });
-      rooms.sync(room);
       return { ok: true, code: room.code, hostKey: room.hostKey, joinUrl, qr };
     });
 
     on('tv:attach', async ({ code, hostKey }) => {
+      if (creatingTv) return { ok: false, error: 'Wait for room creation to finish' };
+      if (currentRoom() && socket.data.role !== 'tv') return { ok: false, error: 'Leave your current player seat first' };
       const room = rooms.get(code);
       if (!room) return { ok: false, error: 'That room has closed' };
       const isHost = typeof hostKey === 'string' && hostKey === room.hostKey;
-      enter(room, 'tv', { isHost });
       const joinUrl = `${baseUrl(socket)}/play?room=${room.code}`;
       const qr = await QRCode.toDataURL(joinUrl, { margin: 1, width: 480, errorCorrectionLevel: 'M' });
+      if (socket.disconnected === true) return { ok: false, error: 'TV disconnected' };
+      enter(room, 'tv', { isHost });
       rooms.sync(room);
       return { ok: true, code: room.code, isHost, joinUrl, qr };
     });
@@ -125,6 +167,7 @@ function attachHandlers(io, rooms, { rate = DEFAULT_RATE } = {}) {
     /* ---------- phones ---------- */
 
     on('player:join', ({ code, name, avatar }) => {
+      if (currentRoom()) return { ok: false, error: 'Already in a room; leave before joining again' };
       if (tooManyWrong(socket)) return { ok: false, error: 'Too many wrong codes. Wait a minute and try again.' };
       const room = rooms.get(code);
       if (!room) { noteWrong(socket); return { ok: false, error: 'No room with that code' }; }
@@ -136,6 +179,8 @@ function attachHandlers(io, rooms, { rate = DEFAULT_RATE } = {}) {
     });
 
     on('player:rejoin', ({ code, token }) => {
+      if (currentRoom() && (socket.data.role !== 'player' || socket.data.code !== String(code || '').trim().toUpperCase() || socket.data.token !== token))
+        return { ok: false, error: 'Leave your existing room before changing player seats' };
       if (tooManyWrong(socket)) return { ok: false, error: 'Too many wrong codes. Wait a minute and try again.' };
       const room = rooms.get(code);
       if (!room) return { ok: false, error: 'That room has closed' };

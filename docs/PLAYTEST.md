@@ -1,4 +1,4 @@
-# Ragnagrok V2 — Real-Player Playtest Protocol
+# RAGNAGROK V2 — Real-Player Playtest Protocol
 
 **Do not manufacture results.** This is a template for future sessions.
 

@@ -15,6 +15,7 @@ const express = require('express');
 const { Server } = require('socket.io');
 const { RoomManager } = require('./rooms');
 const { attachHandlers } = require('./handlers');
+const { cacheControlFor } = require('./cache-policy');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -22,6 +23,7 @@ function startServer({
   port = Number(process.env.PORT) || 3000,
   saveDir = process.env.SAVE_DIR || null,
   idleMinutes = Number(process.env.IDLE_MINUTES) || 30,
+  maxRooms = Number(process.env.MAX_ROOMS) || 100,
   tickMs = 1000,
   quiet = false,
   rate = undefined,
@@ -29,15 +31,16 @@ function startServer({
   gameConfig = {}
 } = {}) {
   const logger = quiet ? { log() {}, error() {} } : console;
+  const version = require('../package.json').version;
   const app = express();
   app.disable('x-powered-by');
 
-  const rooms = new RoomManager({ saveDir, idleMinutes, logger, rules, gameConfig });
+  const rooms = new RoomManager({ saveDir, idleMinutes, maxRooms, logger, rules, gameConfig });
   const restored = rooms.loadAll();
 
   app.get('/healthz', (req, res) => {
     res.set('Cache-Control', 'no-store');
-    res.json({ ok: true, rules, rooms: rooms.rooms.size, uptime: Math.round(process.uptime()) });
+    res.json({ ok: true, version, rules, rooms: rooms.rooms.size, uptime: Math.round(process.uptime()) });
   });
 
   // V2 pages live in public/v2; v0.5.1 pages stay where they are.
@@ -45,7 +48,7 @@ function startServer({
   app.get('/', (req, res) => res.sendFile(path.join(pageDir, 'index.html')));
   app.get('/play', (req, res) => res.sendFile(path.join(pageDir, 'play.html')));
   app.get('/data/v2.json', (req, res) => {
-    res.set('Cache-Control', 'public, max-age=300');
+    res.set('Cache-Control', 'no-cache');
     res.sendFile(path.join(__dirname, '..', 'src', 'data', 'v2.json'));
   });
   // Lists the artwork in public/img so screens only ask for images that exist.
@@ -66,14 +69,17 @@ function startServer({
   });
 
   app.get('/data/cards.json', (req, res) => {
-    res.set('Cache-Control', 'public, max-age=300');
+    res.set('Cache-Control', 'no-cache');
     res.sendFile(path.join(__dirname, '..', 'src', 'data', 'cards.json'));
   });
   app.use(express.static(PUBLIC_DIR, {
     extensions: ['html'],
     setHeaders(res, file) {
-      // Pages always fresh so an update reaches every phone; assets can cache.
-      res.set('Cache-Control', file.endsWith('.html') ? 'no-cache' : 'public, max-age=3600');
+      // Revalidate HTML, scripts, rules and SVGs on every game load. Otherwise
+      // a phone can run the old engine's UI against a newly deployed server for
+      // up to an hour, losing a planned action or displaying incorrect costs.
+      // Large raster/audio assets can retain their one-hour cache.
+      res.set('Cache-Control', cacheControlFor(file));
     }
   }));
 
@@ -99,7 +105,7 @@ function startServer({
   return new Promise(resolve => {
     server.listen(port, () => {
       const actual = server.address().port;
-      logger.log(`Ragnagrok server (rules ${rules}) on port ${actual}${saveDir ? `, saving to ${saveDir}` : ''}${restored ? `, restored ${restored} game(s)` : ''}`);
+      logger.log(`RAGNAGROK v${version} server (rules ${rules}) on port ${actual}${saveDir ? `, saving to ${saveDir}` : ''}${restored ? `, restored ${restored} game(s)` : ''}`);
       const lan = require('./network').lanAddresses();
       logger.log(`  TV:     open http://localhost:${actual} on this computer`);
       if (lan.length) logger.log(`  Phones: scan the QR code, or go to http://${lan[0]}:${actual}/play`);
