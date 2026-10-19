@@ -47,7 +47,7 @@
         title: 'Disasters',
         body: `<p>Plots with a <b>red dashed outline</b> will be hit by disasters <b>this round</b>.</p>
           <p>Shelter them, Tend them afterwards, or take the gamble. Big gardens have more to protect.</p>
-          <p>Ragnarök escalates through three acts: frost, fire and apocalyptic hazards. The final act has wider dangers, but fewer simultaneous strikes so gardens remain playable.</p>`
+          <p>The apocalypse escalates through three acts: frost, fire and apocalyptic hazards. The final act has wider dangers, but fewer simultaneous strikes so gardens remain playable.</p>`
       },
       {
         icon: I('icon-bank'),

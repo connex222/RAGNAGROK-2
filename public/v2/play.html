@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1a1226">
-<title>Ragnagrok</title>
+<title>RAGNAGROK</title>
 <style>
 :root {
   --bg:#1a1226; --surface:#2a1d3b; --surface2:#3b2a52; --line:#4f3c69;
@@ -189,12 +189,17 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 .god { display:grid; grid-template-columns:56px 1fr; gap:4px 12px; }
 .god .ic { grid-row:span 3; font-size:40px; }
 .god.taken { opacity:.45; }
+#updateRequired { position:fixed; inset:0; z-index:999; background:rgba(8,6,13,.92); display:grid; place-items:center; padding:20px; color:#fff; }
+#updateRequired[hidden] { display:none; }
+#updateRequired .update-card { width:min(90%,650px); text-align:center; background:#2a1d3b; border:3px solid #ff8a4c; border-radius:20px; padding:30px; font:600 18px/1.4 system-ui,sans-serif; }
+#updateRequired h2 { margin:0 0 12px; color:#ffb67a; }
+#updateRequired button { margin-top:12px; border:0; border-radius:12px; background:#ff8a4c; color:#1a1226; padding:14px 24px; font:800 20px system-ui,sans-serif; cursor:pointer; }
 </style>
 </head>
 <body>
 
 <section id="joinScreen" class="wrap" hidden>
-  <div id="joinLogo"><p class="title">Ragnagrok</p></div>
+  <div id="joinLogo"><p class="title">RAGNAGROK</p></div>
   <p class="subtitle">The Last Garden Show</p>
   <label class="f" for="joinCode">Room code</label>
   <input class="f" id="joinCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false">
@@ -220,6 +225,11 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 <div id="flash" hidden></div>
 <div id="toasts" aria-live="polite"></div>
 <div id="conn" hidden>Reconnecting…</div>
+  <div id="updateRequired" role="alert" hidden>
+  <div class="update-card"><h2>RAGNAGROK update available</h2>
+    <p>The game server has been updated. Refresh this screen to use the matching version. Your saved room connection is kept, but an uncommitted plan may need to be entered again.</p>
+    <button id="reloadForUpdate" type="button">Refresh game now</button></div>
+</div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/sfx.js"></script>
@@ -285,6 +295,13 @@ const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(P
 const params = new URLSearchParams(location.search);
 const ui = { tab: 'plan', sheet: null, tradeSeg: 'inbox', trade: { give: empty(), want: empty(), to: null }, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null };
 const socket = io({ transports: ['websocket', 'polling'] });
+const CLIENT_VERSION = '1.1.0-dev.5';
+function checkBuild(info) {
+  if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
+    $('#updateRequired').hidden = false;
+}
+$('#reloadForUpdate').addEventListener('click', () => location.reload());
+
 
 const I = (key, cls) => RagnaBoard.icon(ART, key, cls);
 const sup = k => (ART[SUP_ART(k)] ? I(SUP_ART(k)) : SUP_EMOJI[k]);
@@ -430,6 +447,8 @@ socket.on('sessionReplaced', () => forget('This gardener is now open on another 
 socket.on('kicked', () => forget('The host removed you from the game.'));
 socket.on('roomClosed', () => forget('The host closed the room.'));
 socket.on('state', v => {
+  checkBuild(v.meta);
+  if (!$('#updateRequired').hidden) return;
   if (view && view.meta && v.meta && view.meta.code === v.meta.code && v.stateVersion < view.stateVersion) return;
   if (v.topology) topo = v.topology;
   if (v.meta && v.meta.serverNow) clockOffset = v.meta.serverNow - Date.now();
@@ -529,7 +548,7 @@ function renderJoin() {
   $('#avatarGrid').innerHTML = AVATARS.map(a => `<button data-act="avatar" data-av="${a}" aria-pressed="${a === ui.avatar}" aria-label="Avatar ${a}">${a}</button>`).join('');
   $('#joinMsg').textContent = ui.joinMsg;
   const logo = $('#joinLogo');
-  if (ART.logo && !logo.dataset.done) { logo.innerHTML = `<img src="${ART.logo}" alt="Ragnagrok" style="max-width:100%;max-height:160px">`; logo.dataset.done = '1'; }
+  if (ART.logo && !logo.dataset.done) { logo.innerHTML = `<img src="${ART.logo}" alt="RAGNAGROK" style="max-width:100%;max-height:160px">`; logo.dataset.done = '1'; }
 }
 
 function renderTop() {
@@ -1149,6 +1168,8 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 document.addEventListener('pointerdown', () => { if (window.SFX) { window.SFX.unlock(); window.SFX.setMuted(!prefs.sound); } keepAwake(); }, { passive: true });
 
 window.__rg = { view: () => view, ui };
+getJSON('/healthz').then(checkBuild);
+setInterval(() => getJSON('/healthz').then(checkBuild), 5 * 60 * 1000);
 getJSON('/data/v2.json').then(c => { if (c) { C = c; render(); } });
 getJSON('/art.json').then(a => { ART = RagnaBoard.artMap(a); if (window.SFX && window.SFX.loadFromList) window.SFX.loadFromList(a && a.audio); render(); });
 render();

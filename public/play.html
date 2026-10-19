@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1a1226">
-<title>Ragnagrok</title>
+<title>RAGNAGROK</title>
 <style>
 :root {
   --bg:#1a1226; --surface:#2a1d3b; --surface2:#3b2a52; --line:#4f3c69;
@@ -205,7 +205,7 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 <body>
 
 <section id="joinScreen" class="wrap" hidden>
-  <div id="joinLogo"><p class="title">Ragnagrok</p></div>
+  <div id="joinLogo"><p class="title">RAGNAGROK</p></div>
   <p class="subtitle">Lawn care at the end of days</p>
   <label class="f" for="joinCode">Room code</label>
   <input class="f" id="joinCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false">
@@ -564,7 +564,7 @@ function render() {
 
 function renderJoin() {
   const logo = $('#joinLogo');
-  if (ART.logo && !logo.dataset.done) { logo.innerHTML = `<img src="${ART.logo}" alt="Ragnagrok" style="max-width:100%;max-height:160px">`; logo.dataset.done = '1'; }
+  if (ART.logo && !logo.dataset.done) { logo.innerHTML = `<img src="${ART.logo}" alt="RAGNAGROK" style="max-width:100%;max-height:160px">`; logo.dataset.done = '1'; }
   const code = $('#joinCode');
   if (!code.value && params.get('room')) code.value = params.get('room').toUpperCase();
   const name = $('#joinName');

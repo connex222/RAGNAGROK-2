@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ragnagrok · Lawn Care at the End of Days</title>
+<title>RAGNAGROK · Lawn Care at the End of Days</title>
 <style>
 :root {
   --bg:#150e20; --bg2:#1f1530; --surface:#2a1d3b; --surface2:#3b2a52; --line:#4f3c69;
@@ -193,7 +193,7 @@ ul.costs span { margin-left:auto; }
 <div id="stage">
   <section id="lobby" class="screen">
     <div id="lobbyLeft">
-      <div id="logo"><div class="t">Ragnagrok</div><div class="s">Lawn Care at the End of Days</div></div>
+      <div id="logo"><div class="t">RAGNAGROK</div><div class="s">Lawn Care at the End of Days</div></div>
       <div id="qrBox"><img id="qr" alt="Scan to join"></div>
     </div>
     <div id="joinInfo">
@@ -406,7 +406,7 @@ function renderLobby() {
   $('#lobbyHint').textContent = n < 2 ? 'Waiting for gardeners… you need at least 2.'
     : `${n} gardeners · ${n <= 4 ? 'standard' : 'expanded'} board · ${view.players[0].name} presses Start on their phone`;
   const logo = $('#logo');
-  if (ART.logo && !logo.dataset.done) { logo.innerHTML = `<img src="${ART.logo}" alt="Ragnagrok: Lawn Care at the End of Days">`; logo.dataset.done = '1'; }
+  if (ART.logo && !logo.dataset.done) { logo.innerHTML = `<img src="${ART.logo}" alt="RAGNAGROK: Lawn Care at the End of Days">`; logo.dataset.done = '1'; }
 }
 
 function renderDraft() {

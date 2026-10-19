@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ragnagrok · The Last Garden Show</title>
+<title>RAGNAGROK · The Last Garden Show</title>
 <style>
 :root {
   --bg:#150e20; --bg2:#1f1530; --surface:#2a1d3b; --surface2:#3b2a52; --line:#4f3c69;
@@ -168,13 +168,18 @@ ul.costs li > span:last-child { margin-left:auto; padding-left:12px; white-space
 #roomError { margin-top:12px; padding:12px 18px; background:#522e35; border:2px solid var(--bad); border-radius:16px; font-size:23px; }
 #retryRoom { margin-top:12px; padding:12px 20px; font-size:23px; background:var(--primary); color:var(--on-primary); border-radius:12px; font-weight:800; }
 #conn { position:absolute; left:0; right:0; top:0; z-index:70; background:var(--warn); color:#1a1226; text-align:center; font-weight:900; padding:10px; font-size:28px; }
+#updateRequired { position:fixed; inset:0; z-index:999; background:rgba(8,6,13,.92); display:grid; place-items:center; padding:20px; color:#fff; }
+#updateRequired[hidden] { display:none; }
+#updateRequired .update-card { width:min(90%,650px); text-align:center; background:#2a1d3b; border:3px solid #ff8a4c; border-radius:20px; padding:30px; font:600 18px/1.4 system-ui,sans-serif; }
+#updateRequired h2 { margin:0 0 12px; color:#ffb67a; }
+#updateRequired button { margin-top:12px; border:0; border-radius:12px; background:#ff8a4c; color:#1a1226; padding:14px 24px; font:800 20px system-ui,sans-serif; cursor:pointer; }
 </style>
 </head>
 <body>
 <div id="stage">
   <section id="lobby" class="screen shade">
     <div id="lobbyLeft">
-      <div id="logo"><div class="t">Ragnagrok</div><div class="s">The Last Garden Show</div></div>
+      <div id="logo"><div class="t">RAGNAGROK</div><div class="s">The Last Garden Show</div></div>
       <div id="qrBox"><img id="qr" alt="Scan to join"></div>
     </div>
     <div>
@@ -210,6 +215,11 @@ ul.costs li > span:last-child { margin-left:auto; padding-left:12px; white-space
   <div id="corner"><button id="rulesBtn">📖 Rules</button><button id="musicBtn" hidden>🎵 Music</button></div>
   <div id="banner"></div>
   <div id="conn" hidden>Reconnecting to the server…</div>
+  <div id="updateRequired" role="alert" hidden>
+  <div class="update-card"><h2>RAGNAGROK update available</h2>
+    <p>The game server has been updated. Refresh this screen to use the matching version. Your saved room connection is kept, but an uncommitted plan may need to be entered again.</p>
+    <button id="reloadForUpdate" type="button">Refresh game now</button></div>
+</div>
   <button id="soundGate">🔊 Click to switch on sound</button>
 </div>
 
@@ -224,13 +234,13 @@ const SUP = ['turf', 'fertiliser', 'sprinklers', 'compost', 'gnomeDust'];
 const SUP_EMOJI = { turf: '🌳', fertiliser: '🌾', sprinklers: '🔥', compost: '🍄', gnomeDust: '✨' };
 const SUP_ART = k => 'res-' + (k === 'fertiliser' ? 'fertilizer' : k);
 const GOD_ICON = { thor: '⚡', loki: '🎭', freya: '🌸', hel: '☠️', odin: '👁️', heimdall: '🔭', frigg: '📋', njord: '⛲' };
-const ACT_NAME = ['Fimbulwinter', "Muspell's Fire", 'Ragnarök'];
+const ACT_NAME = ['Fimbulwinter', "Muspell's Fire", 'RAGNAGROK'];
 const ACT_ICON = { shelter: '🛡️', meddle: '😈', tend: '🌱', claim: '🚩', cultivate: '🌷', carBoot: '🛒' };
 const HEALTH = ['Ruined', 'Withered', 'Healthy', 'Lush'];
 const KEY = 'ragnagrok.tv2';
 const TIPS_KEY = 'ragnagrok.tv2TipsHidden';
 const MUSIC_KEY = 'ragnagrok.tvMusicOff';
-const QUIPS = ['The judges were bribed with homemade chutney.', 'Ragnarök was mostly an inconvenience.', 'Second place gets a strongly worded letter.', 'The marrow alone was worth the apocalypse.', 'Valhalla has a waiting list for allotments now.'];
+const QUIPS = ['The judges were bribed with homemade chutney.', 'RAGNAGROK was mostly an inconvenience.', 'Second place gets a strongly worded letter.', 'The marrow alone was worth the apocalypse.', 'Valhalla has a waiting list for allotments now.'];
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -257,6 +267,13 @@ let tipIndex = 0;
 let theatre = { key: null, start: 0, shown: 0 };
 let lastBoardKey = '';
 const socket = io({ transports: ['websocket', 'polling'] });
+const CLIENT_VERSION = '1.1.0-dev.5';
+function checkBuild(info) {
+  if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
+    $('#updateRequired').hidden = false;
+}
+$('#reloadForUpdate').addEventListener('click', () => location.reload());
+
 const I = (k, cls) => RagnaBoard.icon(ART, k, cls);
 const sup = k => (ART[SUP_ART(k)] ? I(SUP_ART(k)) : SUP_EMOJI[k]);
 const godIcon = g => (ART['deity-' + g] ? I('deity-' + g) : GOD_ICON[g] || '');
@@ -324,6 +341,8 @@ socket.on('connect', () => { $('#conn').hidden = true; attachOrCreate(); });
 socket.on('disconnect', () => { $('#conn').hidden = false; });
 socket.on('roomClosed', () => { saved = null; store.del(KEY); view = null; attachOrCreate(); });
 socket.on('state', v => {
+  checkBuild(v.meta);
+  if (!$('#updateRequired').hidden) return;
   if (view && v.stateVersion < view.stateVersion && v.meta.code === view.meta.code) return;
   if (v.topology) topo = v.topology;
   if (v.meta && v.meta.serverNow) clockOffset = v.meta.serverNow - Date.now();
@@ -339,7 +358,8 @@ function unlockSound() { if (window.SFX) window.SFX.unlock(); Music.unlock(); $(
 $('#soundGate').addEventListener('click', unlockSound);
 document.addEventListener('keydown', unlockSound);
 document.addEventListener('pointerdown', unlockSound);
-setInterval(() => getJSON('/healthz'), 5 * 60 * 1000);
+getJSON('/healthz').then(checkBuild);
+setInterval(() => getJSON('/healthz').then(checkBuild), 5 * 60 * 1000);
 
 /* ================= render ================= */
 function render() {
@@ -369,7 +389,7 @@ function renderLobby() {
   const L = lenCfg();
   $('#lobbyMode').innerHTML = L ? `<b>${esc(L.name)} game</b> · ${L.rounds} rounds · ${n < 2 ? 'waiting for at least 2 gardeners' : `${esc(view.players[0].name)} starts the game from their phone`}` : '';
   renderTips();
-  if (ART.logo && !$('#logo').dataset.done) { $('#logo').innerHTML = `<img src="${ART.logo}" alt="Ragnagrok">`; $('#logo').dataset.done = '1'; }
+  if (ART.logo && !$('#logo').dataset.done) { $('#logo').innerHTML = `<img src="${ART.logo}" alt="RAGNAGROK">`; $('#logo').dataset.done = '1'; }
 }
 
 function renderTips() {
