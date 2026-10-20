@@ -7,6 +7,33 @@ destroying the neighbourhood; the Village Garden Show is going ahead anyway.
 - **Rules:** How to Play is built into the game (📖 button), and the full rulebook is the included
   `docs/RULEBOOK-V2.md`.
 
+## Development build v1.1.0-dev.9 — Show race and replayability feedback
+
+This iteration focuses on **understandable competition** and **rewarding game endings** without adjusting scores or winner determination:
+
+- The phone planner now includes a compact, optional **Show race** panel. It compares the current public garden against the next announced Garden Show's categories, with personal placement and conditional point awards. The preview explicitly excludes secret plans and future disasters.
+- The TV's Show forecast now shows the current leaders in announced categories, so everyone can follow the rivalry.
+- End-of-game **honours** recognise Show performance, garden design, Goodwill and surviving lush plots. Ties share an honour and honours are cosmetic only, so losing players can still celebrate achievements without changing the winner.
+- The Show race and actual judging use one shared ranking function; regression tests confirm they agree. A compact `<details>` control prevents the additional information from overwhelming the phone planner.
+
+**Verification:** `npm run test:offline`, `npm run test:modes`, and paired 35-match-per-length balance checks have passed. The paired samples reproduce dev.8 outcomes exactly; **this iteration does not claim improved gameplay balance or proven player enjoyment**. Validate the change through human playtesting. See [`docs/DEV9-FUN-FIRST.md`](docs/DEV9-FUN-FIRST.md) and [`docs/PLAYTEST.md`](docs/PLAYTEST.md).
+
+## Development build v1.1.0-dev.8
+
+This release hardens **lost-acknowledgement recovery**: request IDs cannot be reused for different commands, and the 256-entry bounded request-response cache is saved with a room when `SAVE_DIR` is configured. After restart, an authenticated controller may retry an identical command after all players have reconnected and the game has resumed; the engine will not apply it twice. As with any debounced save, a sudden process crash before the latest state reaches disk remains a limitation. Commands that use no request ID are not deduplicated.
+
+The phone retries a transient action acknowledgement once using **the same ID**. Closed rooms revoke attached socket roles and host rights. WebP preloading releases stuck image/decode requests after twelve seconds and retries previously failed artwork on subsequent load attempts.
+
+**Verification:** `npm run test:offline` and `npm run test:modes` need no npm dependencies. The GitHub Actions workflow runs `npm ci` and the existing real Socket.io/browser tests on push. Live end-to-end verification remains required before public release. For changes, regression cases and limitations see `docs/DEV8-RELIABILITY.md`.
+
+## Development build v1.1.0-dev.7
+
+This release adds dependency-free core-engine contracts plus an optional Vitest runner, strict inbound command validation, bounded action request-ID deduplication, authenticated single-socket state refresh, automatic pause/resume when all player controllers disconnect, idle cleanup for TV-attached abandoned matches, and a staged WebP preloader shared by TV and phones. The live Socket.io/browser test environment and Vitest install could not be verified without npm registry access; do not treat this as a production-certified build.
+
+**Detailed instructions and examples:** [`docs/DEV7-ENGINE-NETWORK-ASSETS.md`](docs/DEV7-ENGINE-NETWORK-ASSETS.md).
+
+Quick offline checks: `npm run test:offline` and `npm run test:modes`. To run Vitest, use Node.js 20+, install it with `npm install --save-dev vitest`, then run `npm run test:vitest`.
+
 ## Development build v1.1.0-dev.6
 
 The official product name is **RAGNAGROK**. See `docs/BRAND-GUIDE.md` for naming standards. dev.6 makes the full test suite pass (`npm test`), stops phones offering a Lock button for plans the server will refuse, fixes eight recorded sounds that never played, shrinks the icon artwork from 34 MB to under 1 MB, and adds automatic testing on GitHub. See `docs/DEV6-CHANGE-REPORT.md`.

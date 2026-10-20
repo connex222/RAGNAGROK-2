@@ -146,7 +146,8 @@ ul.costs li > span:last-child { margin-left:auto; padding-left:12px; white-space
 #over td { padding:10px 8px; border-bottom:2px solid var(--line); text-align:right; }
 #over td:first-child { text-align:left; }
 #over td.tot { font-weight:900; font-size:38px; color:var(--gold); }
-#over .stats { margin-top:22px; color:var(--muted); font-size:26px; display:flex; gap:34px; flex-wrap:wrap; }
+#over .stats { margin-top:22px; color:var(--muted); font-size:22px; display:flex; gap:12px 24px; flex-wrap:wrap; }
+#over .stats span { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:8px 12px; }
 .confetti { position:absolute; top:-60px; font-size:48px; pointer-events:none; z-index:36; }
 @media (prefers-reduced-motion: reduce) { .confetti { display:none; } }
 #pause { position:absolute; inset:0; z-index:40; background:rgba(21,14,32,.88); display:grid; place-items:center; text-align:center; font-size:44px; }
@@ -226,6 +227,7 @@ ul.costs li > span:last-child { margin-left:auto; padding-left:12px; white-space
 <script src="/socket.io/socket.io.js"></script>
 <script src="/sfx.js"></script>
 <script src="/board.js"></script>
+<script src="/assets.js"></script>
 <script src="/v2/rules.js"></script>
 <script>
 (() => {
@@ -267,7 +269,7 @@ let tipIndex = 0;
 let theatre = { key: null, start: 0, shown: 0 };
 let lastBoardKey = '';
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.1.0-dev.6';
+const CLIENT_VERSION = '1.1.0-dev.9';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -553,9 +555,16 @@ function renderOmens() {
     return `<div class="it">${d.good ? '🌟' : '⚠️'} <b>${esc(d.name)}</b> <small>${d.good ? 'good news' : owners.size ? 'hits ' + [...owners].map(o => esc(pl(o).avatar)).join(' ') : 'misses every garden'}</small></div>`;
   };
   const show = view.shows.find(s => s.categories && !s.results);
+  const preview = view.showPreview;
+  const categorySummary = key => {
+    const c = preview && preview.categories.find(x => x.key === key);
+    if (!c || !c.rows.length) return 'no entries yet';
+    const first = c.rows.filter(r => r.rank === 1);
+    return `leading: ${first.map(r => nm(r.seat)).join(', ')} (${first[0].value})`;
+  };
   $('#omens').innerHTML = `<div><h4>This round</h4>${(view.forecast.now || []).map(line).join('') || '<div class="it">Nothing</div>'}</div>
     <div><h4>Next round</h4>${(view.forecast.next || []).map(line).join('') || '<div class="it">The end is nigh</div>'}</div>
-    <div><h4>${show ? `🏆 Show after round ${show.after}` : '🏆 Shows'}</h4>${show ? show.categories.map(k => `<div class="it"><b>${esc(C.categories[k].name)}</b> <small>${esc(C.categories[k].describe)}</small></div>`).join('') : nextShowNote()}</div>`;
+    <div><h4>${show ? `🏆 Show after round ${show.after}` : '🏆 Shows'}</h4>${show ? show.categories.map(k => `<div class="it" title="${esc(C.categories[k].describe)}"><b>${esc(C.categories[k].name)}</b> <small>${esc(categorySummary(k))}</small></div>`).join('') : nextShowNote()}</div>`;
 }
 
 function nextShowNote() {
@@ -571,15 +580,13 @@ function renderOver() {
   if (!f) return;
   const winners = f.winners.map(s => pl(s));
   const wTxt = winners.map(p => `${esc(p.avatar)} ${esc(p.name)}`).join(' & ');
-  const mostFeatures = f.scores.slice().sort((a, b) => b.featureCount - a.featureCount)[0];
-  const mostGood = f.scores.slice().sort((a, b) => b.goodwill - a.goodwill)[0];
   const quip = QUIPS[(view.round + f.scores[0].total) % QUIPS.length];
   $('#over').innerHTML = `<div class="trophy">${ART.trophy ? `<img src="${ART.trophy}" alt="The Golden Flamingo">` : '🦩'}</div>
     <div><h1>${wTxt} win${winners.length > 1 ? '' : 's'}!</h1>
       <div class="quip">${winners.length === 1 && winners[0].god ? godIcon(winners[0].god) + ' ' + esc(C.gods[winners[0].god].name) + ' smiles. ' : ''}${esc(quip)}</div>
       <table><tr><th>Gardener</th><th>Shows</th><th>Features</th><th>Goodwill</th><th>Total</th></tr>
       ${f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${nm(s.seat)}</td><td>${s.shows}</td><td title="Includes ${s.designBonus || 0} Garden Design points">${s.features}${s.designBonus ? ` (🌿+${s.designBonus})` : ''}</td><td>${s.goodwill}</td><td class="tot">${s.total}</td></tr>`).join('')}</table>
-      <div class="stats">${mostFeatures.featureCount > 0 ? `<span>🌷 Most features: <b>${nm(mostFeatures.seat)}</b> (${mostFeatures.featureCount})</span>` : ''}${mostGood.goodwill > 0 ? `<span>🤝 Best neighbour: <b>${nm(mostGood.seat)}</b> (${mostGood.goodwill} Goodwill)</span>` : ''}<span>🗓️ ${view.round} rounds survived</span></div>
+      <div class="stats">${(f.honours || []).map(h => `<span title="${esc(h.description)}">${esc(h.icon)} ${esc(h.name)}: <b>${h.seats.map(nm).join(' & ')}</b>${h.seats.length > 1 ? ' (tie)' : ''}</span>`).join('')}<span>🗓️ ${view.round} rounds survived</span></div>
       <div class="quip" style="margin-top:24px">${nm(0)} can start a rematch from their phone.</div></div>`;
 }
 
@@ -707,6 +714,11 @@ $('#musicBtn').addEventListener('click', e => { e.stopPropagation(); Music.toggl
 getJSON('/data/v2.json').then(c => { if (c) { C = c; render(); } });
 getJSON('/art.json').then(a => {
   ART = RagnaBoard.artMap(a);
+  RagnaAssets.preloadGroup(ART, ['logo', 'background-tv']);
+  RagnaAssets.preloadWhenIdle(ART, [
+    ...Object.keys(ART).filter(k => k.startsWith('deity-')),
+    ...Object.keys(ART).filter(k => k.startsWith('hex-') || k.startsWith('feature-') || k.startsWith('cond-'))
+  ]);
   Music.load(RagnaBoard.audioMap(a));
   if (window.SFX && window.SFX.loadFromList) window.SFX.loadFromList(a && a.audio);
   if (ART['background-tv']) { $('#stage').classList.add('bgart'); $('#stage').style.backgroundImage = `url(${ART['background-tv']})`; }

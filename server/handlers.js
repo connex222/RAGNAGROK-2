@@ -35,6 +35,8 @@ function makeLimiter(RATE) {
 }
 
 const { joinBase } = require('./network');
+const { validatePayload } = require('./payload-validation');
+const { ID: ACTION_ID, LIMIT: ACTION_CACHE_LIMIT, fingerprint } = require('./action-requests');
 const baseUrl = socket => joinBase(socket.handshake.headers);
 
 /* Slows down anyone guessing room codes: 20 wrong codes a minute per address, then a pause. */
@@ -73,7 +75,9 @@ function attachHandlers(io, rooms, { rate = DEFAULT_RATE, qrCode = null } = {}) 
         const reply = typeof ack === 'function' ? ack : () => {};
         if (!allowed()) return reply({ ok: false, error: 'Slow down a little' });
         try {
-          const out = await fn(payload && typeof payload === 'object' ? payload : {});
+          const checked = validatePayload(payload);
+          if (!checked.ok) return reply({ ok: false, error: checked.error });
+          const out = await fn(checked.value);
           reply(out || { ok: true });
         } catch (err) {
           console.error(`Handler ${event} failed:`, err);
@@ -88,8 +92,7 @@ function attachHandlers(io, rooms, { rate = DEFAULT_RATE, qrCode = null } = {}) 
       const room = currentRoom();
       if (!room) return;
       room.sockets.delete(socket);
-      socket.data.code = null;
-      socket.data.layoutSent = null;
+      Object.assign(socket.data, { code: null, role: null, token: null, isHost: false, layoutSent: null });
       rooms.refreshConnected(room);
       rooms.touch(room);
       rooms.sync(room);
@@ -207,14 +210,45 @@ function attachHandlers(io, rooms, { rate = DEFAULT_RATE, qrCode = null } = {}) 
     on('action', action => {
       const room = currentRoom();
       if (!room || socket.data.role !== 'player') return { ok: false, error: 'Join a game first' };
-      if (room.paused) return { ok: false, error: 'The game is paused' };
       const seat = rooms.seatOf(room, socket);
       if (seat < 0) return { ok: false, error: 'You are not in this game' };
-      const res = E.apply(room.state, seat, action);
+      // Clients may retry a command when an ACK is dropped. requestId makes
+      // repeat delivery safe across reconnects to the same live room process.
+      const id = action.requestId;
+      if (id !== undefined && (typeof id !== 'string' || !ACTION_ID.test(id)))
+        return { ok: false, error: 'Invalid request ID' };
+      const key = id === undefined ? null : `${seat}:${id}`;
+      const { requestId, ...cleanAction } = action;
+      const digest = key ? fingerprint(cleanAction) : null;
+      if (!room.actionReplies) room.actionReplies = new Map(); // supports older rooms
+      if (key && room.actionReplies.has(key)) {
+        const previous = room.actionReplies.get(key);
+        if (previous.fingerprint !== digest)
+          return { ok: false, error: 'Request ID was already used for a different action' };
+        return previous.reply;
+      }
+      if (room.paused) return { ok: false, error: 'The game is paused' };
+      const res = E.apply(room.state, seat, cleanAction);
       rooms.touch(room);
-      if (!res.ok) return { ok: false, error: res.error };
-      rooms.sync(room, res.events);
-      return { ok: true };
+      const reply = res.ok ? { ok: true } : { ok: false, error: res.error };
+      if (key) {
+        room.actionReplies.set(key, { fingerprint: digest, reply });
+        if (room.actionReplies.size > ACTION_CACHE_LIMIT)
+          room.actionReplies.delete(room.actionReplies.keys().next().value);
+      }
+      if (res.ok) rooms.sync(room, res.events);
+      else if (key) rooms.scheduleSave(room); // failed ACK results also persist, if saving is enabled
+      return reply;
+    });
+
+    // Acknowledgements or snapshots can be lost during brief reconnects.
+    // Rejoin already sends a fresh snapshot; this permits an explicit resync
+    // without accepting player-supplied state or replaying old private events.
+    on('state:request', () => {
+      const room = currentRoom();
+      if (!room || !rooms.viewFor(room, socket)) return { ok: false, error: 'Join a game first' };
+      rooms.syncOne(room, socket);
+      return { ok: true, stateVersion: room.state.stateVersion };
     });
 
     /* Live "ghost" preview: the TV shows where a player is about to build. */

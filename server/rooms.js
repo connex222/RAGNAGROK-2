@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const BUILD_VERSION = require('../package.json').version;
+const { validSavedReplies } = require('./action-requests');
 const ENGINES = {
   v1: () => require('../src/engine/rules'),
   v2: () => require('../src/engine/garden')
@@ -25,7 +26,8 @@ const CODE_LENGTH = 4;
 // hand-edited save can still have the right number and crash the room timer.
 // Check the core structural invariants before restoring a game to live rooms.
 function validSave(data, filename, rules, schemaVersion) {
-  if (!data || data.format !== 'ragnagrok.room' || data.version !== 1) return false;
+  if (!data || data.format !== 'ragnagrok.room' || data.version !== 1 ||
+      (data.actionReplies !== undefined && !validSavedReplies(data.actionReplies))) return false;
   if (typeof data.code !== 'string' || data.code.length !== CODE_LENGTH ||
       [...data.code].some(c => !CODE_CHARS.includes(c)) || filename !== `${data.code}.json`) return false;
   if (typeof data.hostKey !== 'string' || !/^[a-f0-9]{24}$/i.test(data.hostKey)) return false;
@@ -89,6 +91,7 @@ class RoomManager {
       paused: null,
       lastActivity: now,
       sockets: new Set(),
+      actionReplies: new Map(),
       saveTimer: null
     };
     this.rooms.set(code, room);
@@ -107,10 +110,15 @@ class RoomManager {
 
   remove(room) {
     clearTimeout(room.saveTimer);
-    room.sockets.forEach(s => s.emit('roomClosed', { code: room.code }));
+    room.sockets.forEach(s => {
+      s.emit('roomClosed', { code: room.code });
+      Object.assign(s.data, { code: null, role: null, token: null, isHost: false, layoutSent: null });
+    });
+    room.sockets.clear();
     this.rooms.delete(room.code);
     if (this.saveDir) {
       fs.rm(this.filePath(room.code), { force: true }, () => {});
+      fs.rm(`${this.filePath(room.code)}.tmp`, { force: true }, () => {});
     }
   }
 
@@ -133,6 +141,15 @@ class RoomManager {
       if (seat >= 0) live.add(seat);
     });
     room.state.players.forEach(p => this.E.setConnected(room.state, p.seat, live.has(p.seat), now));
+    // No active controllers: suspend the round clock so an abandoned room
+    // cannot silently play through itself. Regular idle cleanup still applies.
+    const stage = room.state.phase.stage;
+    if (room.state.players.length && !live.size && stage !== 'lobby' && stage !== 'gameOver' && !room.paused) {
+      room.paused = { at: now, auto: true };
+    } else if (room.paused && room.paused.auto && room.state.players.length &&
+        room.state.players.every(p => p.connected)) {
+      this.resume(room, now);
+    }
   }
 
   /* ---------- sending ---------- */
@@ -147,25 +164,29 @@ class RoomManager {
     return { ...this.E.privateView(room.state, seat), meta: { ...meta, isHost: seat === 0 } };
   }
 
+  // A reconnect or stale-screen refresh must reach only its intended socket.
+  // Do not broadcast a full snapshot to every player in response to one client.
+  syncOne(room, socket) {
+    const view = this.viewFor(room, socket);
+    if (!view) return false;
+    const layoutId = room.state.board ? room.state.board.layoutId : null;
+    if (layoutId && socket.data.layoutSent !== layoutId) {
+      view.topology = this.E.clientTopology(layoutId);
+      socket.data.layoutSent = layoutId;
+    }
+    socket.emit('state', view);
+    return true;
+  }
+
   /* Push the latest state (and any events) to every screen in the room. */
   sync(room, events = []) {
-    const layoutId = room.state.board ? room.state.board.layoutId : null;
-
     room.sockets.forEach(socket => {
-      const view = this.viewFor(room, socket);
-      if (!view) {
+      if (!this.syncOne(room, socket)) {
         socket.emit('kicked', { code: room.code });
         room.sockets.delete(socket);
-        socket.data.code = null;
+        Object.assign(socket.data, { code: null, role: null, token: null, isHost: false, layoutSent: null });
         return;
       }
-
-      // Send the static board geometry once per socket per layout.
-      if (layoutId && socket.data.layoutSent !== layoutId) {
-        view.topology = this.E.clientTopology(layoutId);
-        socket.data.layoutSent = layoutId;
-      }
-      socket.emit('state', view);
 
       if (!events.length) return;
       const seat = socket.data.role === 'player' ? this.seatOf(room, socket) : -1;
@@ -189,7 +210,7 @@ class RoomManager {
 
       const idleFor = now - room.lastActivity;
       const finished = room.state.phase.stage === 'gameOver';
-      if (room.sockets.size === 0 && idleFor > this.idleMs) this.remove(room);
+      if ((room.sockets.size === 0 || (room.paused && room.paused.auto)) && idleFor > this.idleMs) this.remove(room);
       else if (finished && idleFor > this.finishedMs) this.remove(room);
     });
   }
@@ -212,6 +233,7 @@ class RoomManager {
 
   resume(room, now = Date.now()) {
     if (!room.paused) return 'Not paused';
+    if (!room.state.players.some(p => p.connected)) return 'Wait for a player to reconnect';
     const pausedFor = now - room.paused.at;
     const s = room.state;
     if (s.phase.deadline) s.phase.deadline += pausedFor;
@@ -242,6 +264,7 @@ class RoomManager {
     });
     fresh.stateVersion = old.stateVersion + 1;
     room.state = fresh;
+    room.actionReplies = new Map(); // A rematch is a new game; old request IDs must not apply.
     room.paused = null;
     room.sockets.forEach(s => { s.data.layoutSent = null; });
     this.refreshConnected(room, now);
@@ -263,6 +286,7 @@ class RoomManager {
       hostKey: room.hostKey,
       paused: room.paused,
       lastActivity: room.lastActivity,
+      actionReplies: [...(room.actionReplies || new Map())],
       state: room.state
     });
   }
@@ -340,6 +364,7 @@ class RoomManager {
               : (data.paused || { at: data.lastActivity || now, auto: true }),
             lastActivity: now,
             sockets: new Set(),
+            actionReplies: new Map(data.actionReplies || []),
             saveTimer: null
           };
           room.state.players.forEach(p => { p.connected = false; });

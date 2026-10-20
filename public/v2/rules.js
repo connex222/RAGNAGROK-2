@@ -10,9 +10,9 @@
         title: 'Win the Golden Flamingo',
         body: `<p>The world is ending. The Village Garden Show is going ahead anyway.</p>
           <p>Score the most <b>Prestige</b> by the Final Show:</p>
-          <ul><li><b>Shows</b> judge categories like "most Water features". Each show's categories are announced rounds ahead.</li>
+          <ul><li><b>Shows</b> judge categories like "most Water features". Each show's categories are announced rounds ahead; your phone shows provisional category standings.</li>
           <li><b>Garden features</b> still standing at the end score their Prestige. Garden Design bonuses reward placing Bee Hotels beside Rose Arches or Prize Marrows, Water Features beside Rose Arches, and Hedge Mazes beside two other features of your own.</li>
-          <li><b>Goodwill</b> from helping the street in emergencies.</li></ul>`
+          <li><b>Goodwill</b> from helping the street in emergencies.</li></ul><p>At the end, fun honorary awards celebrate different styles. These do not add points or affect the winner.</p>`
       },
       {
         icon: I('icon-dice'),

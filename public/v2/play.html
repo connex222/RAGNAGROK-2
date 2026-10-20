@@ -125,6 +125,14 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 .plan-brief b { display:block; font-size:15px; }
 .plan-brief small { color:var(--muted); font-size:12px; }
 @media (max-width:355px) { .plan-brief { grid-template-columns:1fr; } }
+.show-race { border-color:var(--gold); }
+.show-race summary { cursor:pointer; list-style-position:inside; font-size:15px; line-height:1.5; }
+.show-race summary small { display:block; margin:3px 0 0; color:var(--muted); font-size:12px; }
+.show-race[open] summary { padding-bottom:10px; }
+.show-race-row { padding:9px 0; border-top:1px solid var(--line); font-size:14px; line-height:1.4; }
+.show-race-row b { display:block; }
+.show-race-row small { display:block; color:var(--muted); font-size:12px; }
+
 .pick { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
 .pick button { min-height:64px; border-radius:12px; background:var(--surface2); border:2px solid var(--line); border-bottom:5px solid var(--c); }
 .pick button .gi { width:30px; height:30px; display:block; margin:0 auto; }
@@ -235,6 +243,7 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 <script src="/socket.io/socket.io.js"></script>
 <script src="/sfx.js"></script>
 <script src="/board.js"></script>
+<script src="/assets.js"></script>
 <script src="/v2/rules.js"></script>
 <script>
 (() => {
@@ -296,7 +305,7 @@ const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(P
 const params = new URLSearchParams(location.search);
 const ui = { tab: 'plan', sheet: null, tradeSeg: 'inbox', trade: { give: empty(), want: empty(), to: null }, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null };
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.1.0-dev.6';
+const CLIENT_VERSION = '1.1.0-dev.9';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -408,8 +417,16 @@ async function emit(event, data) {
   try { return await socket.timeout(6000).emitWithAck(event, data || {}); }
   catch (e) { return { ok: false, transient: true, error: 'No reply from the server. Check your connection.' }; }
 }
+let actionRequestSequence = 0;
 async function act(action) {
-  const r = await emit('action', action);
+  // The server deduplicates this ID if a network retry delivers the same
+  // command more than once. IDs describe command identity, not player identity.
+  const requestId = `${Date.now().toString(36)}_${(++actionRequestSequence).toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  const payload = { ...action, requestId };
+  let r = await emit('action', payload);
+  // An ACK can vanish even when the server applied the action. Retry exactly
+  // once using its original ID, never with a newly generated command ID.
+  if (r.transient && socket.connected) r = await emit('action', payload);
   if (!r.ok) { toast(esc(r.error), 'bad'); sfx('denied'); }
   return r;
 }
@@ -715,6 +732,33 @@ function renderTips(slots) {
   return `<div class="card tip small">💡 ${tip} <button class="btn small" data-act="hideTips" style="margin-top:8px">Hide tips</button></div>`;
 }
 
+/* Current Show race uses the same server-side ranking as the judges.
+   It is a snapshot, never a guarantee of points after hidden plans/disasters. */
+function renderShowRace() {
+  const preview = view && view.showPreview;
+  if (!preview || !C) return '';
+  const seat = mySeat();
+  const expanded = !!(document.querySelector('.show-race') && document.querySelector('.show-race').open);
+  const parts = preview.categories.map(cat => {
+    const def = C.categories[cat.key];
+    if (!def) return '';
+    const mine = cat.rows.find(r => r.seat === seat);
+    const leader = cat.rows[0];
+    const joint = mine && mine.rank === 1 && cat.rows.some(r => r.seat !== seat && r.rank === 1);
+    const meText = mine
+      ? `You: ${mine.value} · ${mine.rank === 1 ? (joint ? 'joint 1st' : '1st') : 'place ' + mine.rank} · +${mine.points} if judged now`
+      : def.minPlots ? `Need at least ${def.minPlots} plots to enter` : 'No qualifying result yet';
+    const leadText = leader ? `Current best: ${leader.value} (${cat.rows.filter(r => r.rank === 1).map(r => nm(r.seat)).join(', ')})` : 'Nobody qualifies yet';
+    return `<div class="show-race-row"><b>${esc(def.name)}</b><small>${esc(def.describe)}</small><div>${esc(meText)}</div><small>${esc(leadText)}</small></div>`;
+  }).join('');
+  const summary = preview.categories.map(cat => {
+    const mine = cat.rows.find(r => r.seat === seat);
+    return `<span>${esc(C.categories[cat.key].name)}: ${mine ? 'place ' + mine.rank : 'not yet entered'}</span>`;
+  }).join(' · ');
+  return `<details class="card show-race" ${expanded ? 'open' : ''}><summary><b>🏆 Show race · round ${preview.after}</b><small>${summary}</small></summary>${parts}
+    <p class="muted small" style="margin-bottom:0">Snapshot only. Secret actions, upcoming disasters and later rounds can change the result.</p></details>`;
+}
+
 function renderPlanTab() {
   const st = step();
   const god = myGod() && C ? C.gods[myGod()] : null;
@@ -739,13 +783,14 @@ function renderPlanTab() {
         <span class="sub">${esc(d.sub)}${s && s.kind !== 'carBoot' && total(costOf(s)) ? ' · costs ' + SUP.filter(r => costOf(s)[r]).map(r => costOf(s)[r] + ' ' + sup(r)).join(' ') : ''}${bad ? '<br><b style="color:var(--bad)">Not enough supplies for this. Change it (or your pledge) before locking</b>' : ''}</span></button>
         ${s && !locked() ? `<button class="slot-clear" data-act="clearSlot" data-i="${i}" aria-label="Clear action ${i + 1}" title="Clear action ${i + 1}">✕</button>` : ''}</div>`;
     }).join('')}</div>`;
+    html += renderShowRace();
     html += `<div class="card small"><b>After your plan${view.emergency ? ' and pledge' : ''}</b> <span class="muted">(Car-Boot supplies arrive last)</span><div class="chips" style="margin-top:6px">${SUP.map(r => `<span class="chip${proj.hand[r] < 0 ? ' short' : ''}">${proj.hand[r]} ${sup(r)}</span>`).join('')}</div></div>`;
     if (god) html += `<div class="card small">${godIcon(myGod())} <b>${esc(god.power)}:</b> ${esc(god.rule)}</div>`;
     html += renderOmens(false);
     html += renderLocks();
     return html;
   }
-  if (st === 'omens') return `<div class="card prompt"><h3>🔮 Omens</h3><p class="small">Read what's coming. Planning starts in a moment.</p></div>${renderOmens(false)}`;
+  if (st === 'omens') return `<div class="card prompt"><h3>🔮 Omens</h3><p class="small">Read what's coming. Planning starts in a moment.</p></div>${renderShowRace()}${renderOmens(false)}`;
   html += renderResults();
   html += renderOmens(true);
   return html;
@@ -892,9 +937,12 @@ function renderGameOver() {
   if (!f) return '';
   const rows = f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${esc(pl(s.seat).name)}<div class="small muted">Shows ${s.shows} · Features ${s.features}${s.designBonus ? ` (Garden Design +${s.designBonus})` : ''} · Goodwill ${s.goodwill}</div></td><td>${s.total}</td></tr>`).join('');
   const won = f.winners.includes(mySeat());
+  const honours = (f.honours || []).filter(h => h.seats.includes(mySeat()));
+  const honourCards = honours.length ? `<div class="card"><h3>🎖️ Your garden honours</h3>${honours.map(h => `<p class="small"><b>${esc(h.icon)} ${esc(h.name)}</b> · ${esc(h.description)} (${h.value})${h.seats.length > 1 ? ' · shared' : ''}</p>`).join('')}</div>` : '';
   return `<div class="card prompt" style="text-align:center"><div style="font-size:64px">${ART.trophy ? `<img src="${ART.trophy}" alt="" style="width:140px">` : '🦩'}</div>
       <h3 style="justify-content:center;font-size:22px">${won ? 'You win the Golden Flamingo!' : f.winners.map(nm).join(' & ') + ' win' + (f.winners.length > 1 ? '' : 's') + ' the Golden Flamingo'}</h3></div>
     <div class="card"><table class="players">${rows}</table></div>
+    ${honourCards}
     <div style="margin-top:14px">${view.meta.isHost ? '<button class="btn primary" data-act="rematch">Rematch</button>' : '<p class="muted" style="text-align:center">Waiting for the host</p>'}</div>`;
 }
 
@@ -1187,7 +1235,12 @@ window.__rg = { view: () => view, ui };
 getJSON('/healthz').then(checkBuild);
 setInterval(() => getJSON('/healthz').then(checkBuild), 5 * 60 * 1000);
 getJSON('/data/v2.json').then(c => { if (c) { C = c; render(); } });
-getJSON('/art.json').then(a => { ART = RagnaBoard.artMap(a); if (window.SFX && window.SFX.loadFromList) window.SFX.loadFromList(a && a.audio); render(); });
+getJSON('/art.json').then(a => { ART = RagnaBoard.artMap(a);
+  RagnaAssets.preloadGroup(ART, ['logo', ...Object.keys(ART).filter(k => k.startsWith('deity-') && k.endsWith('-face'))]);
+  RagnaAssets.preloadWhenIdle(ART, [
+    ...Object.keys(ART).filter(k => k.startsWith('deity-') && !k.endsWith('-face')),
+    ...Object.keys(ART).filter(k => k.startsWith('feature-') || k.startsWith('cond-') || k.startsWith('res-'))
+  ]); if (window.SFX && window.SFX.loadFromList) window.SFX.loadFromList(a && a.audio); render(); });
 render();
 })();
 </script>

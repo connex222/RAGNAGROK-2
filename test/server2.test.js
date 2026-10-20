@@ -121,9 +121,21 @@ async function main() {
   assert.ok((await call(phones[0], 'host:start')).ok);
   await waitFor(() => tv.view.phase.stage === 'draft', 'draft');
   const gods = ['thor', 'freya', 'hel', 'odin'];
+  let verifiedActionRetry = false;
   while (tv.view.phase.stage === 'draft') {
     const seat = tv.view.phase.draftQueue[0];
-    await call(phones[seat], 'action', { type: 'chooseGod', god: gods[seat] });
+    const payload = { type: 'chooseGod', god: gods[seat], requestId: `draft_seat_${seat}_attempt_001` };
+    assert.ok((await call(phones[seat], 'action', payload)).ok);
+    if (!verifiedActionRetry) {
+      const version = srv.rooms.get(made.code).state.stateVersion;
+      assert.ok((await call(phones[seat], 'action', payload)).ok, 'retry returns cached result');
+      assert.equal(srv.rooms.get(made.code).state.stateVersion, version, 'retry cannot reapply command');
+      const bad = await call(phones[seat], 'action', { ...payload, god: gods[seat] === 'odin' ? 'thor' : 'odin' });
+      assert.strictEqual(bad.ok, false, 'one ID cannot represent two distinct actions');
+      assert.equal(srv.rooms.get(made.code).state.stateVersion, version);
+      verifiedActionRetry = true;
+      check('real-socket request retries are idempotent and conflicting IDs are rejected');
+    }
     await sleep(20);
   }
   await waitFor(() => tv.view.phase.step === 'plan', 'first Plan phase');

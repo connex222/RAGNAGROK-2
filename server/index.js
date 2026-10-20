@@ -86,8 +86,9 @@ function startServer({
   const server = http.createServer(app);
   const io = new Server(server, {
     maxHttpBufferSize: 16 * 1024,
-    pingInterval: 10000,
-    pingTimeout: 8000,
+    // More tolerant of mobile backgrounding and intermittent home Wi-Fi.
+    pingInterval: 20000,
+    pingTimeout: 20000,
     serveClient: true
   });
   attachHandlers(io, rooms, rate ? { rate } : {});

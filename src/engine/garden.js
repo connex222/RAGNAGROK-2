@@ -706,24 +706,45 @@ function metric(s, seat, cat) {
   }
 }
 
+/* Rank a Show category against the *current* public garden. Used for both
+   provisional Show previews and final judging so the two cannot disagree.
+   Tied players share the same rank and award; ties never consume extra places. */
+function categoryStandings(s, key) {
+  const cat = C.categories[key];
+  const pts = C.showPoints[String(s.players.length)] || C.showPoints['8'];
+  const lowerBetter = cat.measure === 'undamaged';
+  const rows = s.players.map(p => ({ seat: p.seat, value: metric(s, p.seat, cat), plots: ownedBy(s, p.seat).length }))
+    .filter(r => cat.minPlots ? r.plots >= cat.minPlots : r.value >= 1);
+  rows.forEach(r => {
+    const better = rows.filter(o => lowerBetter ? o.value < r.value : o.value > r.value).length;
+    r.rank = better + 1;
+    r.points = better < pts.length ? pts[better] : 0;
+  });
+  return rows.sort((a, b) => a.rank - b.rank || a.seat - b.seat);
+}
+
+/* Public, read-only snapshot: not a prediction of secret actions or disasters.
+   Only the next already-announced Show is exposed; unannounced categories remain
+   sealed. No state or RNG mutation is permitted while calculating a preview. */
+function upcomingShowStandings(s) {
+  if (!s.board || s.phase.stage !== 'playing') return null;
+  const show = s.shows.find(sh => sh.categories && !sh.results);
+  if (!show) return null;
+  return {
+    after: show.after,
+    categories: show.categories.map(key => ({ key, rows: categoryStandings(s, key) })),
+    provisional: true
+  };
+}
+
 function scoreShow(ctx, showIndex) {
   const s = ctx.state;
   const show = s.shows[showIndex];
-  const pts = C.showPoints[String(s.players.length)] || C.showPoints['8'];
   const results = {};
   show.categories.forEach(key => {
-    const cat = C.categories[key];
-    const lowerBetter = cat.measure === 'undamaged';
-    const rows = s.players.map(p => ({ seat: p.seat, value: metric(s, p.seat, cat), plots: ownedBy(s, p.seat).length }))
-      // For Hardy Perennial fewer damaged plots is better, including ZERO.
-      // The old value>=1 filter perversely excluded a pristine garden.
-      .filter(r => cat.minPlots ? r.plots >= cat.minPlots : r.value >= 1);
-    rows.forEach(r => {
-      const better = rows.filter(o => (lowerBetter ? o.value < r.value : o.value > r.value)).length;
-      r.points = better < pts.length ? pts[better] : 0;
-      P(s, r.seat).showPoints += r.points;
-    });
-    results[key] = rows.sort((a, b) => b.points - a.points);
+    const rows = categoryStandings(s, key);
+    rows.forEach(r => { P(s, r.seat).showPoints += r.points; });
+    results[key] = rows;
   });
   show.results = results;
   s.stats.showLeaders.push(currentLeader(s));
@@ -769,6 +790,24 @@ function currentLeader(s) {
   return scores[0] ? scores[0].seat : null;
 }
 
+/* End-of-game honours celebrate different playstyles; these are cosmetic,
+   award every tied leader and deliberately do not affect victory or score. */
+function gardenHonours(s, scores) {
+  const categories = [
+    { key: 'showstopper', name: 'Showstopper', icon: '🏆', description: 'Most Garden Show points', measure: row => row.shows },
+    { key: 'designer', name: 'Garden Architect', icon: '🌿', description: 'Most Garden Design points', measure: row => row.designBonus },
+    { key: 'neighbour', name: 'Neighbourhood Hero', icon: '🤝', description: 'Most Goodwill', measure: row => row.goodwill },
+    { key: 'lush', name: 'Lush Legend', icon: '🌱', description: 'Most surviving Lush plots',
+      measure: row => ownedBy(s, row.seat).filter(p => p.health === 3).length }
+  ];
+  return categories.map(c => {
+    const best = Math.max(0, ...scores.map(c.measure));
+    if (best <= 0) return null; // never celebrate a nonexistent achievement
+    return { key: c.key, name: c.name, icon: c.icon, description: c.description,
+      value: best, seats: scores.filter(row => c.measure(row) === best).map(row => row.seat) };
+  }).filter(Boolean);
+}
+
 function finishGame(ctx) {
   const s = ctx.state;
   const scores = s.players.map(p => scoreOf(s, p.seat));
@@ -776,7 +815,7 @@ function finishGame(ctx) {
   scores.sort(cmp);
   const top = scores[0];
   const winners = scores.filter(x => cmp(x, top) === 0).map(x => x.seat);
-  s.final = { scores, winners };
+  s.final = { scores, winners, honours: gardenHonours(s, scores) };
   s.winner = { seats: winners, at: ctx.now };
   s.phase.stage = 'gameOver';
   s.phase.step = null;
@@ -1244,6 +1283,7 @@ function publicView(state) {
   v.trades = state.trades.filter(t => t.status === 'open')
     .map(t => (t.to === null ? JSON.parse(JSON.stringify(t)) : { id: t.id, from: t.from, to: t.to, status: t.status, private: true }));
   if (!over) v.final = null;
+  v.showPreview = upcomingShowStandings(state);
   return v;
 }
 
@@ -1286,5 +1326,5 @@ function commitStatus(state, seat) {
 module.exports = {
   createGame, addPlayer, removePlayer, seatForToken, setConnected,
   apply, tick, advance, publicView, privateView, clientTopology, legalTargets,
-  scoreOf, gardenDesignBonus, plotYield, slotCount, SCHEMA_VERSION, SUPPLIES: SUP, CONTENT: C
+  scoreOf, gardenDesignBonus, categoryStandings, upcomingShowStandings, gardenHonours, plotYield, slotCount, SCHEMA_VERSION, SUPPLIES: SUP, CONTENT: C
 };

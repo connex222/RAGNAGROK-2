@@ -23,3 +23,20 @@ Ask separately: “Which decision was most interesting?”, “What felt repetit
 ## Release thresholds to consider
 
 Track join-to-start completion, game completion, planning time, disconnect recovery and immediate rematch rate. Investigate any critical UI blocker or reproducible premature phase transition before widening a playtest. Balance targets must be treated as hypotheses until human evidence supports them.
+
+
+## dev.9 Show race / honours validation
+
+Compare the **same Standard game length** under dev.8 and dev.9 with comparable player groups (ideally rotate version order). Do not expose two versions to players in one session. Record the build and whether the Show race panel was viewed; don't force participants to open it.
+
+After the game, ask each player **without suggesting an answer**:
+
+- "At the start of your last planning round, what were you trying to achieve and why?"
+- "Could you tell what each announced Garden Show rewarded?"
+- "Did you understand why you did or didn't receive points?"
+- "Did the final ceremony give you a satisfying result even if you didn't win?"
+- "Would you choose to play again right now?" (yes/no)
+
+Record the same metrics in both versions. Useful exploratory targets include a median 4/5 or better for decision clarity, 4/5 enjoyment and at least 60% immediate rematch willingness, but these are **hypotheses**, not a definition of proven fun. Also watch whether the optional Show race panel lengthens average planning time; if it does, simplify or move it further down. Record observed rematches separately from stated intentions.
+
+Use the anonymised CSV templates in this folder. Do not collect player names, email addresses or phone identifiers. The game does not automatically transmit survey responses.
