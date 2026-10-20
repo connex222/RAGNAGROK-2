@@ -10,3 +10,11 @@ services:
     envVars:
       - key: RAGNAGROK_RULES
         value: v2   # set to v1 for the original v0.5 game
+      # Render's load balancer sits in front of the game and sets X-Forwarded-For.
+      # Without this, every player shares the proxy's address, so one person
+      # mistyping 20 room codes would lock everyone out for a minute.
+      - key: TRUST_PROXY
+        value: "1"
+      # Optional but recommended: your Render address, for correct QR join links.
+      # - key: PUBLIC_URL
+      #   value: https://ragnagrok.onrender.com

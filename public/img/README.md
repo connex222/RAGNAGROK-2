@@ -41,3 +41,11 @@ The corresponding emoji fallbacks remain as a safety net for missing assets.
 If replacing any of these with final art, keep the same filename stem and remove
 or rename the old SVG so the artwork directory does not contain two files with
 the same stem (the browser asset mapping would otherwise depend on file order).
+
+## dev.6: one file per slot
+
+The final painted icons now live here as 320×320 WebP files (about 50 KB each).
+The 2 MB PNG masters are kept in `docs/art-sources/png-masters/` and the earlier
+vector icons in `docs/art-sources/vector-icons/`; neither folder is served to players.
+If two files ever share a name, the game picks WebP, then SVG, then PNG, then JPG.
+`npm run test:offline` fails if a slot has two files or any image is over 400 KB.

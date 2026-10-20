@@ -14,3 +14,7 @@ Name every file `sfx-<name>.mp3`. The full list, what each plays for in V2, and
 what it borrows when missing is in the V2 Art & Audio pack PDF.
 
 Rules: MP3, mono, under about 100 KB, silence trimmed from the start, similar loudness.
+
+Check your names with `npm run test:audio`: it fails if a file has a space in its
+name, or loads under a name nothing in the game asks for (usually a spelling slip).
+The loader itself also ignores capital letters and stray spaces, as a safety net.

@@ -267,7 +267,7 @@ let tipIndex = 0;
 let theatre = { key: null, start: 0, shown: 0 };
 let lastBoardKey = '';
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.1.0-dev.5';
+const CLIENT_VERSION = '1.1.0-dev.6';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -358,6 +358,20 @@ function unlockSound() { if (window.SFX) window.SFX.unlock(); Music.unlock(); $(
 $('#soundGate').addEventListener('click', unlockSound);
 document.addEventListener('keydown', unlockSound);
 document.addEventListener('pointerdown', unlockSound);
+
+/* Keep the TV/laptop screen awake for long (Epic) games. Browsers only grant this
+   after a click and while the page is visible, so ask again whenever it returns. */
+let wakeLock = null;
+async function keepAwake() {
+  try {
+    if (navigator.wakeLock && document.visibilityState === 'visible' && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) { /* not supported or refused: the screen may sleep */ }
+}
+document.addEventListener('pointerdown', keepAwake, { passive: true });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
 getJSON('/healthz').then(checkBuild);
 setInterval(() => getJSON('/healthz').then(checkBuild), 5 * 60 * 1000);
 

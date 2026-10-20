@@ -298,9 +298,21 @@
   }
 
   /* Turns /art.json into { slotName: url }. 'hex-turf.png' → art['hex-turf'] */
+  /* If two files share a name (hex-turf.png and hex-turf.webp), the smaller,
+     sharper format wins in a fixed order, never whichever the disk lists last. */
+  const ART_PREFERENCE = ['webp', 'svg', 'png', 'jpg', 'jpeg'];
   function artMap(list) {
     const out = {};
-    ((list && list.files) || []).forEach(f => { out[f.replace(/\.[a-z0-9]+$/i, '')] = '/img/' + f; });
+    const rank = {};
+    ((list && list.files) || []).forEach(f => {
+      const m = /^(.+)\.([a-z0-9]+)$/i.exec(f);
+      if (!m) return;
+      const r = ART_PREFERENCE.indexOf(m[2].toLowerCase());
+      const score = r < 0 ? ART_PREFERENCE.length : r;
+      if (m[1] in rank && rank[m[1]] <= score) return;
+      rank[m[1]] = score;
+      out[m[1]] = '/img/' + encodeURIComponent(f);
+    });
     return out;
   }
 

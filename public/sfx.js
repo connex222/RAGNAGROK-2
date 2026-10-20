@@ -339,11 +339,19 @@ const SFX = (() => {
   }
 
   /* Loads every sfx-*.mp3 the server lists (from /art.json) under its name. */
+  /* Filenames are forgiving: 'sfx-offerin.mp3' or 'sfx-actChange .mp3' still
+     load as offerIn / actChange, so a typo in a filename never silences a sound. */
+  function canonicalName(raw) {
+    const name = String(raw).trim();
+    const lower = name.toLowerCase();
+    const known = [...Object.keys(SOUNDS), ...Object.keys(ALIASES), ...Object.values(ALIASES)];
+    return known.find(k => k.toLowerCase() === lower) || name;
+  }
   function loadFromList(audioList) {
     const map = {};
     (audioList || []).forEach(f => {
-      const m = /^sfx-(.+)\.(mp3|m4a|ogg|wav)$/i.exec(f);
-      if (m) map[m[1]] = '/audio/' + f;
+      const m = /^sfx-(.+?)\s*\.(mp3|m4a|ogg|wav)$/i.exec(f);
+      if (m) map[canonicalName(m[1])] = '/audio/' + encodeURIComponent(f);
     });
     return Object.keys(map).length ? loadFiles(map) : Promise.resolve({});
   }
@@ -405,6 +413,7 @@ const SFX = (() => {
     aliases: ALIASES,
     resolve,
     loadFromList,
+    canonicalName,
     _setBuffer: (name, buf) => { buffers[name] = buf; }
   };
 })();

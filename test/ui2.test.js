@@ -99,8 +99,16 @@ function botStep(p) {
   }
   const emptySlot = qa(p, '[data-act="editSlot"]').find(b => !b.classList.contains('filled'));
   if (emptySlot) return tap(p, emptySlot);
-  seen.add('lock');
-  return tapFirst(p, '[data-act="lock"]');
+  if (tapFirst(p, '[data-act="lock"]')) { seen.add('lock'); return true; }
+  // Lock is disabled and the phone says what's short: react like a person would.
+  if (q(p, '#lockShort')) {
+    seen.add('lockShort');
+    if (tapFirst(p, '[data-act="pledgeStep"][data-d="-1"]')) return true;
+    const bad = qa(p, '[data-act="editSlot"].bad').find(enabled);
+    const clear = bad ? q(p, `[data-act="clearSlot"][data-i="${bad.dataset.i}"]`) : q(p, '[data-act="clearSlot"]');
+    return tap(p, clear);
+  }
+  return false;
 }
 
 async function main() {

@@ -510,5 +510,26 @@ test('Epic: 24 rounds, 6 shows, 2/3/4 actions by act, 100 s planning', () => {
   s.shows.forEach(sh => assert.strictEqual(new Set(sh.categories).size, sh.categories.length, 'no repeated category within a show'));
 });
 
+test('Phone view reports the lock rule: shortfall from plan plus pledge, never Car-Boot income', () => {
+  const s = setup(['thor', 'freya']);
+  const c = centre(s);
+  own(s, c, 1);
+  s.players[1].hand = Object.assign(none(), { turf: 1, compost: 1 });
+  s.emergency = { key: 'test', name: 'Test', target: 4, fail: { kind: 'loseSupplies', count: 1 }, result: null, paid: null, total: 0 };
+  assert.strictEqual(E.privateView(s, 1).me.commit.complete, false, 'incomplete plan reported');
+  plan(s, 1, { kind: 'tend', target: c }, { kind: 'carBoot', supplies: ['compost', 'compost'] });
+  let v = E.privateView(s, 1).me.commit;
+  assert.ok(v.canLock, 'Tend paid from hand is lockable');
+  ok(E.apply(s, 1, { type: 'pledge', supplies: { compost: 1 } }, 2000));
+  v = E.privateView(s, 1).me.commit;
+  assert.strictEqual(v.canLock, false, 'pledge and Tend both need the one Compost');
+  assert.strictEqual(v.short.compost, 1, 'Car-Boot Compost arrives too late to count');
+  assert.strictEqual(E.apply(s, 1, { type: 'lock' }, 2000).ok, false, 'server agrees with the view');
+  ok(E.apply(s, 1, { type: 'pledge', supplies: { turf: 1 } }, 2000));
+  assert.ok(E.privateView(s, 1).me.commit.canLock, 'moving the pledge to Turf fixes it');
+  ok(E.apply(s, 1, { type: 'lock' }, 2000));
+  assert.ok(!('commit' in E.publicView(s)), 'other players never see it');
+});
+
 console.log(failures.length ? `✘ ${failures.length} failed, ${passed} passed` : `✔ All ${passed} V2 rules tests passed`);
 process.exit(failures.length ? 1 : 0);

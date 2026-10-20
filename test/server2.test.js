@@ -47,17 +47,27 @@ function autoPlay(c) {
     if (!c.auto || !v.me || v.phase.step !== 'plan' || v.players[v.me.seat].locked || c.busy) return;
     c.busy = true;
     const L = v.me.legal;
-    const slots = [...Array(v.me.slots)].map((x, i) => (L.claim[i] && v.me.hand.turf > 0 && v.me.hand.fertiliser > 0
-      ? { kind: 'claim', target: L.claim[i] } : { kind: 'carBoot', supplies: [SUP[i % 5], SUP[(i + 1) % 5]] }));
+    // At most one Claim, and only when it is affordable alongside any pledge:
+    // the server refuses to lock a plan the player cannot pay for.
+    const free = r => v.me.hand[r] - ((v.me.pledge || {})[r] || 0);
+    const canClaim = L.claim[0] && free('turf') > 0 && free('fertiliser') > 0;
+    const slots = [...Array(v.me.slots)].map((x, i) => (i === 0 && canClaim
+      ? { kind: 'claim', target: L.claim[0] } : { kind: 'carBoot', supplies: [SUP[i % 5], SUP[(i + 1) % 5]] }));
     try {
-      await call(c, 'action', { type: 'plan', slots });
-      await call(c, 'action', { type: 'lock' });
+      let r = await call(c, 'action', { type: 'plan', slots });
+      r = await call(c, 'action', { type: 'lock' });
+      if (!r.ok) { // Fall back to a plan that is always affordable.
+        await call(c, 'action', { type: 'plan', slots: slots.map((x, i) => ({ kind: 'carBoot', supplies: [SUP[i % 5], SUP[(i + 1) % 5]] })) });
+        await call(c, 'action', { type: 'lock' });
+      }
     } catch (e) { /* disconnected mid-way */ }
     c.busy = false;
   });
 }
 
 async function main() {
+  // Simulate a trusted reverse proxy (as on Render) so the guesser below has its own address.
+  process.env.TRUST_PROXY = '1';
   const saveDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ragnagrok2-'));
   let srv = await startServer({ port: 0, saveDir, quiet: true, tickMs: 40, rate: FAST_RATE, rules: 'v2', gameConfig: FAST_GAME });
   let url = `http://localhost:${srv.port}`;

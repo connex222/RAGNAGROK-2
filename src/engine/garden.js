@@ -1264,9 +1264,23 @@ function privateView(state, seat) {
     odinPreview,
     odinCanShift: p.god === 'odin' && p.odinUsedAct !== state.act,
     trades: state.trades.filter(t => t.status === 'open' && (t.from === seat || t.to === null || t.to.includes(seat))).map(t => JSON.parse(JSON.stringify(t))),
-    legal: legalTargets(state, seat)
+    legal: legalTargets(state, seat),
+    commit: commitStatus(state, seat)
   };
   return v;
+}
+
+/* The lock rule, computed once on the server so the phone never has to guess.
+   short lists the supplies the current plan plus pledge is missing. */
+function commitStatus(state, seat) {
+  const s = state;
+  if (!s.board || s.phase.stage !== 'playing' || s.phase.step !== 'plan') return null;
+  if (!planComplete(s, s.secrets.plans[seat])) return { complete: false, canLock: false, short: emptyHand() };
+  const have = compostedHand(s, seat);
+  const due = planCommitment(s, seat);
+  const short = emptyHand();
+  SUP.forEach(r => { short[r] = Math.max(0, (due[r] || 0) - (have[r] || 0)); });
+  return { complete: true, canLock: SUP.every(r => short[r] === 0), short };
 }
 
 module.exports = {

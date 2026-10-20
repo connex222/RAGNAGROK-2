@@ -194,6 +194,7 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 #updateRequired .update-card { width:min(90%,650px); text-align:center; background:#2a1d3b; border:3px solid #ff8a4c; border-radius:20px; padding:30px; font:600 18px/1.4 system-ui,sans-serif; }
 #updateRequired h2 { margin:0 0 12px; color:#ffb67a; }
 #updateRequired button { margin-top:12px; border:0; border-radius:12px; background:#ff8a4c; color:#1a1226; padding:14px 24px; font:800 20px system-ui,sans-serif; cursor:pointer; }
+  .lock-short{margin-top:6px;font-size:14px;font-weight:700;color:var(--bad);text-align:center}
 </style>
 </head>
 <body>
@@ -295,7 +296,7 @@ const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(P
 const params = new URLSearchParams(location.search);
 const ui = { tab: 'plan', sheet: null, tradeSeg: 'inbox', trade: { give: empty(), want: empty(), to: null }, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null };
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.1.0-dev.5';
+const CLIENT_VERSION = '1.1.0-dev.6';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -350,12 +351,16 @@ function costOf(slot) {
 }
 
 /* What your hand looks like after the plan resolves, in the server's order. */
-function projection(slots, exceptIdx) {
+/* Supplies left after this plan. Mirrors the server's lock rule: the emergency
+   pledge is reserved first, action costs are paid next, and Car-Boot income
+   arrives last (so it can never pay for this round's actions or pledge). */
+function projection(slots, exceptIdx, { carBoot = true, pledge = true } = {}) {
   const hand = Object.assign(empty(), me() ? me().hand : {});
+  if (pledge && me() && me().pledge) SUP.forEach(r => { hand[r] -= me().pledge[r] || 0; });
   const problems = [];
   ORDER.forEach(kind => slots.forEach((s, i) => {
     if (!s || s.kind !== kind || i === exceptIdx) return;
-    if (kind === 'carBoot') { (s.supplies || []).forEach(r => { hand[r] += 1; }); return; }
+    if (kind === 'carBoot') { if (carBoot) (s.supplies || []).forEach(r => { hand[r] += 1; }); return; }
     const c = costOf(s);
     if (!hasAll(hand, c)) { problems.push(i); return; }
     SUP.forEach(r => { hand[r] -= c[r] || 0; });
@@ -626,7 +631,18 @@ function renderActionBar() {
     bar.innerHTML = '<button class="btn" data-act="unlock">✏️ Change my plan</button>';
     return;
   }
-  bar.innerHTML = `<button class="btn primary" data-act="lock"${filled === slots.length ? '' : ' disabled'}>${filled === slots.length ? '🔒 Lock in my plan' : `Choose ${slots.length - filled} more action${slots.length - filled > 1 ? 's' : ''}`}</button>`;
+  if (filled < slots.length) {
+    bar.innerHTML = `<button class="btn primary" data-act="lock" disabled>Choose ${slots.length - filled} more action${slots.length - filled > 1 ? 's' : ''}</button>`;
+    return;
+  }
+  const c = me().commit;
+  if (c && c.complete && !c.canLock) {
+    const need = SUP.filter(r => c.short[r]).map(r => `${c.short[r]} ${sup(r)}`).join(' ');
+    bar.innerHTML = `<button class="btn primary" data-act="lock" disabled aria-describedby="lockShort">🔒 Lock in my plan</button>
+      <div id="lockShort" class="lock-short" role="status">Short ${need}. Change an action, lower your pledge or trade.</div>`;
+    return;
+  }
+  bar.innerHTML = '<button class="btn primary" data-act="lock">🔒 Lock in my plan</button>';
 }
 
 /* ================= render: lobby & draft ================= */
@@ -713,17 +729,17 @@ function renderPlanTab() {
       <div class="${risks ? 'risk' : ''}"><b>⚠️ ${risks} of your plots at risk</b><small>${risks ? 'Check the forecast before you commit' : 'No forecast hits on your garden'}</small></div>
       <div><b>🏆 Next Garden Show</b><small>${esc(showNames)}</small></div></div>`;
     html += renderTips(slots);
-    if (view.emergency) html += renderPledge(proj.hand);
+    if (view.emergency) html += renderPledge(projection(slots, undefined, { carBoot: false }).hand);
     if (me().compostOwed) html += renderCompost();
     html += `<div class="slots">${slots.map((s, i) => {
       const d = describeSlot(s);
       const bad = proj.problems.includes(i);
       return `<div class="slot-row"><button class="slot${s ? ' filled' : ''}${bad ? ' bad' : ''}" data-act="editSlot" data-i="${i}" aria-label="${s ? 'Edit' : 'Choose'} action ${i + 1}"${locked() ? ' disabled' : ''}>
         <span class="num">${s ? ACT[s.kind].icon : i + 1}</span><span><b>${s ? esc(ACT[s.kind].name) : 'Action ' + (i + 1)}</b></span>
-        <span class="sub">${esc(d.sub)}${s && s.kind !== 'carBoot' && total(costOf(s)) ? ' · costs ' + SUP.filter(r => costOf(s)[r]).map(r => costOf(s)[r] + ' ' + sup(r)).join(' ') : ''}${bad ? '<br><b style="color:var(--bad)">Can\'t afford this when it happens: it will fizzle</b>' : ''}</span></button>
+        <span class="sub">${esc(d.sub)}${s && s.kind !== 'carBoot' && total(costOf(s)) ? ' · costs ' + SUP.filter(r => costOf(s)[r]).map(r => costOf(s)[r] + ' ' + sup(r)).join(' ') : ''}${bad ? '<br><b style="color:var(--bad)">Not enough supplies for this. Change it (or your pledge) before locking</b>' : ''}</span></button>
         ${s && !locked() ? `<button class="slot-clear" data-act="clearSlot" data-i="${i}" aria-label="Clear action ${i + 1}" title="Clear action ${i + 1}">✕</button>` : ''}</div>`;
     }).join('')}</div>`;
-    html += `<div class="card small"><b>After your plan</b> <span class="muted">(Car-Boot supplies arrive last)</span><div class="chips" style="margin-top:6px">${SUP.map(r => `<span class="chip${proj.hand[r] < 0 ? ' short' : ''}">${proj.hand[r]} ${sup(r)}</span>`).join('')}</div></div>`;
+    html += `<div class="card small"><b>After your plan${view.emergency ? ' and pledge' : ''}</b> <span class="muted">(Car-Boot supplies arrive last)</span><div class="chips" style="margin-top:6px">${SUP.map(r => `<span class="chip${proj.hand[r] < 0 ? ' short' : ''}">${proj.hand[r]} ${sup(r)}</span>`).join('')}</div></div>`;
     if (god) html += `<div class="card small">${godIcon(myGod())} <b>${esc(god.power)}:</b> ${esc(god.rule)}</div>`;
     html += renderOmens(false);
     html += renderLocks();
@@ -748,9 +764,9 @@ function renderPledge(after) {
   const fail = em.fail.kind === 'loseSupplies' ? `everyone loses ${em.fail.count} supplies` : `everyone's ${em.fail.count || ''} healthiest plots take damage`.replace('  ', ' ');
   return `<div class="card danger"><h3>🚨 ${esc(em.name)}</h3>
     <p class="small">The street needs <b>${em.target}</b> supplies in total, or ${esc(fail)}. A fair share is ${share}. Pledges are secret until the TV reveals them; helpers earn Goodwill.${frigg ? ' <b>Frigg: yours count double.</b>' : ''}</p>
-    ${SUP.map(r => `<div class="trow"><span class="i">${sup(r)}<small>${after[r]} spare</small></span>
+    ${SUP.map(r => `<div class="trow"><span class="i">${sup(r)}<small>${Math.max(0, after[r])} spare</small></span>
       <div class="stepper"><button data-act="pledgeStep" data-res="${r}" data-d="-1"${mine[r] ? '' : ' disabled'} aria-label="Less ${SUP_NAME[r]}">−</button><b>${mine[r]}</b>
-      <button data-act="pledgeStep" data-res="${r}" data-d="1"${!locked() && after[r] - mine[r] > 0 ? '' : ' disabled'} aria-label="More ${SUP_NAME[r]}">+</button></div><span></span></div>`).join('')}
+      <button data-act="pledgeStep" data-res="${r}" data-d="1"${!locked() && after[r] > 0 ? '' : ' disabled'} aria-label="More ${SUP_NAME[r]}">+</button></div><span></span></div>`).join('')}
     <p class="small" style="margin-bottom:0">Your pledge: <b>${n}</b>${frigg ? ` (counts as ${n * 2})` : ''}</p></div>`;
 }
 

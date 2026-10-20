@@ -1,0 +1,21 @@
+# Runs every test on GitHub's computers each time you push or open a pull request.
+# A red cross on the commit means something broke; click it to see which test.
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:modes

@@ -7,9 +7,9 @@ destroying the neighbourhood; the Village Garden Show is going ahead anyway.
 - **Rules:** How to Play is built into the game (📖 button), and the full rulebook is the included
   `docs/RULEBOOK-V2.md`.
 
-## Development build v1.1.0-dev.5
+## Development build v1.1.0-dev.6
 
-The official product name is **RAGNAGROK**. See `docs/BRAND-GUIDE.md` for naming standards. TV and phone clients now warn when a deployment changes the live server version, and gameplay scripts/rules revalidate their browser cache.
+The official product name is **RAGNAGROK**. See `docs/BRAND-GUIDE.md` for naming standards. dev.6 makes the full test suite pass (`npm test`), stops phones offering a Lock button for plans the server will refuse, fixes eight recorded sounds that never played, shrinks the icon artwork from 34 MB to under 1 MB, and adds automatic testing on GitHub. See `docs/DEV6-CHANGE-REPORT.md`.
 
 Dependency-free verification: `npm run test:offline` (includes the brand, asset, cache and version-guard tests) and `npm run test:modes` (63 seeded matches). Full server/browser tests require `npm ci` first. See `docs/DEV5-CHANGE-REPORT.md` for verified results and outstanding issues.
 
@@ -33,7 +33,8 @@ Dependency-free verification: `npm run test:offline` (includes the brand, asset,
 |---|---|
 | `npm start` | Runs V2 on port 3000 |
 | `npm run start:v1` | Runs the original v0.5 game |
-| `npm test` | V2 rules, server, phone+TV tap-through, 300 balance games |
+| `npm test` | Offline suite, live server, phone+TV tap-through, 300 balance games (needs `npm ci` first) |
+| `npm run test:audio` | Every sound the screens ask for reaches a file or fallback; catches filename typos |
 | `npm run test:offline` | V2 rules, server-protocol stubs, artwork coverage, UI/reconnect checks and syntax checks (no external packages needed) |
 | `npm run test:ux` | Ownership markers, planning controls and transient reconnect logic (no external packages needed) |
 | `npm run test:core` | Offline suite plus 60-game Standard simulation (no external packages needed) |
@@ -51,6 +52,7 @@ Dependency-free verification: `npm run test:offline` (includes the brand, asset,
 | `PUBLIC_URL` | automatic | Force the address in join links and QR codes |
 | `IDLE_MINUTES` | 30 | Delete rooms nobody has used for this long |
 | `MAX_ROOMS` | 100 | Maximum active game rooms at once (clamped to 1–1000) |
+| `TRUST_PROXY` | off | `1` behind a proxy you control. **Already set in `render.yaml`**, because on Render every player otherwise shares one address |
 
 On Render's free plan games live in memory only: a restart or redeploy ends games in progress.
 
