@@ -109,10 +109,12 @@ class Peer {
 
   const phone = fs.readFileSync(path.join(__dirname, '../public/v2/play.html'), 'utf8');
   const tv = fs.readFileSync(path.join(__dirname, '../public/v2/index.html'), 'utf8');
+  let parsedScripts = 0;
   for (const html of [phone, tv]) {
-    for (const match of html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi))
-      new vm.Script(match[1]);
+    for (const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi))
+      { new vm.Script(match[1]); parsedScripts++; }
   }
+  assert.ok(parsedScripts >= 2, 'both phone and TV inline scripts were parsed');
   assert.ok(phone.includes('function renderSessionTotals()'));
   assert.ok(phone.includes('data-act="sessionCopy"'));
   assert.ok(phone.includes('matches_started,matches_completed,rematches_started'));
