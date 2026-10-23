@@ -35,6 +35,7 @@ async def main():
                 await page.keyboard.press('Enter')
                 dialog = page.locator('#sheet')
                 assert await dialog.is_visible()
+                assert await page.evaluate("document.querySelector('#app').inert")
                 assert await dialog.get_attribute('aria-labelledby') == 'sheetHeading'
                 assert await dialog.locator('#sheetHeading').inner_text() == 'Menu'
                 assert await page.evaluate("document.activeElement.dataset.act") == 'closeSheet'
@@ -42,6 +43,7 @@ async def main():
                 assert await page.evaluate("document.activeElement.closest('#sheet') !== null")
                 await page.keyboard.press('Escape')
                 assert not await dialog.is_visible()
+                assert not await page.evaluate("document.querySelector('#app').inert")
                 assert await page.evaluate("document.activeElement.dataset.act") == 'menu', 'Escape must restore Menu focus'
 
                 rules = page.locator('#top [data-act="rules"]')
@@ -84,6 +86,7 @@ async def main():
                 await page.keyboard.press('Enter')
                 dialog = page.locator('#rules')
                 assert await dialog.is_visible()
+                assert await page.evaluate("document.querySelector('#corner').inert")
                 assert await dialog.get_attribute('role') == 'dialog'
                 assert await dialog.get_attribute('aria-labelledby') == 'tvRulesTitle'
                 assert await page.evaluate('document.activeElement.id') == 'rNext'
@@ -94,6 +97,7 @@ async def main():
                 assert await page.evaluate('document.activeElement.id') == 'rNext'
                 await page.keyboard.press('Escape')
                 assert not await dialog.is_visible()
+                assert not await page.evaluate("document.querySelector('#corner').inert")
                 assert await page.evaluate('document.activeElement.id') == 'rulesBtn', 'TV Escape must restore opener'
                 assert not errors, f'tv {width}px JS errors: {errors}'
                 await context.close()
