@@ -23,12 +23,29 @@ const ENGINES = {
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O: they look like 1 and 0
 const CODE_LENGTH = 4;
 
+// Anonymous per-room game-night counters; a rematch lobby is NOT a played rematch.
+function initialSeries(stage = 'lobby') {
+  return { matchNumber: 1, gamesStarted: stage === 'lobby' ? 0 : 1,
+    gamesFinished: stage === 'gameOver' ? 1 : 0, rematchesStarted: 0 };
+}
+function validSeries(s) {
+  if (!s || typeof s !== 'object' || Array.isArray(s) ||
+      Object.keys(s).sort().join(',') !== 'gamesFinished,gamesStarted,matchNumber,rematchesStarted') return false;
+  const { matchNumber, gamesStarted, gamesFinished, rematchesStarted } = s;
+  return [matchNumber, gamesStarted, gamesFinished, rematchesStarted].every(
+    n => Number.isSafeInteger(n) && n >= 0 && n <= 1000000) &&
+    matchNumber >= 1 && gamesStarted <= matchNumber &&
+    gamesFinished <= gamesStarted && rematchesStarted <= gamesStarted &&
+    rematchesStarted <= matchNumber - 1;
+}
+
 // Schema-version matching is necessary but not sufficient: a truncated or
 // hand-edited save can still have the right number and crash the room timer.
 // Check the core structural invariants before restoring a game to live rooms.
 function validSave(data, filename, rules, schemaVersion) {
   if (!data || data.format !== 'ragnagrok.room' || data.version !== 1 ||
-      (data.actionReplies !== undefined && !validSavedReplies(data.actionReplies))) return false;
+      (data.actionReplies !== undefined && !validSavedReplies(data.actionReplies)) ||
+      (data.series !== undefined && !validSeries(data.series))) return false;
   if (typeof data.code !== 'string' || data.code.length !== CODE_LENGTH ||
       [...data.code].some(c => !CODE_CHARS.includes(c)) || filename !== `${data.code}.json`) return false;
   if (typeof data.hostKey !== 'string' || !/^[a-f0-9]{24}$/i.test(data.hostKey)) return false;
@@ -100,6 +117,7 @@ class RoomManager {
       sockets: new Set(),
       actionReplies: new Map(),
       feedback: new Map(), // opt-in, short-lived and never written to disk
+      series: initialSeries(),
       saveTimer: null
     };
     this.rooms.set(code, room);
@@ -163,7 +181,8 @@ class RoomManager {
   /* ---------- sending ---------- */
 
   viewFor(room, socket) {
-    const meta = { code: room.code, paused: !!room.paused, serverNow: Date.now(), version: BUILD_VERSION };
+    const meta = { code: room.code, paused: !!room.paused, serverNow: Date.now(), version: BUILD_VERSION,
+      matchNumber: room.series.matchNumber };
     if (socket.data.role === 'tv') {
       return { ...this.E.publicView(room.state), meta: { ...meta, isHost: !!socket.data.isHost } }; // TV never receives pulse results
     }
@@ -171,6 +190,7 @@ class RoomManager {
     if (seat < 0) return null;
     return { ...this.E.privateView(room.state, seat), meta: { ...meta, isHost: seat === 0,
       feedbackSubmitted: !!room.feedback?.has(seat),
+      ...(seat === 0 ? { session: { ...room.series } } : {}),
       ...(seat === 0 && room.state.phase.stage === 'gameOver' ? { playtest: groupedFeedback(room) } : {}) } }; 
   }
 
@@ -188,8 +208,23 @@ class RoomManager {
     return true;
   }
 
+  // Repeated final-state syncs and reconnects must not count more completions.
+  markFinished(room) {
+    if (room.state.phase.stage === 'gameOver' &&
+        room.series.gamesFinished < room.series.gamesStarted) room.series.gamesFinished++;
+  }
+
+  // Invoked only after the server accepts host:start (not host:rematch).
+  markStarted(room) {
+    if (room.series.gamesStarted >= room.series.matchNumber)
+      throw new Error('Match start already counted');
+    room.series.gamesStarted++;
+    if (room.series.matchNumber > 1) room.series.rematchesStarted++;
+  }
+
   /* Push the latest state (and any events) to every screen in the room. */
   sync(room, events = []) {
+    this.markFinished(room);
     room.sockets.forEach(socket => {
       if (!this.syncOne(room, socket)) {
         socket.emit('kicked', { code: room.code });
@@ -282,6 +317,7 @@ class RoomManager {
     room.state = fresh;
     room.actionReplies = new Map(); // A rematch is a new game; old request IDs must not apply.
     room.feedback = new Map(); // Don't carry responses into another match
+    room.series.matchNumber++; // requested rematch; awaiting an actual start
     room.paused = null;
     room.sockets.forEach(s => { s.data.layoutSent = null; });
     this.refreshConnected(room, now);
@@ -304,6 +340,7 @@ class RoomManager {
       paused: room.paused,
       lastActivity: room.lastActivity,
       actionReplies: [...(room.actionReplies || new Map())],
+      series: room.series, // anonymous totals, never feedback
       state: room.state
     });
   }
@@ -383,6 +420,7 @@ class RoomManager {
             sockets: new Set(),
             actionReplies: new Map(data.actionReplies || []),
             feedback: new Map(), // private feedback is intentionally not saved
+            series: data.series || initialSeries(data.state.phase.stage),
             saveTimer: null
           };
           room.state.players.forEach(p => { p.connected = false; });
