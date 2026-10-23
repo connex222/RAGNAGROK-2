@@ -44,7 +44,8 @@ function startServer({
   });
 
   // V2 pages live in public/v2; v0.5.1 pages stay where they are.
-  const pageDir = rules === 'v2' ? path.join(PUBLIC_DIR, 'v2') : PUBLIC_DIR;
+  const V1_PUBLIC_DIR = path.join(__dirname, '..', 'archive', 'v1', 'public');
+  const pageDir = rules === 'v2' ? path.join(PUBLIC_DIR, 'v2') : V1_PUBLIC_DIR;
   app.get('/', (req, res) => res.sendFile(path.join(pageDir, 'index.html')));
   app.get('/play', (req, res) => res.sendFile(path.join(pageDir, 'play.html')));
   app.get('/data/v2.json', (req, res) => {
@@ -70,8 +71,12 @@ function startServer({
 
   app.get('/data/cards.json', (req, res) => {
     res.set('Cache-Control', 'no-cache');
-    res.sendFile(path.join(__dirname, '..', 'src', 'data', 'cards.json'));
+    res.sendFile(path.join(__dirname, '..', 'archive', 'v1', 'src', 'data', 'cards.json'));
   });
+  // The archived original's /rules.js asset retains its historic URL in V1.
+  if (rules === 'v1') app.use(express.static(V1_PUBLIC_DIR, {
+    setHeaders(res, file) { res.set('Cache-Control', cacheControlFor(file)); }
+  }));
   app.use(express.static(PUBLIC_DIR, {
     extensions: ['html'],
     setHeaders(res, file) {

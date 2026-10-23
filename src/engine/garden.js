@@ -16,7 +16,7 @@ const { getTopology, clientTopology } = require('./topology');
 const { LAYOUTS } = require('./board');
 const C = require('../data/v2.json');
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const SUP = C.supplies;
 const ORDER = C.actions.order;
 const GOD_IDS = Object.keys(C.gods);
@@ -104,6 +104,34 @@ function touchesGarden(s, topo, seat, plotId, extra) {
     return (p && p.owner === seat) || (extra && extra.includes(n));
   });
 }
+/* BFS keeps Loki's two-plot influence on the actual board topology. */
+function distance(topo, source, destination, max) {
+  if (!topo.hexById[source] || !topo.hexById[destination]) return Infinity;
+  const seen = new Set([source]);
+  let edge = [source];
+  for (let hops = 1; hops <= max; hops++) {
+    edge = edge.flatMap(id => topo.hexById[id].neighbors).filter(id => {
+      if (seen.has(id)) return false;
+      seen.add(id); return true;
+    });
+    if (edge.includes(destination)) return hops;
+  }
+  return Infinity;
+}
+function prayError(s, topo, seat, slot) {
+  if (!Number.isInteger(slot.index) || slot.index < 0 || slot.index >= s.forecast.now.length)
+    return 'Choose a disaster forecast for this round';
+  const d = s.forecast.now[slot.index];
+  if (!d.plots.includes(slot.target)) return 'That plot is not on the selected forecast';
+  if (!s.board.index.hasOwnProperty(slot.to)) return 'Choose a plot on the board';
+  if (d.plots.includes(slot.to)) return 'The disaster is already hitting that plot';
+  const maximum = godOf(s, seat) === 'loki' ? C.pray.lokiMaxDistance : C.pray.maxDistance;
+  if (distance(topo, slot.target, slot.to, maximum) > maximum) return `Pick a plot within ${maximum} step${maximum > 1 ? 's' : ''}`;
+  const dest = plotById(s, slot.to);
+  if (dest.owner !== null && godOf(s, dest.owner) === 'heimdall') return 'Heimdall spotted the divine paperwork';
+  return null;
+}
+
 const featureDef = key => typeof key === 'string' && Object.hasOwn(C.features, key) ? C.features[key] : null;
 const hasTag = (plot, tag) => !!(plot.feature && featureDef(plot.feature).tags.includes(tag));
 
@@ -288,7 +316,6 @@ function beginRound(ctx, round) {
   s.players.forEach(p => { p.locked = false; p.disconnectedAt = p.connected ? null : (p.disconnectedAt || ctx.now); });
   s.secrets.plans = {};
   s.secrets.pledges = {};
-  s.trades = [];
   s.resolution = null;
   s.disasterReport = null;
   s.harvestReport = null;
@@ -297,11 +324,11 @@ function beginRound(ctx, round) {
   log(ctx, 'round', `Round ${round} of ${cfg.rounds}.`);
 }
 
-function drawCategories(s, showIndex) {
+function drawCategories(s, showIndex, guaranteed = []) {
   const cfg = lengthCfg(s);
   const pool = s.secrets.categoryPool;
   const want = cfg.categoriesPerShow[showIndex];
-  const picked = [];
+  const picked = [...guaranteed];
   for (let pass = 0; pass < 2 && picked.length < want; pass++) {
     if (pass === 1) pool.push(...shuffle(randFn(s), Object.keys(C.categories)).filter(k => !picked.includes(k)));
     for (let i = pool.length - 1; i >= 0 && picked.length < want; i--) {
@@ -313,6 +340,29 @@ function drawCategories(s, showIndex) {
     }
   }
   return picked;
+}
+
+/* Sympathy Vote: lowest Prestige chooses a category, not bonus points. */
+function beginSympathy(ctx) {
+  const s = ctx.state;
+  const scores = s.players.map(p => scoreOf(s, p.seat));
+  const worst = Math.min(...scores.map(r => r.total));
+  const chooser = scores.filter(r => r.total === worst).sort((a,b) => a.seat-b.seat)[0].seat;
+  const nextIndex = lengthCfg(s).showRounds.indexOf(s.round) + 1;
+  const options = shuffle(randFn(s), Object.keys(C.categories)).slice(0, C.sympathyVote.choices);
+  s.sympathy = { chooser, nextIndex, options };
+  setStep(ctx, 'sympathy', C.sympathyVote.durationSec);
+  emit(ctx, 'sympathyStart', { chooser, options });
+  log(ctx, 'sympathy', `${nameOf(s, chooser)} has been given the Sympathy Vote.`);
+}
+function finishSympathy(ctx, category) {
+  const s = ctx.state;
+  const vote = s.sympathy;
+  s.shows[vote.nextIndex].categories = drawCategories(s, vote.nextIndex, [category]);
+  emit(ctx, 'sympathyChosen', { chooser: vote.chooser, category });
+  log(ctx, 'sympathy', `🥀 The judges took pity on ${nameOf(s, vote.chooser)}. They've chosen ${C.categories[category].name}.`);
+  s.sympathy = null;
+  nextRound(ctx);
 }
 
 function startPlan(ctx) {
@@ -335,7 +385,6 @@ function endPlan(ctx) {
     if (!planComplete(s, s.secrets.plans[p.seat])) s.secrets.plans[p.seat] = defaultPlan(s, p.seat);
     autoCompost(s, p.seat);
   });
-  s.trades.forEach(t => { if (t.status === 'open') t.status = 'expired'; });
   resolveActions(ctx);
   const n = s.resolution.events.length;
   const sec = Math.max(s.config.resolveMinSec, Math.min(s.config.resolveMaxSec, n * s.config.resolvePerEventSec));
@@ -345,7 +394,7 @@ function endPlan(ctx) {
 
 function compostedHand(s, seat) {
   // Work from a copy, reserving what an already committed plan will need.
-  // If the player has traded below shed capacity, there is nothing to discard.
+  // If supplies fit within shed capacity, there is nothing to discard.
   const hand = { ...P(s, seat).hand };
   const amount = Math.min(s.secrets.compostOwed[seat] || 0, Math.max(0, handTotal(hand) - C.shedCapacity));
   const due = P(s, seat).locked ? planCommitment(s, seat) : emptyHand();
@@ -370,12 +419,13 @@ function actionCost(s, seat, slot, plot) {
     case 'shelter': return C.actions.shelter.cost;
     case 'meddle':
       return ownedBy(s, seat).some(p => p.feature === 'gnomeBattalion') ? {} : C.actions.meddle.cost;
+    case 'pray':
+      return ownedBy(s, seat).some(p => p.feature === 'gnomeBattalion') ? {} : C.actions.pray.cost;
     case 'tend': {
       if (!plot) return C.actions.tend.cost;
       const topo = getTopology(s.board.layoutId);
       const near = [plot.id, ...topo.hexById[plot.id].neighbors].map(id => plotById(s, id));
-      const free = near.some(p => p && p.owner === seat && p.feature === 'beeHotel');
-      return free ? {} : C.actions.tend.cost;
+      return C.actions.tend.cost;
     }
     case 'claim': return god === 'thor' ? { turf: 1 } : C.actions.claim.cost;
     case 'cultivate': return featureDef(slot.feature) ? featureDef(slot.feature).cost : null;
@@ -394,7 +444,19 @@ function resolveActions(ctx) {
   ORDER.forEach(kind => {
     const entries = [];
     order.forEach(seat => (plans[seat] || []).forEach((slot, i) => { if (slot && slot.kind === kind) entries.push({ seat, slot, i }); }));
-    entries.forEach(e => events.push(doAction(ctx, topo, e, sheltered)));
+    // Every submitted Pray targeting one original forecast hit counts towards the
+    // conflict, regardless of initiative. Ordinary prayers cancel one another;
+    // Loki's special prayer cannot be cancelled.
+    const conflicts = new Map();
+    const validPrayers = new Set();
+    if (kind === 'pray') entries.forEach(e => {
+      const key = `${e.slot.index}:${e.slot.target}`;
+      if (prayError(s, topo, e.seat, e.slot) === null) {
+        validPrayers.add(e);
+        conflicts.set(key, (conflicts.get(key) || 0) + 1);
+      }
+    });
+    entries.forEach(e => events.push(doAction(ctx, topo, e, sheltered, conflicts, validPrayers)));
   });
 
   s.roundState.sheltered = [...sheltered];
@@ -409,7 +471,7 @@ function resolveActions(ctx) {
   events.forEach(e => { s.stats.byKind[e.kind] = (s.stats.byKind[e.kind] || 0) + 1; });
 }
 
-function doAction(ctx, topo, e, sheltered) {
+function doAction(ctx, topo, e, sheltered, prayConflicts = new Map(), validPrayers = new Set()) {
   const s = ctx.state;
   const { seat, slot } = e;
   const p = P(s, seat);
@@ -419,6 +481,31 @@ function doAction(ctx, topo, e, sheltered) {
   const fail = reason => { ev.reason = reason; return ev; };
 
   switch (slot.kind) {
+    case 'pray': {
+      if (!validPrayers.has(e)) return fail('Invalid or changed forecast target');
+      const cost = actionCost(s, seat, slot);
+      if (!hasAll(p.hand, cost)) return fail('could not afford it');
+      pay(s, seat, cost); // conflict always costs Dust, as promised
+      const d = s.forecast.now[slot.index];
+      ev.from = slot.target;
+      ev.to = slot.to;
+      ev.disasterIndex = slot.index;
+      ev.disasterName = d.name;
+      ev.good = d.good;
+      ev.victim = plotById(s, slot.to).owner;
+      if (god !== 'loki' && (prayConflicts.get(`${slot.index}:${slot.target}`) || 0) > 1)
+        return fail('The gods received conflicting requests and did nothing.');
+      if (!d.plots.includes(slot.target)) return fail('The apocalypse has already moved');
+      if (d.plots.includes(slot.to)) return fail('The disaster already moved there');
+      d.plots.splice(d.plots.indexOf(slot.target), 1, slot.to);
+      ev.ok = true;
+      ev.blame = C.prayLines[int(randFn(s), C.prayLines.length)]
+        .replaceAll('{actor}', nameOf(s, seat)).replaceAll('{victim}', ev.victim === null ? 'an unclaimed plot' : nameOf(s, ev.victim))
+        .replaceAll('{disaster}', d.name);
+      if (god === 'loki') ev.power = 'loki';
+      log(ctx, 'pray', `${nameOf(s, seat)} forwarded ${d.name} to another garden.`, seat);
+      return ev;
+    }
     case 'shelter': {
       if (!plot || plot.owner !== seat) return fail('not your plot');
       const cost = actionCost(s, seat, slot, plot);
@@ -441,16 +528,20 @@ function doAction(ctx, topo, e, sheltered) {
         ev.power = 'heimdall';
         return fail('Heimdall saw it coming');
       }
-      if (plot.feature === 'hedgeMaze' && god !== 'loki') return fail('lost in the Hedge Maze');
-      if (plot.feature === 'hedgeMaze') ev.power = 'loki';
       if (slot.mode === 'pilfer') {
-        const sup = C.terrainSupply[plot.terrain];
+        // A plot tells you where to look first. If its usual supply has run
+        // out, nick the victim's most abundant supply instead. No invisible
+        // hand information is revealed until this action actually resolves.
+        const preferred = C.terrainSupply[plot.terrain];
         const victim = P(s, plot.owner);
-        if (sup && victim.hand[sup] > 0) {
+        const alternative = SUP.slice().sort((a, b) => victim.hand[b] - victim.hand[a])[0];
+        const sup = preferred && victim.hand[preferred] > 0 ? preferred
+          : C.actions.meddle.pilferFallback === 'mostAbundant' && victim.hand[alternative] > 0 ? alternative : null;
+        if (sup) {
           victim.hand[sup] -= 1;
           p.hand[sup] += 1;
-          ev.took = sup;
-        } else ev.took = null;
+        }
+        ev.took = sup;
       } else {
         const before = plot.health;
         plot.health -= 1;
@@ -464,6 +555,8 @@ function doAction(ctx, topo, e, sheltered) {
           if (mine) { mine.health += 1; capHealth(mine); ev.lokiTo = mine.id; ev.power = 'loki'; }
         }
       }
+      ev.blame = C.meddleLines[int(randFn(s), C.meddleLines.length)]
+        .replaceAll('{actor}', nameOf(s, seat)).replaceAll('{victim}', nameOf(s, ev.victim));
       ev.ok = true;
       return ev;
     }
@@ -663,8 +756,8 @@ function plotYield(s, plot) {
   if (plot.health <= 0) return 0;
   let n = C.yieldByHealth[plot.health];
   const cond = plot.condition ? C.conditions[plot.condition] : null;
-  if (cond && cond.yieldZero && !(plot.condition === 'flooded' && godOf(s, plot.owner) === 'njord')) n = 0;
-  if (plot.condition === 'flooded' && godOf(s, plot.owner) === 'njord' && n > 0) s.roundState.njordPower = true;
+  if (cond && cond.yieldZero && !(plot.condition === 'blighted' && godOf(s, plot.owner) === 'njord')) n = 0;
+  if (plot.condition === 'blighted' && godOf(s, plot.owner) === 'njord' && n > 0) s.roundState.njordPower = true;
   if (cond && cond.yieldBonus) n += cond.yieldBonus;
   if (plot.feature && featureDef(plot.feature).lushYieldBonus && plot.health === 3) n += featureDef(plot.feature).lushYieldBonus;
   return n;
@@ -693,7 +786,7 @@ function harvest(ctx) {
 
 function metric(s, seat, cat) {
   const plots = ownedBy(s, seat);
-  const counted = plots.filter(p => p.feature && p.condition !== 'infested');
+  const counted = plots.filter(p => p.feature);
   switch (cat.measure) {
     case 'tag': return counted.reduce((n, p) => n + (featureDef(p.feature).tags.includes(cat.tag)
       ? (cat.tag === 'water' && godOf(s, seat) === 'njord' ? 2 : 1) : 0), 0);
@@ -752,26 +845,13 @@ function scoreShow(ctx, showIndex) {
   log(ctx, 'show', `Village Garden Show ${showIndex + 1} judged.`);
 }
 
-/* Garden Design: small, transparent placement bonuses for intentional layouts.
-   They score only at final / interim leaderboard, not during Shows. */
-function gardenDesignBonus(s, seat) {
-  const topo = getTopology(s.board.layoutId);
-  let points = 0;
-  ownedBy(s, seat).forEach(p => {
-    if (!p.feature || p.condition === 'infested') return;
-    const adjacent = topo.hexById[p.id].neighbors.map(id => plotById(s, id))
-      .filter(other => other && other.owner === seat && other.feature && other.condition !== 'infested');
-    if (p.feature === 'beeHotel' && adjacent.some(x => ['roseArch', 'prizeMarrow'].includes(x.feature))) points++;
-    if (p.feature === 'waterFeature' && adjacent.some(x => x.feature === 'roseArch')) points++;
-    if (p.feature === 'hedgeMaze' && adjacent.length >= 2) points++;
-  });
-  return points;
-}
+/* Simplified party rules: no invisible adjacency Prestige. */
+function gardenDesignBonus() { return 0; }
 
 function featurePrestige(s, seat) {
   const njord = godOf(s, seat) === 'njord';
   return ownedBy(s, seat).reduce((n, p) => {
-    if (!p.feature || p.condition === 'infested') return n;
+    if (!p.feature) return n;
     const def = featureDef(p.feature);
     return n + def.prestige + (njord && def.tags.includes('water') ? C.njordWaterBonus : 0);
   }, 0);
@@ -779,8 +859,8 @@ function featurePrestige(s, seat) {
 
 function scoreOf(s, seat) {
   const p = P(s, seat);
-  const designBonus = gardenDesignBonus(s, seat);
-  const features = featurePrestige(s, seat) + designBonus;
+  const designBonus = 0;
+  const features = featurePrestige(s, seat);
   return { seat, designBonus, shows: p.showPoints, features, goodwill: p.goodwill, total: p.showPoints + features + p.goodwill,
     featureCount: ownedBy(s, seat).filter(x => x.feature).length, health: ownedBy(s, seat).reduce((n, x) => n + x.health, 0) };
 }
@@ -795,7 +875,6 @@ function currentLeader(s) {
 function gardenHonours(s, scores) {
   const categories = [
     { key: 'showstopper', name: 'Showstopper', icon: '🏆', description: 'Most Garden Show points', measure: row => row.shows },
-    { key: 'designer', name: 'Garden Architect', icon: '🌿', description: 'Most Garden Design points', measure: row => row.designBonus },
     { key: 'neighbour', name: 'Neighbourhood Hero', icon: '🤝', description: 'Most Goodwill', measure: row => row.goodwill },
     { key: 'lush', name: 'Lush Legend', icon: '🌱', description: 'Most surviving Lush plots',
       measure: row => ownedBy(s, row.seat).filter(p => p.health === 3).length }
@@ -840,7 +919,13 @@ function advanceStep(ctx) {
       nextRound(ctx);
       return;
     }
-    case 'show': nextRound(ctx); return;
+    case 'show': {
+      const i = cfg.showRounds.indexOf(s.round);
+      if (i >= 0 && i < cfg.showRounds.length - 1) beginSympathy(ctx);
+      else nextRound(ctx);
+      return;
+    }
+    case 'sympathy': finishSympathy(ctx, s.sympathy.options[0]); return;
     default:
   }
 }
@@ -861,6 +946,7 @@ function validateSlot(s, topo, seat, slot, idx, slots) {
   const claims = others.filter(x => x.kind === 'claim').map(x => x.target);
   const earlierClaims = slots.slice(0, idx).filter(x => x && x.kind === 'claim').map(x => x.target);
   switch (slot.kind) {
+    case 'pray': return prayError(s, topo, seat, slot);
     case 'shelter':
     case 'tend':
       if (!plot || plot.owner !== seat) return 'Pick one of your own plots';
@@ -895,6 +981,8 @@ function cleanSlot(slot) {
   if (!slot || typeof slot !== 'object') return null;
   const out = { kind: slot.kind };
   if (typeof slot.target === 'string') out.target = slot.target.slice(0, 8);
+  if (Number.isInteger(slot.index)) out.index = slot.index;
+  if (typeof slot.to === 'string') out.to = slot.to.slice(0, 8);
   if (typeof slot.mode === 'string') out.mode = slot.mode;
   if (typeof slot.feature === 'string') out.feature = slot.feature;
   if (Array.isArray(slot.supplies)) out.supplies = slot.supplies.slice(0, 2).map(String);
@@ -925,6 +1013,14 @@ function planCommitment(s, seat) {
 /* ---------- actions ---------- */
 
 const ACTIONS = {
+  sympathyPick(ctx, seat, a) {
+    const s = ctx.state;
+    if (s.phase.step !== 'sympathy' || !s.sympathy) return 'No Sympathy Vote is being held';
+    if (seat !== s.sympathy.chooser) return 'The judges did not ask you';
+    if (!s.sympathy.options.includes(a.category)) return 'Choose one of the three options';
+    finishSympathy(ctx, a.category);
+    return null;
+  },
   setOption(ctx, seat, a) {
     const s = ctx.state;
     if (s.phase.stage !== 'lobby') return 'Options can only change in the lobby';
@@ -998,10 +1094,8 @@ const ACTIONS = {
     if (s.phase.step !== 'plan') return 'Nothing to lock in';
     if (!planComplete(s, s.secrets.plans[seat])) return 'Choose all your actions first';
     if (!hasAll(compostedHand(s, seat), planCommitment(s, seat)))
-      return 'Your plan and emergency pledge need more supplies than you hold. Edit the plan or trade before locking.';
+      return 'Your plan and emergency pledge need more supplies than you hold. Edit the plan or lower your pledge before locking.';
     P(s, seat).locked = true;
-    // Open outgoing offers cannot remove supplies after commitment.
-    s.trades.forEach(t => { if (t.from === seat && t.status === 'open') t.status = 'expired'; });
     emit(ctx, 'locked', { seat });
     if (allLocked(s)) endPlan(ctx);
     return null;
@@ -1060,69 +1154,11 @@ const ACTIONS = {
   skip(ctx, seat) {
     const s = ctx.state;
     if (seat !== 0) return 'Only the host can skip';
-    if (!['omens', 'resolve', 'disasters', 'harvest', 'show'].includes(s.phase.step)) return 'Nothing to skip';
+    if (!['omens', 'resolve', 'disasters', 'harvest', 'show', 'sympathy'].includes(s.phase.step)) return 'Nothing to skip';
     advanceStep(ctx);
     return null;
-  },
-
-  offerTrade(ctx, seat, a) {
-    const s = ctx.state;
-    if (s.phase.step !== 'plan') return 'Trading happens during the Plan phase';
-    if (P(s, seat).locked) return 'Unlock your plan before offering a trade';
-    const give = cleanBundle(a.give);
-    const want = cleanBundle(a.want);
-    if (!give || !want || !handTotal(give) || !handTotal(want)) return 'Choose what to give and what you want';
-    if (SUP.some(r => give[r] > 0 && want[r] > 0)) return "Don't give and want the same supply";
-    let to = null;
-    if (a.to !== null && a.to !== undefined) {
-      if (!Array.isArray(a.to) || !a.to.length) return 'Choose who to offer to';
-      to = [...new Set(a.to)];
-      if (to.some(x => !Number.isInteger(x) || !s.players[x] || x === seat)) return 'Invalid player';
-    }
-    if (!hasAll(P(s, seat).hand, give)) return "You don't have those supplies";
-    if (s.trades.filter(t => t.from === seat && t.status === 'open').length >= 3) return 'You can have 3 offers open at once';
-    s.secrets.tradeSeq += 1;
-    s.trades.push({ id: 't' + s.secrets.tradeSeq, from: seat, to, give, want, status: 'open', declinedBy: [], createdAt: ctx.now });
-    emit(ctx, 'tradeOffer', { from: seat, broadcast: to === null, privateTo: to || undefined });
-    return null;
-  },
-
-  respondTrade(ctx, seat, a) {
-    const s = ctx.state;
-    if (s.phase.step !== 'plan') return 'Trading happens during the Plan phase';
-    const t = s.trades.find(x => x.id === a.id);
-    if (!t || t.status !== 'open') return 'That offer has closed';
-    if (t.from === seat) return "You can't answer your own offer";
-    if (t.to !== null && !t.to.includes(seat)) return 'That offer is not for you';
-    if (!a.accept) {
-      if (!t.declinedBy.includes(seat)) t.declinedBy.push(seat);
-      emit(ctx, 'tradeDeclined', { id: t.id, by: seat, privateTo: [t.from] });
-      return null;
-    }
-    if (P(s, seat).locked || P(s, t.from).locked)
-      return 'Unlock your plan before trading; locked players cannot exchange supplies';
-    if (!hasAll(P(s, seat).hand, t.want)) return "You don't have the supplies they want";
-    if (!hasAll(P(s, t.from).hand, t.give)) {
-      t.status = 'void';
-      emit(ctx, 'tradeVoid', { id: t.id, privateTo: [t.from, seat] });
-      return null;
-    }
-    pay(s, t.from, t.give); gain(s, seat, t.give);
-    pay(s, seat, t.want); gain(s, t.from, t.want);
-    t.status = 'done';
-    t.acceptedBy = seat;
-    emit(ctx, 'tradeAccepted', { id: t.id, from: t.from, with: seat });
-    log(ctx, 'trade', `${nameOf(s, t.from)} and ${nameOf(s, seat)} do a deal.`, seat);
-    return null;
-  },
-
-  cancelTrade(ctx, seat, a) {
-    const t = ctx.state.trades.find(x => x.id === a.id);
-    if (!t || t.status !== 'open') return 'That offer has closed';
-    if (t.from !== seat) return 'Not your offer';
-    t.status = 'cancelled';
-    return null;
   }
+
 };
 
 /* ---------- public API ---------- */
@@ -1143,14 +1179,14 @@ function createGame({ roomCode = 'TEST', seed, config = {}, now = Date.now() } =
     players: [],
     forecast: { now: [], next: [] },
     emergency: null,
+    sympathy: null,
     shows: [],
-    trades: [],
     resolution: null, disasterReport: null, harvestReport: null,
     roundState: { sheltered: [], helGained: 0 },
     log: [],
     final: null, winner: null,
     stats: { actions: 0, fizzled: 0, byKind: {}, disasters: 0, emergencies: [], showLeaders: [], damage: { disaster: 0, meddle: 0, emergency: 0 }, repaired: 0 },
-    secrets: { rng: { s }, playerTokens: {}, plans: {}, pledges: {}, compostOwed: {}, decks: {}, queue: {}, pendingExtra: [], categoryPool: [], tradeSeq: 0 }
+    secrets: { rng: { s }, playerTokens: {}, plans: {}, pledges: {}, compostOwed: {}, decks: {}, queue: {}, pendingExtra: [], categoryPool: [], }
   };
 }
 
@@ -1253,9 +1289,10 @@ function advance(state) {
 
 function legalTargets(state, seat) {
   const s = state;
-  const out = { shelter: [], tend: [], meddle: [], claim: [], cultivate: [], features: Object.keys(C.features) };
+  const out = { pray: [], shelter: [], tend: [], meddle: [], claim: [], cultivate: [], features: Object.keys(C.features) };
   if (!s.board || s.phase.stage !== 'playing') return out;
   const topo = getTopology(s.board.layoutId);
+  out.pray = [...new Set(s.forecast.now.flatMap(d => d.plots || []))];
   s.board.plots.forEach(p => {
     if (p.owner === seat) {
       out.shelter.push(p.id);
@@ -1266,6 +1303,14 @@ function legalTargets(state, seat) {
     } else if (touchesGarden(s, topo, seat, p.id)) out.meddle.push(p.id);
   });
   return out;
+}
+
+function sPledged(s) {
+  if (!s.emergency || s.emergency.result) return 0;
+  return s.players.reduce((n,p) => {
+    const bundle=s.secrets.pledges[p.seat];
+    return n + (bundle ? handTotal(bundle) * (p.god === 'frigg' ? 2 : 1) : 0);
+  },0);
 }
 
 function publicView(state) {
@@ -1279,10 +1324,15 @@ function publicView(state) {
     score: state.board ? scoreOf(state, p.seat).total : 0
   }));
   if (v.board) delete v.board.index;
-  if (v.emergency && v.emergency.result === null) v.emergency.paid = null;
-  v.trades = state.trades.filter(t => t.status === 'open')
-    .map(t => (t.to === null ? JSON.parse(JSON.stringify(t)) : { id: t.id, from: t.from, to: t.to, status: t.status, private: true }));
+  if (v.emergency && v.emergency.result === null) {
+    v.emergency.paid = null;
+    v.emergency.pledged = sPledged(state);
+  }
   if (!over) v.final = null;
+  // The Sympathy Vote is a private decision for the last-placed gardener.
+  // Spectators and rival phones may know who is choosing, but must not receive
+  // the three category options before that player actually makes the choice.
+  if (v.sympathy) delete v.sympathy.options;
   v.showPreview = upcomingShowStandings(state);
   return v;
 }
@@ -1291,6 +1341,9 @@ function privateView(state, seat) {
   const v = publicView(state);
   const p = state.players[seat];
   if (!p) return v;
+  if (state.sympathy && state.sympathy.chooser === seat && v.sympathy) {
+    v.sympathy.options = [...state.sympathy.options];
+  }
   const odinPreview = p.god === 'odin' && state.round
     ? (state.secrets.queue[state.round + 2] || []).map(d => ({ key: d.key, name: d.name }))
     : null;
@@ -1303,7 +1356,6 @@ function privateView(state, seat) {
     compostOwed: state.secrets.compostOwed[seat] || 0,
     odinPreview,
     odinCanShift: p.god === 'odin' && p.odinUsedAct !== state.act,
-    trades: state.trades.filter(t => t.status === 'open' && (t.from === seat || t.to === null || t.to.includes(seat))).map(t => JSON.parse(JSON.stringify(t))),
     legal: legalTargets(state, seat),
     commit: commitStatus(state, seat)
   };

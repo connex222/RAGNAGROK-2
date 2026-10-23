@@ -9,7 +9,7 @@
 :root {
   --bg:#1a1226; --surface:#2a1d3b; --surface2:#3b2a52; --line:#4f3c69;
   --ink:#f7f0e3; --muted:#c3b5d3; --primary:#ff8a4c; --on-primary:#1a1226;
-  --good:#8cc45e; --bad:#ff7a7a; --warn:#f5c451;
+  --good:#8cc45e; --bad:#ff7a7a; --warn:#f5c451; --gold:#f5c451;
   --turf:#4fa34a; --fertiliser:#e8b931; --sprinklers:#e5533d; --compost:#9b7bd4; --gnomeDust:#7ec8e3;
   --radius:16px; --tap:56px;
   color-scheme:dark;
@@ -17,7 +17,7 @@
 html[data-theme="day"] {
   --bg:#eef2e0; --surface:#ffffff; --surface2:#e3e9cf; --line:#b9c79c;
   --ink:#142109; --muted:#46563a; --primary:#b8410b; --on-primary:#ffffff;
-  --good:#2f7a1f; --bad:#b3261e; --warn:#8a5a00;
+  --good:#2f7a1f; --bad:#b3261e; --warn:#8a5a00; --gold:#8a5a00;
   color-scheme:light;
 }
 * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -38,7 +38,9 @@ button:disabled { cursor:not-allowed; }
 label.f { display:block; font-weight:700; margin:16px 0 6px; }
 input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; border-radius:var(--radius); border:2px solid var(--line); background:var(--surface); color:var(--ink); }
 #joinCode { text-transform:uppercase; letter-spacing:.35em; font-weight:900; font-size:24px; }
-.avatars { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+.avatars { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
+@media (max-width:360px) { .avatars { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+.avatars button { min-width:0; }
 .avatars button { aspect-ratio:1; font-size:28px; border-radius:14px; background:var(--surface); border:2px solid var(--line); }
 .avatars button[aria-pressed="true"] { border-color:var(--primary); background:var(--surface2); }
 
@@ -70,13 +72,15 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 .res .i { display:block; line-height:1.1; }
 .res .i .gi { width:28px; height:28px; display:block; margin:0 auto; }
 .res .n { font-weight:900; font-size:20px; font-variant-numeric:tabular-nums; }
+.res .res-name { display:block; font-size:clamp(10px,2.8vw,12px); line-height:1.2; letter-spacing:-.025em; white-space:nowrap; color:var(--muted); }
+@media (max-width:360px) { #hand { gap:3px; padding-inline:6px; } .res { padding-inline:0; } }
 .res.zero { opacity:.45; }
 #handNote { grid-column:1/-1; text-align:center; font-size:14px; color:var(--muted); }
 #handNote.warn { color:var(--warn); font-weight:700; }
 #content { flex:1; overflow-y:auto; padding:12px 14px 20px; }
 #actionBar { padding:10px 14px; background:var(--surface); border-top:2px solid var(--line); }
 #actionBar .wait { text-align:center; color:var(--muted); padding:14px 0; }
-#tabs { display:grid; grid-template-columns:repeat(3,1fr); background:var(--surface); border-top:1px solid var(--line); }
+#tabs { display:grid; grid-template-columns:repeat(2,1fr); background:var(--surface); border-top:1px solid var(--line); }
 #tabs button { min-height:60px; font-size:13px; font-weight:700; color:var(--muted); position:relative; }
 #tabs button span { display:block; font-size:22px; }
 #tabs button[aria-current="page"] { color:var(--primary); box-shadow:inset 0 3px 0 var(--primary); }
@@ -254,10 +258,11 @@ const SUP = ['turf', 'fertiliser', 'sprinklers', 'compost', 'gnomeDust'];
 const SUP_NAME = { turf: 'Turf', fertiliser: 'Fertiliser', sprinklers: 'Sprinklers', compost: 'Compost', gnomeDust: 'Gnome Dust' };
 const SUP_EMOJI = { turf: '🌳', fertiliser: '🌾', sprinklers: '🔥', compost: '🍄', gnomeDust: '✨' };
 const SUP_ART = k => 'res-' + (k === 'fertiliser' ? 'fertilizer' : k);
-const ORDER = ['shelter', 'meddle', 'tend', 'claim', 'cultivate', 'carBoot'];
+const ORDER = ['pray', 'shelter', 'meddle', 'tend', 'claim', 'cultivate', 'carBoot'];
 const ACT = {
+  pray: { icon: '🙏', name: 'Pray to the Wrong God', what: 'Move a forecast hit to a nearby plot. Loki reaches two plots.', target: 'a threatened plot' },
   shelter: { icon: '🛡️', name: 'Shelter', what: 'Protect one of your plots from this round\'s disasters and any meddling.', target: 'one of your plots' },
-  meddle: { icon: '😈', name: 'Meddle', what: 'Trample a neighbour\'s plot (−1 health) or pilfer one of its supply.', target: 'a rival\'s plot next to yours' },
+  meddle: { icon: '😈', name: 'Meddle', what: 'Trample a neighbour\'s plot (−1 health), or pilfer one of their supplies.', target: 'a rival\'s plot next to yours' },
   tend: { icon: '🌱', name: 'Tend', what: 'Restore 1 health and clear one harmful condition. Freya restores 2 health.', target: 'one of your plots' },
   claim: { icon: '🚩', name: 'Claim', what: 'Take an empty plot next to your garden.', target: 'an empty plot next to your garden' },
   cultivate: { icon: '🌷', name: 'Cultivate', what: 'Build a garden feature on one of your plots.', target: 'one of your plots without a feature' },
@@ -303,9 +308,9 @@ let clockOffset = 0;
 let saved = store.get(KEY);
 const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(PREFS) || {});
 const params = new URLSearchParams(location.search);
-const ui = { tab: 'plan', sheet: null, tradeSeg: 'inbox', trade: { give: empty(), want: empty(), to: null }, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null };
+const ui = { tab: 'plan', sheet: null, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null };
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.1.0-dev.9';
+const CLIENT_VERSION = '1.2.0-dev.4';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -315,7 +320,7 @@ $('#reloadForUpdate').addEventListener('click', () => location.reload());
 
 const I = (key, cls) => RagnaBoard.icon(ART, key, cls);
 const sup = k => (ART[SUP_ART(k)] ? I(SUP_ART(k)) : SUP_EMOJI[k]);
-const chips = b => SUP.filter(r => b && b[r] > 0).map(r => `<span class="chip">${b[r]} ${sup(r)}</span>`).join('') || '<span class="chip">Free</span>';
+const chips = b => SUP.filter(r => b && b[r] > 0).map(r => `<span class="chip">${b[r]} ${sup(r)} <small>${SUP_NAME[r]}</small></span>`).join('') || '<span class="chip">Free</span>';
 const godIcon = g => (ART['deity-' + g] ? I('deity-' + g) : GOD_ICON[g] || '');
 const featureIcon = f => (ART['feature-' + f] ? I('feature-' + f) : RagnaBoard.FEATURE_ICON[f] || '🌷');
 
@@ -349,10 +354,8 @@ function costOf(slot) {
   switch (slot.kind) {
     case 'shelter': return C.actions.shelter.cost;
     case 'meddle': return myPlots().some(p => p.feature === 'gnomeBattalion') ? {} : C.actions.meddle.cost;
-    case 'tend': {
-      const near = [slot.target, ...neighbours(slot.target)].map(plotById);
-      return near.some(p => p && p.owner === mySeat() && p.feature === 'beeHotel') ? {} : C.actions.tend.cost;
-    }
+    case 'pray': return myPlots().some(p => p.feature === 'gnomeBattalion') ? {} : C.actions.pray.cost;
+    case 'tend': return C.actions.tend.cost;
     case 'claim': return god === 'thor' ? { turf: 1 } : C.actions.claim.cost;
     case 'cultivate': return slot.feature && C.features[slot.feature] ? C.features[slot.feature].cost : {};
     default: return {};
@@ -384,6 +387,7 @@ function legalTargets(kind, idx, slots) {
   const others = slots.filter((x, i) => x && i !== idx);
   const claims = others.filter(x => x.kind === 'claim').map(x => x.target);
   switch (kind) {
+    case 'pray': return L.pray || [];
     case 'shelter': return L.shelter;
     case 'tend': return L.tend;
     case 'meddle': return L.meddle;
@@ -407,6 +411,7 @@ function describeSlot(s) {
   let sub = '';
   if (s.kind === 'carBoot') sub = 'Take ' + (s.supplies || []).map(sup).join(' ');
   else if (s.kind === 'cultivate') sub = `${C.features[s.feature].name} on ${p ? plotName(p) : 'a plot'}`;
+  else if (s.kind === 'pray') sub = `${s.target} → ${s.to || '?'} (${(view.forecast.now[s.index] || {}).name || 'forecast'})`;
   else if (s.kind === 'meddle') sub = `${s.mode === 'pilfer' ? 'Pilfer from' : 'Trample'} ${p ? nm(p.owner) + "'s " + plotName(p) : 'a plot'}`;
   else sub = p ? plotName(p) : '';
   return { title: `${a.icon} ${a.name}`, sub };
@@ -502,9 +507,7 @@ function handleEvent(e) {
     }
     case 'emergency': toast(e.result === 'success' ? 'The street pulled together!' : 'The street failed the emergency', e.result === 'success' ? 'good' : 'bad'); break;
     case 'show': sfx('offerIn'); toast('The Village Garden Show has been judged'); break;
-    case 'tradeOffer': if (e.from !== seat) { sfx('offerIn'); if (ui.tab !== 'trade') ui.unseen += 1; } break;
-    case 'tradeAccepted': if (e.from === seat) toast(`${nm(e.with)} accepted your offer`, 'good'); else if (e.with === seat) toast('Deal done', 'good'); break;
-    case 'tradeDeclined': sfx('tradeDeclined'); toast(`${nm(e.by)} declined your offer`); break;
+
     case 'odinShift': toast('Odin has nudged a disaster along the street'); break;
     case 'win': sfx('yourTurn'); break;
     default: break;
@@ -551,8 +554,8 @@ function render() {
   else if (stage === 'draft') $('#content').innerHTML = renderDraft();
   else if (stage === 'gameOver') $('#content').innerHTML = renderGameOver();
   else {
-    if (ui.tab === 'trade') ui.unseen = 0;
-    $('#content').innerHTML = ({ plan: renderPlanTab, garden: renderGarden, trade: renderTrade })[ui.tab]();
+
+    $('#content').innerHTML = ({ plan: renderPlanTab, garden: renderGarden })[ui.tab]();
     renderActionBar();
     renderTabs();
   }
@@ -626,14 +629,14 @@ function renderHand() {
   const h = me().hand;
   const cap = C ? C.shedCapacity : 10;
   const n = total(h);
-  $('#hand').innerHTML = SUP.map(r => `<div class="res${h[r] ? '' : ' zero'}" style="--c:var(--${r})" aria-label="${SUP_NAME[r]}: ${h[r]}"><span class="i">${sup(r)}</span><span class="n">${h[r]}</span></div>`).join('') +
+  $('#hand').innerHTML = SUP.map(r => `<div class="res${h[r] ? '' : ' zero'}" style="--c:var(--${r})" aria-label="${SUP_NAME[r]}: ${h[r]}"><span class="i">${sup(r)}</span><span class="n">${h[r]}</span><small class="res-name">${SUP_NAME[r]}</small></div>`).join('') +
     `<div id="handNote" class="${n > cap ? 'warn' : ''}">${n} supplies${n > cap ? ` · over your shed's ${cap}` : ''}</div>`;
 }
 
 function renderTabs() {
-  const tabs = [['plan', '📝', 'Plan'], ['garden', '🏡', 'Garden'], ['trade', '🤝', 'Trade']];
+  const tabs = [['plan', '📝', 'Plan'], ['garden', '🏡', 'Garden']];
   $('#tabs').innerHTML = tabs.map(([id, icon, label]) => {
-    const badge = id === 'trade' && ui.unseen ? `<i class="badge">${ui.unseen}</i>` : '';
+    const badge = '';
     return `<button data-act="tab" data-tab="${id}"${ui.tab === id ? ' aria-current="page"' : ''}><span aria-hidden="true">${icon}</span>${label}${badge}</button>`;
   }).join('');
 }
@@ -649,14 +652,15 @@ function renderActionBar() {
     return;
   }
   if (filled < slots.length) {
-    bar.innerHTML = `<button class="btn primary" data-act="lock" disabled>Choose ${slots.length - filled} more action${slots.length - filled > 1 ? 's' : ''}</button>`;
+    const firstEmpty = slots.findIndex(slot => !slot);
+    bar.innerHTML = `<button class="btn primary" data-act="editSlot" data-i="${firstEmpty}">✏️ Plan action ${firstEmpty + 1} · ${slots.length - filled} remaining</button>`;
     return;
   }
   const c = me().commit;
   if (c && c.complete && !c.canLock) {
     const need = SUP.filter(r => c.short[r]).map(r => `${c.short[r]} ${sup(r)}`).join(' ');
     bar.innerHTML = `<button class="btn primary" data-act="lock" disabled aria-describedby="lockShort">🔒 Lock in my plan</button>
-      <div id="lockShort" class="lock-short" role="status">Short ${need}. Change an action, lower your pledge or trade.</div>`;
+      <div id="lockShort" class="lock-short" role="status">Short ${need}. Change an action or lower your pledge.</div>`;
     return;
   }
   bar.innerHTML = '<button class="btn primary" data-act="lock">🔒 Lock in my plan</button>';
@@ -670,8 +674,9 @@ function renderLobby() {
     <td>${isHost && p.seat !== 0 ? `<button class="btn small" data-act="kick" data-seat="${p.seat}">Remove</button>` : ''}</td></tr>`).join('');
   const lengths = C ? Object.entries(C.lengths) : [];
   const timeGuess = { standard: '15–20 min', long: '20–25 min', epic: 'about an hour' };
+  const lengthBtn = ([k,d]) => `<button class="btn" data-act="length" data-len="${k}" aria-pressed="${k === len}">${esc(d.name)}${k === C.defaultLength ? ' (recommended)' : ''} · ${d.rounds} rounds · ${timeGuess[k] || ''}</button>`;
   const options = isHost
-    ? `<div class="card"><h3>Game length</h3><div class="stack">${lengths.map(([k, d]) => `<button class="btn" data-act="length" data-len="${k}" aria-pressed="${k === len}">${esc(d.name)}${k === C.defaultLength ? ' (recommended)' : ''} · ${d.rounds} rounds · ${timeGuess[k] || ''}</button>`).join('')}</div>
+    ? `<div class="card"><h3>Game length</h3><div class="stack">${lengthBtn(lengths.find(([k]) => k === 'standard'))}<details><summary>Advanced: longer games</summary><div class="stack">${lengths.filter(([k]) => k !== 'standard').map(lengthBtn).join('')}</div></details></div>
        <h3 style="margin-top:14px">Planning time</h3><div class="row">${[null, 45, 90, 120].map(t => `<button class="btn small" data-act="planTime" data-t="${t === null ? 'auto' : t}" aria-pressed="${(view.config.planSec || null) === t}">${t === null ? 'Auto' : t + 's'}</button>`).join('')}</div></div>`
     : `<div class="card"><h3>${C && C.lengths[len] ? esc(C.lengths[len].name) : ''} game</h3><p class="muted small">${C && C.lengths[len] ? C.lengths[len].rounds + ' rounds · ' + (timeGuess[len] || '') : ''}</p></div>`;
   return `<div class="card"><div class="muted small">Room code</div><div class="big">${esc(view.meta.code)}</div>
@@ -790,6 +795,13 @@ function renderPlanTab() {
     html += renderLocks();
     return html;
   }
+  if (st === 'sympathy' && view.sympathy) {
+    const vote = view.sympathy;
+    return vote.chooser === mySeat()
+      ? `<div class="card prompt"><h3>🥀 The Sympathy Vote</h3><p>The judges have taken pity on you. Choose one category for the next Garden Show. No free points, just a chance to ruin somebody's afternoon.</p>
+        <div class="stack">${vote.options.map(key => `<button class="btn primary" data-act="sympathyPick" data-category="${key}">${esc(C.categories[key].name)}<small>${esc(C.categories[key].describe)}</small></button>`).join('')}</div><p class="small muted">If time runs out, the first choice wins by default.</p></div>`
+      : `<div class="card prompt"><h3>🥀 The Sympathy Vote</h3><p>${nm(vote.chooser)} finished last and gets to pick a category for the next Show. The Residents' Association calls this fairness.</p></div>`;
+  }
   if (st === 'omens') return `<div class="card prompt"><h3>🔮 Omens</h3><p class="small">Read what's coming. Planning starts in a moment.</p></div>${renderShowRace()}${renderOmens(false)}`;
   html += renderResults();
   html += renderOmens(true);
@@ -809,7 +821,7 @@ function renderPledge(after) {
   const fail = em.fail.kind === 'loseSupplies' ? `everyone loses ${em.fail.count} supplies` : `everyone's ${em.fail.count || ''} healthiest plots take damage`.replace('  ', ' ');
   return `<div class="card danger"><h3>🚨 ${esc(em.name)}</h3>
     <p class="small">The street needs <b>${em.target}</b> supplies in total, or ${esc(fail)}. A fair share is ${share}. Pledges are secret until the TV reveals them; helpers earn Goodwill.${frigg ? ' <b>Frigg: yours count double.</b>' : ''}</p>
-    ${SUP.map(r => `<div class="trow"><span class="i">${sup(r)}<small>${Math.max(0, after[r])} spare</small></span>
+    ${SUP.map(r => `<div class="trow"><span class="i">${sup(r)}<small>${SUP_NAME[r]}</small><small>${Math.max(0, after[r])} spare</small></span>
       <div class="stepper"><button data-act="pledgeStep" data-res="${r}" data-d="-1"${mine[r] ? '' : ' disabled'} aria-label="Less ${SUP_NAME[r]}">−</button><b>${mine[r]}</b>
       <button data-act="pledgeStep" data-res="${r}" data-d="1"${!locked() && after[r] > 0 ? '' : ' disabled'} aria-label="More ${SUP_NAME[r]}">+</button></div><span></span></div>`).join('')}
     <p class="small" style="margin-bottom:0">Your pledge: <b>${n}</b>${frigg ? ` (counts as ${n * 2})` : ''}</p></div>`;
@@ -821,7 +833,7 @@ function renderCompost() {
   const n = total(sel);
   const h = me().hand;
   return `<div class="card danger"><h3>🗑️ Your shed is full</h3><p class="small">Compost <b>${owed}</b> supplies. If you don't choose, your most-held ones go when planning ends.</p>
-    <div class="pick">${SUP.map(r => `<button data-act="compostAdd" data-res="${r}" style="--c:var(--${r})"${h[r] - sel[r] > 0 && n < owed ? '' : ' disabled'}>${sup(r)}<small>${sel[r]}</small></button>`).join('')}</div>
+    <div class="pick">${SUP.map(r => `<button data-act="compostAdd" data-res="${r}" style="--c:var(--${r})"${h[r] - sel[r] > 0 && n < owed ? '' : ' disabled'}>${sup(r)}<small>${SUP_NAME[r]}</small><small>${sel[r]}</small></button>`).join('')}</div>
     <div class="row" style="margin-top:10px"><button class="btn small" data-act="compostReset">Reset</button><button class="btn small primary" data-act="compostGo"${n === owed ? '' : ' disabled'}>Compost ${owed}</button></div></div>`;
 }
 
@@ -830,13 +842,13 @@ function renderResults() {
   let html = '';
   if (view.resolution) {
     const mineEv = view.resolution.events.filter(e => e.seat === seat);
-    const vsMe = view.resolution.events.filter(e => e.kind === 'meddle' && e.victim === seat);
+    const vsMe = view.resolution.events.filter(e => ['meddle','pray'].includes(e.kind) && e.victim === seat);
     html += `<div class="card"><h3>📋 Your actions</h3><ul class="list">${mineEv.map(e => {
       const p = e.target ? plotById(e.target) : null;
       return `<li><span class="ic">${e.ok ? '✔️' : '✖️'}</span><div><b>${esc(ACT[e.kind].name)}</b>${p ? ' · ' + esc(plotName(p)) : ''}${e.feature ? ' · ' + esc(C.features[e.feature].name) : ''}${e.gained ? ' · ' + e.gained.map(sup).join(' ') : ''}
         ${e.ok ? '' : `<div class="small muted">${esc(e.reason || '')}</div>`}</div></li>`;
     }).join('') || '<li class="muted">No actions</li>'}
-    ${vsMe.map(e => `<li><span class="ic">😈</span><div>${nm(e.seat)} meddled with you${e.ok ? '' : ` but ${esc(e.reason)}`}</div></li>`).join('')}</ul></div>`;
+    ${vsMe.map(e => `<li><span class="ic">😈</span><div>${nm(e.seat)} ${e.kind === 'pray' ? 'redirected the apocalypse at you' : 'meddled with you'}${e.ok ? '' : ` but ${esc(e.reason)}`}</div></li>`).join('')}</ul></div>`;
   }
   if (view.disasterReport && ['disasters', 'harvest', 'show'].includes(step())) {
     const mine = new Set(myPlots().map(p => p.id));
@@ -869,7 +881,7 @@ function renderResults() {
   return html || '<div class="card muted">Watch the TV…</div>';
 }
 
-/* ================= render: garden & trade ================= */
+/* ================= render: garden ================= */
 function mapHtml(opts) {
   if (!topo || !view.board) return '<div class="card muted">Loading the street…</div>';
   return `<div class="map${opts.zoom ? ' zoom' : ''}">${RagnaBoard.gardenSvg(Object.assign({ topo, plots: view.board.plots, players: view.players, art: ART, mine: mySeat(), threats: [...threatsNow()], idPrefix: 'ph' }, opts))}</div>`;
@@ -889,53 +901,10 @@ function renderGarden() {
     <div class="card"><h3>📊 Scores</h3><table class="players">${board}</table></div>`;
 }
 
-function renderTrade() {
-  const seg = ui.tradeSeg;
-  let html = `<div class="seg" style="grid-template-columns:repeat(2,1fr)">${[['inbox', `Offers${me().trades.length ? ' (' + me().trades.length + ')' : ''}`], ['new', 'New offer']].map(([id, l]) => `<button data-act="seg" data-seg="${id}" aria-pressed="${seg === id}">${l}</button>`).join('')}</div>`;
-  if (!planning()) html += '<div class="card small">Trading opens during the Plan phase.</div>';
-  html += seg === 'inbox' ? renderInbox() : renderNewOffer();
-  return html;
-}
-
-function renderInbox() {
-  const m = me();
-  if (!m.trades.length) return '<div class="card muted">No offers right now.</div>';
-  return m.trades.map(t => {
-    const mineOffer = t.from === m.seat;
-    const afford = hasAll(m.hand, t.want);
-    const buttons = mineOffer ? `<button class="btn small" data-act="cancelTrade" data-id="${t.id}">Cancel offer</button>`
-      : `<button class="btn small" data-act="declineTrade" data-id="${t.id}">Decline</button><button class="btn small good" data-act="acceptTrade" data-id="${t.id}"${afford ? '' : ' disabled'}>Accept</button>`;
-    return `<div class="card"><b>${mineOffer ? 'You' : nm(t.from)} → ${t.to === null ? 'everyone' : t.to.map(s => (s === m.seat ? 'you' : nm(s))).join(', ')}</b>
-      <div class="small muted" style="margin-top:6px">${mineOffer ? 'You give' : 'They give'}</div><div class="chips">${chips(t.give)}</div>
-      <div class="small muted" style="margin-top:6px">${mineOffer ? 'You want' : 'They want'}</div><div class="chips">${chips(t.want)}</div>
-      <div class="row" style="margin-top:10px;flex-wrap:wrap">${buttons}</div>${!mineOffer && !afford ? '<div class="small muted">You don\'t have what they want</div>' : ''}</div>`;
-  }).join('');
-}
-
-function renderNewOffer() {
-  const m = me();
-  const d = ui.trade;
-  const stepRow = (side, r) => {
-    const n = d[side][r];
-    const max = side === 'give' ? m.hand[r] : 9;
-    const blocked = side === 'give' ? d.want[r] > 0 : d.give[r] > 0;
-    return `<div class="stepper"><button data-act="tstep" data-side="${side}" data-res="${r}" data-d="-1"${n ? '' : ' disabled'} aria-label="Less">−</button><b>${n}</b>
-      <button data-act="tstep" data-side="${side}" data-res="${r}" data-d="1"${n < max && !blocked ? '' : ' disabled'} aria-label="More">+</button></div>`;
-  };
-  const others = view.players.filter(p => p.seat !== m.seat);
-  const ready = total(d.give) > 0 && total(d.want) > 0 && planning();
-  return `<div class="card"><div class="trow"><span></span><span class="muted small">You give</span><span class="muted small">You want</span></div>
-    ${SUP.map(r => `<div class="trow"><span class="i">${sup(r)}<small>have ${m.hand[r]}</small></span>${stepRow('give', r)}${stepRow('want', r)}</div>`).join('')}</div>
-    <div class="card"><div class="muted small">Send to</div><div class="chips" style="margin-top:6px">
-      <button class="btn small" data-act="target" data-to="all" aria-pressed="${d.to === null}">Everyone</button>
-      ${others.map(o => `<button class="btn small" data-act="target" data-to="${o.seat}" aria-pressed="${d.to === o.seat}">${esc(o.avatar)} ${esc(o.name)}</button>`).join('')}</div></div>
-    <div style="margin-top:12px"><button class="btn primary" data-act="sendOffer"${ready ? '' : ' disabled'}>Send offer</button></div>`;
-}
-
 function renderGameOver() {
   const f = view.final;
   if (!f) return '';
-  const rows = f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${esc(pl(s.seat).name)}<div class="small muted">Shows ${s.shows} · Features ${s.features}${s.designBonus ? ` (Garden Design +${s.designBonus})` : ''} · Goodwill ${s.goodwill}</div></td><td>${s.total}</td></tr>`).join('');
+  const rows = f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${esc(pl(s.seat).name)}<div class="small muted">Shows ${s.shows} · Features ${s.features} · Goodwill ${s.goodwill}</div></td><td>${s.total}</td></tr>`).join('');
   const won = f.winners.includes(mySeat());
   const honours = (f.honours || []).filter(h => h.seats.includes(mySeat()));
   const honourCards = honours.length ? `<div class="card"><h3>🎖️ Your garden honours</h3>${honours.map(h => `<p class="small"><b>${esc(h.icon)} ${esc(h.name)}</b> · ${esc(h.description)} (${h.value})${h.seats.length > 1 ? ' · shared' : ''}</p>`).join('')}</div>` : '';
@@ -982,7 +951,7 @@ function sheetSlot(s) {
       const c = kind === 'cultivate' ? null : costOf({ kind, target: targets[0] });
       let why = '';
       if (!targets.length) why = `No ${a.target} available`;
-      else if (c && !hasAll(proj.hand, c)) why = 'You can\'t afford this after your other actions';
+      else if (c && !hasAll(proj.hand, c)) why = SUP.filter(r => c[r] > (proj.hand[r] || 0)).map(r => `Need ${c[r] - (proj.hand[r] || 0)} more ${SUP_NAME[r]}`).join('; ');
       const costTxt = kind === 'cultivate' ? '<span class="small muted">Cost depends on the feature</span>' : kind === 'carBoot' ? '<span class="chip">Free</span>' : chips(c);
       return `<button class="opt" data-act="pickKind" data-kind="${kind}"${!targets.length ? ' disabled' : ''}><span class="ic">${a.icon}</span>
         <span><b>${esc(a.name)}</b><div class="small muted">${esc(a.what)}</div></span><span></span><span class="chips cost">${costTxt}</span>${why ? `<span class="why">${esc(why)}</span>` : ''}</button>`;
@@ -1000,12 +969,29 @@ function sheetSlot(s) {
       <div class="foot"><div class="row"><button class="btn" data-act="slotBack">Back</button>
       <button class="btn primary" data-act="targetOk"${s.target ? '' : ' disabled'}>${s.kind === 'meddle' || s.kind === 'cultivate' ? 'Next' : 'Use this plot'}</button></div></div>`;
   }
+  if (s.kind === 'pray') {
+    const options = view.forecast.now.map((d, i) => ({ d, i })).filter(x => x.d.plots.includes(s.target));
+    const selected = options.find(o => o.i === s.index) || options[0];
+    if (!selected) return `<div class="card">No current disaster still targets that plot. Choose again.</div><button class="btn" data-act="slotBack">Back</button>`;
+    const banned = new Set(selected.d.plots);
+    const distance = myGod() === 'loki' ? C.pray.lokiMaxDistance : C.pray.maxDistance;
+    let edge = [s.target]; const seen = new Set(edge);
+    for (let i = 0; i < distance; i++) {
+      edge = edge.flatMap(neighbours).filter(id => { if (seen.has(id)) return false; seen.add(id); return true; });
+    }
+    const legal = [...seen].filter(id => id !== s.target && !banned.has(id) && !(!plotById(id) || (plotById(id).owner !== null && pl(plotById(id).owner).god === 'heimdall')));
+    return `<div class="head"><div><h2>🙏 Redirect the apocalypse</h2><p class="muted small">From ${esc(plotName(plotById(s.target)))}. Choose the disaster, then its new target.</p></div>${closeBtn}</div>
+      <div class="card">${options.map(({d,i}) => `<button class="btn small" data-act="prayIndex" data-index="${i}" aria-pressed="${s.index === i}">${esc(d.name)}${d.good ? ' 🌟' : ' ⚠️'}</button>`).join('')}</div>
+      ${mapHtml({ mode: 'hex', legal, sel: s.to, zoom: ui.zoom })}
+      <p class="small muted">${myGod() === 'loki' ? 'Loki reaches two plots and ignores conflicts.' : 'Conflicting prayers cancel one another, and still cost Dust.'} Shelter can protect the new target.</p>
+      <div class="foot"><div class="row"><button class="btn" data-act="slotBack">Back</button><button class="btn primary" data-act="saveSlot"${s.to ? '' : ' disabled'}>Plan this</button></div></div>`;
+  }
   if (s.kind === 'meddle') {
     const p = plotById(s.target);
     const supply = C.terrainSupply[p.terrain];
     return `<div class="head"><div><h2>😈 Meddle</h2><p class="muted small">With ${nm(p.owner)}'s ${esc(plotName(p))}</p></div>${closeBtn}</div>
       <button class="opt" data-act="mode" data-mode="trample" aria-pressed="${s.mode === 'trample'}"><span class="ic">🦶</span><span><b>Trample</b><div class="small muted">Their plot loses 1 health${p.feature ? ' (at 0 their ' + esc(C.features[p.feature].name) + ' is destroyed)' : ''}.</div></span><span></span></button>
-      <button class="opt" data-act="mode" data-mode="pilfer" aria-pressed="${s.mode === 'pilfer'}"${supply ? '' : ' disabled'}><span class="ic">🫳</span><span><b>Pilfer</b><div class="small muted">${supply ? `Take 1 ${sup(supply)} from them, if they have one.` : 'Scorched plots have nothing to pilfer.'}</div></span><span></span></button>
+      <button class="opt" data-act="mode" data-mode="pilfer" aria-pressed="${s.mode === 'pilfer'}"><span class="ic">🫳</span><span><b>Pilfer</b><div class="small muted">${supply ? `Try to take 1 ${sup(supply)}` : 'Take 1 of their supplies'}; if unavailable, take 1 of their most plentiful supplies. None taken if their shed is empty.</div></span><span></span></button>
       <div class="foot"><div class="row"><button class="btn" data-act="slotBack">Back</button><button class="btn primary" data-act="saveSlot"${s.mode ? '' : ' disabled'}>Plan this</button></div></div>`;
   }
   if (s.kind === 'cultivate') {
@@ -1013,8 +999,8 @@ function sheetSlot(s) {
     const featureList = Object.entries(C.features).map(([k, f]) => {
       const afford = hasAll(proj.hand, f.cost);
       return `<button class="opt" data-act="feature" data-f="${k}" aria-pressed="${s.feature === k}"><span class="ic">${featureIcon(k)}</span>
-        <span><b>${esc(f.name)}</b> · ${f.prestige + (myGod() === 'njord' && f.tags.includes('water') ? C.njordWaterBonus : 0)} Prestige<div class="small muted">${f.tags.map(t => t[0].toUpperCase() + t.slice(1)).join(', ')}${f.immune ? ' · immune to ' + f.immune.join(' and ') : ''}${f.noMeddle ? ' · blocks Meddling' : ''}${f.freeMeddle ? ' · your Meddles are free' : ''}${f.freeTendNearby ? ' · free Tend nearby' : ''}${f === C.features.beeHotel ? ' · +1 Prestige when beside your Rose Arch or Prize Marrow' : ''}${f === C.features.waterFeature ? ' · +1 Prestige beside your Rose Arch' : ''}${f === C.features.hedgeMaze ? ' · +1 Prestige beside 2 of your features' : ''}${f.lushYieldBonus ? ' · +1 harvest when Lush' : ''}</div></span><span></span>
-        <span class="chips cost">${chips(f.cost)}</span>${afford ? '' : '<span class="why">Not enough supplies after your other actions</span>'}</button>`;
+        <span><b>${esc(f.name)}</b> · ${f.prestige + (myGod() === 'njord' && f.tags.includes('water') ? C.njordWaterBonus : 0)} Prestige<div class="small muted">${f.tags.map(t => t[0].toUpperCase() + t.slice(1)).join(', ')}${f.immune ? ' · immune to ' + f.immune.join(' and ') : ''}${f.freeMeddle ? ' · Meddle and Pray cost no Dust' : ''}${f.lushYieldBonus ? ' · +1 harvest when Lush' : ''}</div></span><span></span>
+        <span class="chips cost">${chips(f.cost)}</span>${afford ? '' : '<span class="why">${SUP.filter(r => f.cost[r] > (proj.hand[r] || 0)).map(r => `Need ${f.cost[r] - (proj.hand[r] || 0)} more ${SUP_NAME[r]}`).join("; ")}</span>'}</button>`;
     }).join('');
     return `<div class="head"><div><h2>🌷 Cultivate</h2><p class="muted small">On your ${esc(plotName(p))}. Features score Prestige at the Final Show if they survive.</p></div>${closeBtn}</div>
       ${featureList}<div class="foot"><div class="row"><button class="btn" data-act="slotBack">Back</button><button class="btn primary" data-act="saveSlot"${s.feature ? '' : ' disabled'}>Plan this</button></div></div>`;
@@ -1106,8 +1092,8 @@ async function onAct(el) {
     case 'length': await act({ type: 'setOption', length: d.len }); return;
     case 'planTime': await act({ type: 'setOption', planSec: d.t === 'auto' ? null : Number(d.t) }); return;
     case 'pickGod': await act({ type: 'chooseGod', god: d.god }); return;
-    case 'tab': ui.tab = d.tab; if (d.tab === 'trade') ui.unseen = 0; render(); return;
-    case 'seg': ui.tradeSeg = d.seg; render(); return;
+    case 'sympathyPick': await act({ type: 'sympathyPick', category: d.category }); return;
+    case 'tab': ui.tab = d.tab; render(); return;
     case 'menu': openSheet({ type: 'menu' }); return;
     case 'rules': openSheet({ type: 'rules', page: 0 }); return;
     case 'rulesNext': s.page = (s.page || 0) + 1; render(); return;
@@ -1129,7 +1115,7 @@ async function onAct(el) {
       const slots = draftSlots();
       const cur = slots[Number(d.i)];
       ui.sheet = { type: 'slot', idx: Number(d.i), kind: null };
-      if (cur) Object.assign(ui.sheet, { kind: cur.kind, target: cur.target, mode: cur.mode, feature: cur.feature, supplies: cur.supplies ? cur.supplies.slice() : [], targetDone: false });
+      if (cur) Object.assign(ui.sheet, { kind: cur.kind, target: cur.target, index: cur.index, to: cur.to, mode: cur.mode, feature: cur.feature, supplies: cur.supplies ? cur.supplies.slice() : [], targetDone: !!(cur.kind === 'pray' && cur.to) });
       render();
       return;
     }
@@ -1139,18 +1125,20 @@ async function onAct(el) {
       await sendPlan(slots);
       return;
     }
-    case 'pickKind': Object.assign(s, { kind: d.kind, target: null, targetDone: false, mode: null, feature: null, supplies: [] }); render(); return;
+    case 'pickKind': Object.assign(s, { kind: d.kind, target: null, targetDone: false, mode: null, feature: null, supplies: [], index: null, to: null }); render(); return;
     case 'slotBack':
       if (s.targetDone || (s.kind === 'carBoot')) { if (s.kind === 'carBoot') s.kind = null; else s.targetDone = false; }
       else s.kind = null;
       render();
       return;
     case 'targetOk': {
+      if (s.kind === 'pray') { s.targetDone = true; s.index = view.forecast.now.findIndex(f => f.plots.includes(s.target)); s.to = null; render(); return; }
       if (['meddle', 'cultivate'].includes(s.kind)) { s.targetDone = true; render(); return; }
       s.targetDone = true;
       render();
       return;
     }
+    case 'prayIndex': s.index = Number(d.index); s.to = null; render(); return;
     case 'mode': s.mode = d.mode; render(); return;
     case 'feature': s.feature = d.f; render(); return;
     case 'cbPick': s.supplies = (s.supplies || []).concat(d.res).slice(0, 2); render(); return;
@@ -1158,6 +1146,7 @@ async function onAct(el) {
     case 'saveSlot': {
       const slot = { kind: s.kind };
       if (s.target) slot.target = s.target;
+      if (s.kind === 'pray') { slot.index = s.index; slot.to = s.to; }
       if (s.kind === 'meddle') slot.mode = s.mode;
       if (s.kind === 'cultivate') slot.feature = s.feature;
       if (s.kind === 'carBoot') slot.supplies = s.supplies;
@@ -1179,18 +1168,6 @@ async function onAct(el) {
     case 'compostGo': { const r = await act({ type: 'compost', cards: ui.compost }); if (r.ok) { ui.compost = empty(); sfx('compost'); } return; }
     case 'odin': await act({ type: 'odinShift', index: Number(d.i), dir: Number(d.dir) }); return;
 
-    /* trading */
-    case 'tstep': { const side = ui.trade[d.side]; side[d.res] = Math.max(0, side[d.res] + Number(d.d)); render(); return; }
-    case 'target': ui.trade.to = d.to === 'all' ? null : Number(d.to); render(); return;
-    case 'sendOffer': {
-      const t = ui.trade;
-      const r = await act({ type: 'offerTrade', to: t.to === null ? null : [t.to], give: t.give, want: t.want });
-      if (r.ok) { ui.trade = { give: empty(), want: empty(), to: null }; ui.tradeSeg = 'inbox'; toast('Offer sent', 'good'); render(); }
-      return;
-    }
-    case 'acceptTrade': await act({ type: 'respondTrade', id: d.id, accept: true }); return;
-    case 'declineTrade': await act({ type: 'respondTrade', id: d.id, accept: false }); return;
-    case 'cancelTrade': await act({ type: 'cancelTrade', id: d.id }); return;
     default: break;
   }
 }
@@ -1198,7 +1175,8 @@ async function onAct(el) {
 function onSpot(id) {
   const s = ui.sheet;
   if (!s || s.type !== 'slot') return;
-  s.target = s.target === id ? null : id;
+  if (s.kind === 'pray' && s.targetDone) s.to = s.to === id ? null : id;
+  else s.target = s.target === id ? null : id;
   sfx('tap');
   render();
 }

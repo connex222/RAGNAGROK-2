@@ -38,14 +38,15 @@
   ],
   "shedCapacity": 10,
   "startingSupplies": {
-    "turf": 1,
-    "fertiliser": 1,
+    "turf": 2,
+    "fertiliser": 2,
     "sprinklers": 1,
-    "compost": 1,
-    "gnomeDust": 1
+    "compost": 2,
+    "gnomeDust": 2
   },
   "actions": {
     "order": [
+      "pray",
       "shelter",
       "meddle",
       "tend",
@@ -63,7 +64,8 @@
       "name": "Meddle",
       "cost": {
         "gnomeDust": 1
-      }
+      },
+      "pilferFallback": "mostAbundant"
     },
     "tend": {
       "name": "Tend",
@@ -86,11 +88,18 @@
       "name": "Car-Boot Sale",
       "cost": null,
       "gain": 2
+    },
+    "pray": {
+      "name": "Pray to the Wrong God",
+      "cost": {
+        "gnomeDust": 1
+      },
+      "icon": "🙏"
     }
   },
   "conditions": {
-    "frozen": {
-      "name": "Frozen",
+    "blighted": {
+      "name": "Blighted",
       "bad": true,
       "yieldZero": true
     },
@@ -98,17 +107,6 @@
       "name": "Ash",
       "bad": true,
       "healthCap": 2
-    },
-    "flooded": {
-      "name": "Flooded",
-      "bad": true,
-      "yieldZero": true
-    },
-    "infested": {
-      "name": "Infested",
-      "bad": true,
-      "yieldZero": true,
-      "featureIgnored": true
     },
     "blessed": {
       "name": "Blessed",
@@ -140,7 +138,7 @@
       },
       "prestige": 5,
       "tags": [
-        "produce"
+        "flora"
       ]
     },
     "roseArch": {
@@ -164,7 +162,8 @@
       },
       "prestige": 3,
       "tags": [
-        "water"
+        "water",
+        "flora"
       ],
       "immune": [
         "ash"
@@ -183,49 +182,6 @@
         "ornament"
       ]
     },
-    "beeHotel": {
-      "name": "Bee Hotel",
-      "cost": {
-        "turf": 1,
-        "fertiliser": 1,
-        "compost": 1
-      },
-      "prestige": 2,
-      "tags": [
-        "flora",
-        "produce"
-      ],
-      "freeTendNearby": true
-    },
-    "hedgeMaze": {
-      "name": "Hedge Maze",
-      "cost": {
-        "turf": 3
-      },
-      "prestige": 2,
-      "tags": [
-        "flora",
-        "defence"
-      ],
-      "noMeddle": true
-    },
-    "greenhouse": {
-      "name": "Greenhouse",
-      "cost": {
-        "sprinklers": 2,
-        "turf": 1,
-        "compost": 1
-      },
-      "prestige": 2,
-      "tags": [
-        "produce",
-        "defence"
-      ],
-      "immune": [
-        "frozen",
-        "ash"
-      ]
-    },
     "gnomeBattalion": {
       "name": "Gnome Battalion",
       "cost": {
@@ -234,10 +190,10 @@
       },
       "prestige": 2,
       "tags": [
-        "ornament",
-        "defence"
+        "ornament"
       ],
-      "freeMeddle": true
+      "freeMeddle": true,
+      "freePray": true
     }
   },
   "gods": {
@@ -270,7 +226,7 @@
       "title": "Water Feature Enthusiast",
       "level": "Intermediate",
       "power": "Burst Main",
-      "rule": "Your Water features are worth +2 Prestige, count double for Water Wonderland, and your Flooded plots yield normally.",
+      "rule": "Your Water features are worth +2 Prestige, count double for Water Wonderland, and your Blighted plots still harvest.",
       "flavour": "The pond pump has run since the Bronze Age."
     },
     "frigg": {
@@ -301,8 +257,8 @@
       "name": "Loki",
       "title": "Turf Impostor",
       "level": "Advanced",
-      "power": "Sticky Fingers",
-      "rule": "Your Trample moves 1 health from the target to one of your plots next to it, and ignores Hedge Mazes.",
+      "power": "Misaddressed Prayers",
+      "rule": "Prayers can redirect a disaster up to 2 plots and cannot be cancelled by conflicting prayers. Trample transfers 1 health to one adjacent plot of yours.",
       "flavour": "That's not your lawn. It was never your lawn."
     }
   },
@@ -318,7 +274,7 @@
           "kind": "sector"
         },
         "health": 0,
-        "condition": "frozen"
+        "condition": "blighted"
       },
       {
         "key": "hail",
@@ -340,14 +296,14 @@
           "terrain": "gnomeDust"
         },
         "health": 0,
-        "condition": "infested"
+        "condition": "blighted"
       },
       {
         "key": "ravens",
         "name": "Raven Raid",
         "target": {
           "kind": "tag",
-          "tag": "produce"
+          "tag": "flora"
         },
         "health": -1
       },
@@ -359,7 +315,7 @@
           "terrain": "turf"
         },
         "health": 0,
-        "condition": "frozen"
+        "condition": "blighted"
       },
       {
         "key": "yggdrasil",
@@ -446,7 +402,7 @@
           "kind": "coast"
         },
         "health": -1,
-        "condition": "flooded"
+        "condition": "blighted"
       },
       {
         "key": "fenrir",
@@ -472,7 +428,7 @@
           "kind": "sector"
         },
         "health": -1,
-        "condition": "infested"
+        "condition": "blighted"
       },
       {
         "key": "twilight",
@@ -502,7 +458,7 @@
     "1": {
       "key": "hosepipeBan",
       "name": "The Great Hosepipe Ban",
-      "perPlayer": 0.75,
+      "perPlayer": 1.0,
       "fail": {
         "kind": "loseSupplies",
         "count": 2
@@ -511,7 +467,7 @@
     "2": {
       "key": "barbecue",
       "name": "Muspell's Barbecue Gets Out of Hand",
-      "perPlayer": 1,
+      "perPlayer": 1.2,
       "fail": {
         "kind": "damageBest",
         "count": 2,
@@ -521,7 +477,7 @@
     "3": {
       "key": "bifrost",
       "name": "The Bifrost Bridge Lands on the Allotments",
-      "perPlayer": 1.25,
+      "perPlayer": 1.5,
       "fail": {
         "kind": "damageBest",
         "count": 2,
@@ -548,18 +504,6 @@
       "measure": "tag",
       "tag": "ornament",
       "describe": "Most Ornament features"
-    },
-    "growYourOwn": {
-      "name": "Grow Your Own",
-      "measure": "tag",
-      "tag": "produce",
-      "describe": "Most Produce features"
-    },
-    "fortressGardening": {
-      "name": "Fortress Gardening",
-      "measure": "tag",
-      "tag": "defence",
-      "describe": "Most Defence features"
     },
     "lushestLawn": {
       "name": "Lushest Lawn",
@@ -657,7 +601,7 @@
       "planSec": 60
     },
     "long": {
-      "name": "Long",
+      "name": "Extended",
       "rounds": 12,
       "actLength": 4,
       "emergencyRounds": [
@@ -731,5 +675,29 @@
     }
   },
   "njordWaterBonus": 2,
-  "defaultLength": "long"
+  "defaultLength": "standard",
+  "pray": {
+    "maxDistance": 1,
+    "lokiMaxDistance": 2
+  },
+  "prayLines": [
+    "{actor} sent {disaster} to {victim}. The postcode was apparently wrong.",
+    "{actor} redirected {disaster}. {victim}'s insurance has expired.",
+    "{actor} petitioned the gods. {victim} received the paperwork.",
+    "{actor} changed the divine delivery address to {victim}.",
+    "{actor} forwarded the apocalypse. {victim} was not consulted.",
+    "{actor} has nominated {victim}'s garden for special attention."
+  ],
+  "meddleLines": [
+    "{actor} rearranged {victim}'s garden with their boots.",
+    "{victim} has lodged a complaint against {actor}.",
+    "{actor} has reinterpreted {victim}'s property boundaries.",
+    "{actor} claims this was routine garden maintenance.",
+    "{victim} was not invited to {actor}'s landscaping demonstration.",
+    "{actor} left a strongly worded footprint in {victim}'s garden."
+  ],
+  "sympathyVote": {
+    "durationSec": 20,
+    "choices": 3
+  }
 }

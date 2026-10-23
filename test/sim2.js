@@ -9,7 +9,7 @@
          node test/sim2.js 2000
    Writes reports/balance-v2.md
 
-   Limits: robots don't trade, bluff or hold grudges, so trading and the social
+   Limits: robots don't bluff or hold grudges, so the social
    side of emergencies are under-modelled. This catches broken numbers and
    runaway gods; it cannot prove the game is fun. */
 
@@ -18,11 +18,12 @@ const fs = require('fs');
 const path = require('path');
 const E = require('../src/engine/garden');
 const { next, shuffle } = require('../src/engine/rng');
+const { getTopology } = require('../src/engine/topology');
 
 const C = E.CONTENT;
 const SUP = E.SUPPLIES;
 const GAMES = Number(process.argv[2]) || 700;
-const LENGTH = process.argv[3] || 'long';
+const LENGTH = process.argv[3] || C.defaultLength;
 const COUNTS = [2, 3, 4, 5, 6, 7, 8];
 const STRATS = ['gardener', 'baron', 'chaser', 'menace', 'random'];
 const GODS = Object.keys(C.gods);
@@ -74,16 +75,50 @@ function makePlan(state, seat, strat, rand) {
   const slots = [];
   const used = new Set();
   const W = {
-    gardener: { shelter: 3, tend: 2, claim: 1, cultivate: 2.2, meddle: 0, carBoot: 0.6 },
-    baron: { shelter: 1, tend: 1, claim: 3, cultivate: 1.6, meddle: 0.3, carBoot: 0.6 },
-    chaser: { shelter: 1.5, tend: 1.5, claim: 1.5, cultivate: 3, meddle: 0.2, carBoot: 0.6 },
-    menace: { shelter: 1, tend: 1, claim: 1, cultivate: 1.5, meddle: 3, carBoot: 0.6 }
+    gardener: { shelter: 3, tend: 2, claim: 1, cultivate: 2.2, meddle: 0, pray: 2.0, carBoot: 0.35 },
+    baron: { shelter: 1, tend: 1, claim: 3, cultivate: 1.6, meddle: 0.3, pray: 1.6, carBoot: 0.35 },
+    chaser: { shelter: 1.5, tend: 1.5, claim: 1.5, cultivate: 3, meddle: 0.2, pray: 2.5, carBoot: 0.35 },
+    menace: { shelter: 1.0, tend: 1.3, claim: 1.65, cultivate: 2.7, meddle: 2.6, pray: 3.0, carBoot: 0.5 }
   }[strat];
 
+  const topology = getTopology(v.board.layoutId);
+  const maximum = god === 'loki' ? C.pray.lokiMaxDistance : C.pray.maxDistance;
+  const prayCost = plots.some(p => p.owner === seat && p.feature === 'gnomeBattalion') ? {} : C.actions.pray.cost;
+  function prayerOptions() {
+    const list = [];
+    v.forecast.now.forEach((disaster,index) => disaster.plots.forEach(source => {
+      if(used.has('pray:'+index+':'+source))return;
+      const from=byId[source];
+      let frontier=[source];const visited=new Set(frontier);
+      for(let depth=1;depth<=maximum;depth++) {
+        frontier=frontier.flatMap(id=>topology.hexById[id].neighbors).filter(id=>{
+          if(visited.has(id))return false;
+          visited.add(id);return true;
+        });
+        for(const to of frontier) {
+          if(disaster.plots.includes(to))continue;
+          const dest=byId[to];
+          if(dest.owner!==null&&v.players[dest.owner].god==='heimdall')continue;
+          const sourceMine=from.owner===seat, targetMine=dest.owner===seat;
+          let score;
+          if(disaster.good) {
+            score = targetMine && !sourceMine ? 4 + (dest.feature ? 2 : 0) : -2;
+          } else {
+            score = sourceMine && !targetMine ? 5 + (from.feature ? C.features[from.feature].prestige/2 : 0) :
+              (!targetMine && dest.owner!==null && (leader && dest.owner===leader.seat) ? 2 : -2);
+          }
+          if(strat==='menace' && dest.owner!==null && dest.owner!==seat)score+=1;
+          list.push({slot:{kind:'pray',index,target:source,to},score,cost:prayCost});
+        }
+      }
+    }));
+    return list;
+  }
   function options() {
     const opts = [];
     const add = (score, slot, cost) => { if (canPay(hand, cost)) opts.push({ score: score + rand() * 0.3, slot, cost }); };
     if (strat === 'random') {
+      prayerOptions().forEach(o => add(1, o.slot, o.cost));
       L.shelter.forEach(t => add(1, { kind: 'shelter', target: t }, C.actions.shelter.cost));
       L.tend.forEach(t => add(1, { kind: 'tend', target: t }, C.actions.tend.cost));
       L.claim.forEach(t => add(1, { kind: 'claim', target: t }, god === 'thor' ? { turf: 1 } : C.actions.claim.cost));
@@ -92,6 +127,9 @@ function makePlan(state, seat, strat, rand) {
       add(1, { kind: 'carBoot', supplies: [pick(rand, SUP), pick(rand, SUP)] }, {});
       return opts;
     }
+    prayerOptions().forEach(o => {
+      if(o.score>0) add(W.pray * o.score / 3, o.slot, o.cost);
+    });
     L.shelter.forEach(t => {
       const p = byId[t];
       if (!threatened.has(t) || used.has('shelter:' + t)) return;
@@ -113,6 +151,7 @@ function makePlan(state, seat, strat, rand) {
       add(W.claim * value, { kind: 'claim', target: t }, god === 'thor' ? { turf: 1 } : C.actions.claim.cost);
     });
     L.meddle.forEach(t => {
+      if (used.has('meddle:' + t)) return;
       const p = byId[t];
       const vsLeader = leader && p.owner === leader.seat ? 1.5 : 1;
       const mode = p.feature || rand() < 0.5 ? 'trample' : 'pilfer';
@@ -145,6 +184,7 @@ function makePlan(state, seat, strat, rand) {
     if (best.slot.target) {
       used.add(best.slot.kind + ':' + best.slot.target);
       if (best.slot.kind === 'cultivate') used.add('plot:' + best.slot.target);
+      if (best.slot.kind === 'pray') used.add('pray:' + best.slot.index + ':' + best.slot.target);
     }
   }
 
@@ -152,7 +192,7 @@ function makePlan(state, seat, strat, rand) {
   let pledge = null;
   if (v.emergency) {
     const share = Math.ceil(v.emergency.target / v.players.length);
-    const want = { gardener: share, chaser: share + (measures.includes('goodwill') ? 2 : 0), baron: Math.ceil(share / 2), menace: 0, random: Math.floor(rand() * (share + 1)) }[strat];
+    const want = { gardener: share, chaser: share + (measures.includes('goodwill') ? 2 : 0), baron: Math.ceil(share / 2), menace: Math.max(1, Math.floor(share / 2)), random: Math.floor(rand() * (share + 1)) }[strat];
     pledge = { turf: 0, fertiliser: 0, sprinklers: 0, compost: 0, gnomeDust: 0 };
     let n = 0;
     SUP.slice().sort((a, b) => hand[b] - hand[a]).forEach(r => {
@@ -165,10 +205,22 @@ function makePlan(state, seat, strat, rand) {
 function botOdin(state, seat, rand) {
   const p = state.players[seat];
   if (p.god !== 'odin' || p.odinUsedAct === state.act) return;
+  // Odin knows the forecast: a competent bot should not blindly pick a
+  // random neighbouring sector, sometimes placing the disaster on itself.
+  // Evaluate *public board state only*, using deterministic tie-breakers.
   state.forecast.now.forEach((d, index) => {
-    if (d.good || d.target.kind !== 'sector') return;
-    const mine = d.plots.filter(id => state.board.plots[state.board.index[id]].owner === seat).length;
-    if (mine > 0 && rand() < 0.8) E.apply(state, seat, { type: 'odinShift', index, dir: rand() < 0.5 ? 1 : -1 }, state.updatedAt);
+    if (d.good || d.target.kind !== 'sector' || p.odinUsedAct === state.act) return;
+    const risk = sector => state.board.plots.reduce((score, plot) => {
+      if (state.board.sectors[plot.id] !== sector || plot.owner === null) return score;
+      const value = 1 + (plot.feature ? C.features[plot.feature].prestige / 3 : 0);
+      return score + (plot.owner === seat ? -value : value * 0.35);
+    }, 0);
+    const original = risk(d.sector);
+    const candidates = [-1, 1].map(dir => ({dir, value: risk((d.sector + dir + 6) % 6)}))
+      .sort((a,b) => b.value - a.value || a.dir - b.dir);
+    if (candidates[0].value > original + 0.25) {
+      E.apply(state, seat, { type: 'odinShift', index, dir: candidates[0].dir }, state.updatedAt);
+    }
   });
 }
 
@@ -216,7 +268,12 @@ function playGame(gameNo, n, length = LENGTH) {
   const roundsEvents = [];
   while (state.phase.stage !== 'gameOver') {
     if (++steps > 2000) throw new Error('game did not finish');
-    if (state.phase.step === 'plan') {
+    if (state.phase.step === 'sympathy') {
+      const v=state.sympathy;
+      const options=v.options.map(key=>({key,score:E.categoryStandings(state,key).find(r=>r.seat===v.chooser)?.value||0}));
+      options.sort((a,b)=>b.score-a.score);
+      ok(E.apply(state,v.chooser,{type:'sympathyPick',category:options[0].key},state.updatedAt));
+    } else if (state.phase.step === 'plan') {
       for (let seat = 0; seat < n; seat++) {
         botOdin(state, seat, rand);
         const { slots, pledge } = makePlan(state, seat, strats[seat], rand);
@@ -291,7 +348,7 @@ for (let g = 0; g < GAMES; g++) {
   if (sorted[0] > 0) agg.margins.push((sorted[0] - sorted[1]) / sorted[0]);
   if (!strats.includes('random') && sorted[0] > 0) (agg.marginsNoRandom = agg.marginsNoRandom || []).push((sorted[0] - sorted[1]) / sorted[0]);
   // Estimated real duration: 6 s omens + 45 s planning + animated resolution + disasters + harvest, + shows + 2 min setup.
-  // Robot estimate: 45 s planning (60 s with 3 actions). People: +20 s per round (+35 s with 3 actions) for talk and trading.
+  // Robot estimate: 45 s planning (60 s with 3 actions). People: +20 s per round (+35 s with 3 actions) for conversation and reading.
   const resolve = roundsEvents.reduce((t, e) => t + Math.min(30, Math.max(4, e.events * 1.2)), 0);
   const plan = roundsEvents.reduce((t, e) => t + (e.slots >= 3 ? 60 : 45), 0);
   const talk = roundsEvents.reduce((t, e) => t + (e.slots >= 3 ? 35 : 20), 0);

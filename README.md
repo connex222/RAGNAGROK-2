@@ -1,144 +1,54 @@
-# RAGNAGROK: The Last Garden Show
+# RAGNAGROK — The Last Garden Show
 
-A party strategy game for one shared TV and 2–8 phones. The Norse apocalypse is
-destroying the neighbourhood; the Village Garden Show is going ahead anyway.
+**A 2–8-player TV-and-phone party strategy game.** The Norse apocalypse has reached a respectable English suburb, and the Village Garden Show is carrying on regardless. Everyone plans secretly on their phone, watches disaster and mischief unfold on the shared TV, and competes for the Golden Flamingo.
 
-- **Play at home on Windows:** see `INSTALL-WINDOWS.md` (double-click `Start Ragnagrok.bat`).
-- **Rules:** How to Play is built into the game (📖 button), and the full rulebook is the included
-  `docs/RULEBOOK-V2.md`.
+**Current build:** `1.2.0-dev.4` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
 
-## Development build v1.1.0-dev.9 — Show race and replayability feedback
+## Start on Windows
 
-This iteration focuses on **understandable competition** and **rewarding game endings** without adjusting scores or winner determination:
+1. Install the supported LTS version of Node.js, then extract the complete project ZIP.
+2. Double-click `Start Ragnagrok.bat`, or open a terminal in this folder and run `npm ci` followed by `npm start`.
+3. Open `http://localhost:3000` on your host computer. Create a room and join from phones using the displayed QR link or room code. All phones must be able to reach your server (a local network or hosted URL).
+4. Use **How to Play** on TV or phone for the quick rules. The [two-minute read-aloud guide](docs/HOW-TO-PLAY-IN-2-MINUTES.md) and [full V2 rulebook](docs/RULEBOOK-V2.md) are also included.
 
-- The phone planner now includes a compact, optional **Show race** panel. It compares the current public garden against the next announced Garden Show's categories, with personal placement and conditional point awards. The preview explicitly excludes secret plans and future disasters.
-- The TV's Show forecast now shows the current leaders in announced categories, so everyone can follow the rivalry.
-- End-of-game **honours** recognise Show performance, garden design, Goodwill and surviving lush plots. Ties share an honour and honours are cosmetic only, so losing players can still celebrate achievements without changing the winner.
-- The Show race and actual judging use one shared ranking function; regression tests confirm they agree. A compact `<details>` control prevents the additional information from overwhelming the phone planner.
+Run the archived original edition with `npm run start:v1`. Its rules, pages and cards are in `archive/v1/`, not the current V2 ruleset.
 
-**Verification:** `npm run test:offline`, `npm run test:modes`, and paired 35-match-per-length balance checks have passed. The paired samples reproduce dev.8 outcomes exactly; **this iteration does not claim improved gameplay balance or proven player enjoyment**. Validate the change through human playtesting. See [`docs/DEV9-FUN-FIRST.md`](docs/DEV9-FUN-FIRST.md) and [`docs/PLAYTEST.md`](docs/PLAYTEST.md).
+## Testing
 
-## Development build v1.1.0-dev.8
-
-This release hardens **lost-acknowledgement recovery**: request IDs cannot be reused for different commands, and the 256-entry bounded request-response cache is saved with a room when `SAVE_DIR` is configured. After restart, an authenticated controller may retry an identical command after all players have reconnected and the game has resumed; the engine will not apply it twice. As with any debounced save, a sudden process crash before the latest state reaches disk remains a limitation. Commands that use no request ID are not deduplicated.
-
-The phone retries a transient action acknowledgement once using **the same ID**. Closed rooms revoke attached socket roles and host rights. WebP preloading releases stuck image/decode requests after twelve seconds and retries previously failed artwork on subsequent load attempts.
-
-**Verification:** `npm run test:offline` and `npm run test:modes` need no npm dependencies. The GitHub Actions workflow runs `npm ci` and the existing real Socket.io/browser tests on push. Live end-to-end verification remains required before public release. For changes, regression cases and limitations see `docs/DEV8-RELIABILITY.md`.
-
-## Development build v1.1.0-dev.7
-
-This release adds dependency-free core-engine contracts plus an optional Vitest runner, strict inbound command validation, bounded action request-ID deduplication, authenticated single-socket state refresh, automatic pause/resume when all player controllers disconnect, idle cleanup for TV-attached abandoned matches, and a staged WebP preloader shared by TV and phones. The live Socket.io/browser test environment and Vitest install could not be verified without npm registry access; do not treat this as a production-certified build.
-
-**Detailed instructions and examples:** [`docs/DEV7-ENGINE-NETWORK-ASSETS.md`](docs/DEV7-ENGINE-NETWORK-ASSETS.md).
-
-Quick offline checks: `npm run test:offline` and `npm run test:modes`. To run Vitest, use Node.js 20+, install it with `npm install --save-dev vitest`, then run `npm run test:vitest`.
-
-## Development build v1.1.0-dev.6
-
-The official product name is **RAGNAGROK**. See `docs/BRAND-GUIDE.md` for naming standards. dev.6 makes the full test suite pass (`npm test`), stops phones offering a Lock button for plans the server will refuse, fixes eight recorded sounds that never played, shrinks the icon artwork from 34 MB to under 1 MB, and adds automatic testing on GitHub. See `docs/DEV6-CHANGE-REPORT.md`.
-
-Dependency-free verification: `npm run test:offline` (includes the brand, asset, cache and version-guard tests) and `npm run test:modes` (63 seeded matches). Full server/browser tests require `npm ci` first. See `docs/DEV5-CHANGE-REPORT.md` for verified results and outstanding issues.
-
-## Folders
-
-| Path | What it is |
+| Command | Purpose |
 |---|---|
-| `src/engine/garden.js` | V2 rules: every rule lives here and only here |
-| `src/data/v2.json` | All V2 content: gods, features, disasters, shows, game lengths. Tune numbers here. |
-| `src/engine/rules.js` | The original v0.5 rules (kept playable) |
-| `server/` | Rooms, room codes, saving, reconnecting, home-network join links |
-| `public/v2/` | V2 TV (`index.html`) and phone (`play.html`) |
-| `public/` | Shared board drawer, sound engine, artwork; the v0.5 screens |
-| `public/img`, `public/audio` | Drop artwork and sounds here (see the README in each) |
-| `test/` | Automated tests and the balance simulation |
-| `reports/` | Balance reports and screenshots |
+| `npm run test:offline` | Dependency-free game rules, assets, protocol, new party-rule regressions, source checks |
+| `npm run test:modes` | 63 completed seeded V2 games across 2–8 players and all three lengths |
+| `npm run test:party` | Pray, Sympathy Vote and simplification contracts |
+| `npm run test:phase3` | Abandoned-room and UI structure regressions |
+| `npm run test:protocol-acceptance` | Complete 9-round protocol matches with 2/4/6/8 simulated controllers, no Socket.io transport |
+| `python test/phase4-browser.py` | Optional Chromium UI flows: Pray, Sympathy Vote and rematch (mock sockets) |
+| `python test/phase3-visual.py` | Optional headless Chromium layout check (requires Python Playwright and Chromium; mocks networking) |
+| `node test/sim.js 24` | Archived V1 smoke simulations |
+| `node test/sim2.js 100 standard` | Playstyle/god balance sample for Standard |
+| `npm run test:balance-audit` | Consistent seeded balance diagnostics for all three modes |
+| `npm test` | Full Socket.io/browser integration and automated sims; requires successful `npm ci` |
 
-## Commands
+## Configuration
 
-| Command | Does |
-|---|---|
-| `npm start` | Runs V2 on port 3000 |
-| `npm run start:v1` | Runs the original v0.5 game |
-| `npm test` | Offline suite, live server, phone+TV tap-through, 300 balance games (needs `npm ci` first) |
-| `npm run test:audio` | Every sound the screens ask for reaches a file or fallback; catches filename typos |
-| `npm run test:offline` | V2 rules, server-protocol stubs, artwork coverage, UI/reconnect checks and syntax checks (no external packages needed) |
-| `npm run test:ux` | Ownership markers, planning controls and transient reconnect logic (no external packages needed) |
-| `npm run test:core` | Offline suite plus 60-game Standard simulation (no external packages needed) |
-| `npm run test:modes` | 63 seeded games covering Standard, Long, Epic and 2–8 players |
-| `npm run test:all` | Everything, including the v0.5 suites |
-| `npm run balance` | Full balance reports for all three game lengths |
-
-## Settings (environment variables)
-
-| Name | Default | What it does |
+| Environment variable | Default | Purpose |
 |---|---|---|
-| `PORT` | 3000 | Set automatically on Render |
-| `RAGNAGROK_RULES` | `v2` | `v1` runs the original game |
-| `SAVE_DIR` | off | Folder to save games in, so they survive a restart (use on Oracle or a home server) |
-| `PUBLIC_URL` | automatic | Force the address in join links and QR codes |
-| `IDLE_MINUTES` | 30 | Delete rooms nobody has used for this long |
-| `MAX_ROOMS` | 100 | Maximum active game rooms at once (clamped to 1–1000) |
-| `TRUST_PROXY` | off | `1` behind a proxy you control. **Already set in `render.yaml`**, because on Render every player otherwise shares one address |
+| `PORT` | `3000` | HTTP/Socket.io listening port |
+| `PUBLIC_URL` | inferred | Public join/QR link on hosted installs |
+| `SAVE_DIR` | unset | Directory for durable saved matches; use persistent storage |
+| `RAGNAGROK_RULES` | `v2` | Set `v1` to play the archived original game |
+| `IDLE_MINUTES` | `30` | Remove idle/abandoned rooms |
+| `MAX_ROOMS` | `100` | Maximum concurrently retained rooms |
+| `TRUST_PROXY` | off | `1` only behind a trusted proxy you configure; `render.yaml` supplies it on Render |
 
-On Render's free plan games live in memory only: a restart or redeploy ends games in progress.
+## Project layout
 
-## Development build (v1.1.0-dev.3)
+- `src/engine/garden.js`: server-authoritative V2 game rules and seeded state progression.
+- `src/data/v2.json`: resource, disaster, feature, god and scoring configuration.
+- `server/`: hosting, rooms, authentication, state snapshots, reconnects and persistence.
+- `public/v2/`: current TV and private phone interfaces; `public/img` and `public/audio` are shared media.
+- `archive/v1/`: archived original game logic, page templates and cards; compatibility entrypoint remains in `src/engine/rules.js`.
+- `test/`: game logic, protocol and balance tests; `docs/`: rulebook, playtests and future physical edition.
+- `CHANGELOG.md`: full development and historical release notes.
 
-This is a development/playtest build, **not a certified commercial release**.
-See `docs/RELEASE-NOTES.md` for confirmed fixes, balance data and remaining release blockers.
-The original V1 edition remains available and unchanged.
-
-The most important new rule is **Garden Design Prestige**: +1 point per qualifying
-Bee Hotel, Water Feature or Hedge Maze with the relevant neighbouring features.
-Tend now clears a harmful condition and repairs health at the same time.
-The latest build also includes original vector icons for every V2 garden feature and condition, one-active-phone-per-player handling, safer save recovery and an explicit room limit.
-
-For fast tests without external npm packages: `npm run test:offline`.
-For seeded games across all three lengths and seven player counts: `npm run test:modes`.
-The complete Socket.io and DOM/browser tests still require the external npm dependencies and live-device validation.
-For the complete integration and browser tests, first run `npm ci` on a computer
-with internet access and then `npm test`.
-
-### Proxy deployment note
-
-The anti-guessing limiter uses the socket's transport IP by default, ignoring
-client-supplied `X-Forwarded-For`. Set `TRUST_PROXY=1` **only** when the game
-server is behind a reverse proxy that you control and that strips/replaces
-untrusted forwarding headers. Misconfiguration allows attackers to spoof IPs.
-
-Game sessions use volatile memory unless persistent `SAVE_DIR` storage is
-configured. Free hosts with ephemeral filesystems cannot guarantee recovery.
-
-### Join-link reverse proxy safety (dev.3)
-
-The server ignores `X-Forwarded-Host` and `X-Forwarded-Proto` by default.
-On managed HTTPS hosting, prefer setting `PUBLIC_URL=https://your-domain.example`
-to generate a correct phone QR link. Set `TRUST_PROXY=1` **only** behind a
-reverse proxy that correctly sanitises forwarding headers. Never enable it
-solely to make a QR code work on a home network.
-
-### v1.1.0-dev.3 design/testing summary
-
-- Hardy Perennial now correctly rewards undamaged gardens with zero damaged plots.
-- Ruined plots never harvest, even when Blessed.
-- Act III has fewer simultaneous disasters and Mower deals one health damage
-  (provisional balance settings; see `reports/balance-lab-v1.1.0-dev.3.md`).
-- Malformed room saves are quarantined and restoring saves respects `MAX_ROOMS`.
-- Phone QR join URLs ignore untrusted reverse-proxy headers; HTTPS site
-  origins on the same host are supported. Prefer an explicit `PUBLIC_URL`
-  for managed hosting.
-- Run `npm run test:offline`, `npm run test:modes`, and optionally
-  `npm run test:balance-lab` without external dependencies.
-
-This build has not passed the real Socket.io and browser suites in this
-environment. It is **not a verified commercial release**.
-
-## v1.1.0-dev.4 notes
-
-This development build includes temporary-failure recovery for phone session tokens,
-a secure authenticated-TV room recovery command, collision prevention for dormant
-save files, QR-room creation cleanup, and usability improvements to the phone
-planner and numbered garden ownership. See `docs/RELEASE-NOTES.md` and
-`reports/balance-v2-dev4-check.md`. These changes have **not** passed a full
-network Socket.io/browser or real device playtest.
+**Upgrade warning:** V2 schema 4 is not compatible with unconverted schema-3 saved matches. Back up old saves before upgrading. Headless Chromium layout checks use simulated authorised snapshots. Full live Socket.io tests and physical-device/human playtests are still required before release.

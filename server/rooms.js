@@ -5,7 +5,7 @@
      - create rooms with short codes
      - send every connected screen its own view after each change
      - route private events only to the phones they belong to
-     - run the once-a-second timer (timeouts, expiring trades)
+     - run the once-a-second timer (timeouts, stale sessions)
      - pause / resume / rematch
      - optional save-to-disk (set SAVE_DIR, e.g. on Oracle) and idle clean-up */
 
@@ -38,7 +38,7 @@ function validSave(data, filename, rules, schemaVersion) {
       (s.phase.deadline !== null && s.phase.deadline !== undefined && !Number.isFinite(s.phase.deadline)) ||
       !Number.isSafeInteger(s.stateVersion) || s.stateVersion < 0 ||
       !Array.isArray(s.players) || s.players.length > 8 ||
-      !Array.isArray(s.trades) || !Array.isArray(s.log) ||
+      !Array.isArray(s.log) ||
       !s.secrets || !s.secrets.playerTokens || !s.secrets.rng ||
       !Number.isInteger(s.secrets.rng.s)) return false;
   if (!s.players.every((p, i) => p && p.seat === i && typeof p.name === 'string' &&
@@ -210,7 +210,14 @@ class RoomManager {
 
       const idleFor = now - room.lastActivity;
       const finished = room.state.phase.stage === 'gameOver';
-      if ((room.sockets.size === 0 || (room.paused && room.paused.auto)) && idleFor > this.idleMs) this.remove(room);
+      // A manually paused game can also be abandoned while its TV stays open.
+      // An online host display is not evidence that anyone is still playing.
+      // Use real attached controller sockets rather than potentially stale
+      // connected flags in the saved game state.
+      const hasController = [...room.sockets].some(socket => this.seatOf(room, socket) >= 0);
+      const activeWithoutPlayers = room.state.players.length > 0 &&
+        room.state.phase.stage !== 'lobby' && !finished && !hasController;
+      if ((room.sockets.size === 0 || (room.paused && room.paused.auto) || activeWithoutPlayers) && idleFor > this.idleMs) this.remove(room);
       else if (finished && idleFor > this.finishedMs) this.remove(room);
     });
   }
@@ -243,7 +250,6 @@ class RoomManager {
       if (!p.connected && p.disconnectedAt !== null && p.disconnectedAt !== undefined)
         p.disconnectedAt = p.disconnectedAt >= room.paused.at ? now : p.disconnectedAt + pausedFor;
     });
-    s.trades.forEach(t => { if (t.status === 'open') t.expiresAt += pausedFor; });
     room.paused = null;
     s.stateVersion += 1;
     this.sync(room, [{ type: 'resumed' }]);

@@ -1,68 +1,41 @@
-/* How to Play for V2 "The Last Garden Show": shared by the TV and phones.
-   RagnaRules.slides(I) returns the slides; I(key) turns an icon slot into artwork or an emoji. */
+/* How to Play for RAGNAGROK V2; shared by TV and phone. */
 (function (global) {
   'use strict';
   function slides(I) {
     const r = k => I('res-' + k);
     return [
-      {
-        icon: I('trophy'),
-        title: 'Win the Golden Flamingo',
-        body: `<p>The world is ending. The Village Garden Show is going ahead anyway.</p>
-          <p>Score the most <b>Prestige</b> by the Final Show:</p>
-          <ul><li><b>Shows</b> judge categories like "most Water features". Each show's categories are announced rounds ahead; your phone shows provisional category standings.</li>
-          <li><b>Garden features</b> still standing at the end score their Prestige. Garden Design bonuses reward placing Bee Hotels beside Rose Arches or Prize Marrows, Water Features beside Rose Arches, and Hedge Mazes beside two other features of your own.</li>
-          <li><b>Goodwill</b> from helping the street in emergencies.</li></ul><p>At the end, fun honorary awards celebrate different styles. These do not add points or affect the winner.</p>`
-      },
-      {
-        icon: I('icon-dice'),
-        title: 'Every round',
-        body: `<ol><li><b>Omens:</b> the TV shows which plots next round's disasters will hit.</li>
-          <li><b>Plan:</b> everyone secretly picks <b>2 actions</b> on their phone at the same time (Epic later increases to 3, then 4), then taps <b>Lock in</b>.</li>
-          <li><b>Watch the TV</b> as everyone's actions play out.</li>
-          <li><b>Disasters</b> strike, then your plots <b>harvest</b> supplies.</li></ol>
-          <p>No waiting for other players' turns.</p>`
-      },
-      {
-        icon: I('piece-shack'),
-        title: 'The six actions',
+      { icon: I('trophy'), title: 'Win the Golden Flamingo',
+        body: `<p>It's the apocalypse. The Village Garden Show is going ahead anyway.</p>
+          <p>Earn <b>Prestige</b> from scheduled Garden Shows, surviving garden features and Goodwill from helping with street emergencies. Highest Prestige after the final Show wins. End-game honours are for fun and never change the winner.</p>` },
+      { icon: I('icon-dice'), title: 'One round in 20 seconds',
+        body: `<ol><li><b>Omens:</b> see which plots the disaster is forecast to hit.</li>
+          <li><b>Plan:</b> secretly select your actions and tap <b>Lock in</b>. Standard and Extended give 2 actions; Epic increases later.</li>
+          <li><b>Reveal:</b> the TV shows the actions in order.</li><li><b>Disasters:</b> the forecast disasters strike their final targets.</li>
+          <li><b>Harvest:</b> your healthy plots produce supplies. Garden Shows judge announced categories on their scheduled rounds.</li></ol>` },
+      { icon: I('piece-shack'), title: 'Seven things you can do',
         body: `<ul class="costs">
-          <li><span><b>Shelter</b> a plot from disasters and meddling</span><span>${r('turf')}</span></li>
-          <li><span><b>Meddle</b> with a neighbour: trample their plot or pilfer a card</span><span>${r('gnomeDust')}</span></li>
-          <li><span><b>Tend</b> a plot: restore health and clear one harmful condition</span><span>${r('compost')}</span></li>
-          <li><span><b>Claim</b> an empty plot next to your garden</span><span>${r('turf')} ${r('fertilizer')}</span></li>
-          <li><span><b>Cultivate</b> a garden feature on your plot</span><span>varies</span></li>
-          <li><span><b>Car-Boot Sale:</b> take any 2 supplies</span><span>free</span></li></ul>
-          <p>Actions happen in that order, so a Shelter always beats a Meddle.</p>`
-      },
-      {
-        icon: I('res-turf'),
-        title: 'Plots and health',
-        body: `<p>The healthier a plot, the more it harvests: <b>Lush 2 · Healthy 1 · Withered 0</b>. Gold dots under each plot show its health.</p>
-          <p>A <b>Ruined</b> plot (💀) loses its feature. Tend it to bring it back.</p>
-          <p>❄️ Frozen, 🌊 Flooded and 🐛 Infested prevent ordinary harvests; 🌋 Ash caps plot health at Healthy but does not stop harvesting. 🐛 Infested also disables feature scoring. Tend clears a bad condition and restores 1 health (2 as Freya). 🌟 Blessed is good news.</p>`
-      },
-      {
-        icon: I('mower'),
-        title: 'Disasters',
-        body: `<p>Plots with a <b>red dashed outline</b> will be hit by disasters <b>this round</b>.</p>
-          <p>Shelter them, Tend them afterwards, or take the gamble. Big gardens have more to protect.</p>
-          <p>The apocalypse escalates through three acts: frost, fire and apocalyptic hazards. The final act has wider dangers, but fewer simultaneous strikes so gardens remain playable.</p>`
-      },
-      {
-        icon: I('icon-bank'),
-        title: 'Emergencies',
-        body: `<p>Sometimes the whole street faces an emergency. Everyone secretly <b>pledges</b> supplies.</p>
-          <p>Hit the target and pledgers earn <b>Goodwill</b>. Miss it and everyone suffers.</p>
-          <p>Everyone sees who chipped in.</p>`
-      },
-      {
-        icon: I('icon-perk'),
-        title: 'Trading and your god',
-        body: `<p>Trade supplies before locking in during the Plan phase from the <b>Trade</b> tab. Trades do not use an action, but a locked player cannot offer or accept them.</p>
-          <p>Your <b>god bends one rule</b> in your favour; it's shown on your Plan screen.</p>
-          <p><b>You can change your plan until you lock in.</b> The phone warns you if you can't afford something.</p>`
-      }
+          <li><span><b>🙏 Pray:</b> redirect one forecast hit to an adjacent plot (conflicting prayers fail)</span><span>${r('gnomeDust')}</span></li>
+          <li><span><b>🛡️ Shelter:</b> protect your plot</span><span>${r('turf')}</span></li>
+          <li><span><b>👟 Meddle:</b> trample or pilfer a neighbouring rival</span><span>${r('gnomeDust')}</span></li>
+          <li><span><b>🌱 Tend:</b> repair a plot and remove a bad condition</span><span>${r('compost')}</span></li>
+          <li><span><b>Claim:</b> claim an adjacent unowned plot</span><span>${r('turf')} ${r('fertiliser')}</span></li>
+          <li><span><b>Cultivate:</b> build one of six features</span><span>varies</span></li>
+          <li><span><b>Car-Boot Sale:</b> take any 2 supplies (after spending actions)</span><span>free</span></li></ul>
+          <p>That is also the resolution order: Pray comes before Shelter, so a threatened player can still respond by sheltering.</p>` },
+      { icon: I('res-turf'), title: 'Your garden is a living thing',
+        body: `<p><b>Lush (3)</b> harvests 2 supplies; <b>Healthy (2)</b> harvests 1. <b>Withered (1)</b> and <b>Ruined (0)</b> harvest nothing. A ruined plot loses its feature.</p>
+          <p>🕸️ <b>Blighted:</b> no normal harvest (Njord can still harvest). 🌋 <b>Ash:</b> health cannot exceed 2. 🌟 <b>Blessed:</b> +1 harvest and protection from one harmful disaster. Tend clears a bad condition and repairs a plot.</p>
+          <p>You start with 2 Turf, 2 Fertiliser, 1 Sprinklers, 2 Compost and 2 Gnome Dust, enough to make useful opening moves.</p>` },
+      { icon: I('mower'), title: 'Apocalypse as a weapon',
+        body: `<p><b>Red dashed plots</b> are forecast to be hit this round. Pray to move one hit to a nearby plot — including a rival's. Good disasters can be redirected too.</p>
+          <p>Two ordinary Prayers aimed at the same hit cancel and still cost supplies. <b>Loki</b> can pray up to two plots and cannot be cancelled. A Prayer can never redirect a hit onto Heimdall's plot.</p>` },
+      { icon: I('icon-bank'), title: 'Neighbourhood emergencies',
+        body: `<p>Everyone secretly pledges supplies towards a shared emergency. The TV displays combined pledge progress, not who pledged.</p>
+          <p>Reach the target and contributors gain Goodwill. Fail and the street suffers together. Frigg's contributions count double.</p>` },
+      { icon: I('icon-perk'), title: 'Shows, gods and sympathy',
+        body: `<p>Shows reward the categories announced on the TV and your phone. You can inspect current provisional standings — secret actions may change the outcome.</p>
+          <p>After each non-final Show, the <b>last-place player</b> gets a <b>Sympathy Vote</b>: choose one of three categories for the next Show. No bonus points are awarded.</p>
+          <p>Each god bends a rule in their own way. You can edit your plan until you lock in. There is no player-to-player trading.</p>` }
     ];
   }
   global.RagnaRules = { slides };

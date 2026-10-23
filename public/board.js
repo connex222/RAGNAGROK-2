@@ -205,9 +205,9 @@
   /* ---------- V2: gardens ---------- */
   const FEATURE_ICON = {
     goldenGazebo: '🏛️', prizeMarrow: '🥒', roseArch: '🌹', waterFeature: '⛲', birdBath: '🐦',
-    beeHotel: '🐝', hedgeMaze: '🌿', greenhouse: '🪴', gnomeBattalion: '🧙'
+    gnomeBattalion: '🧙'
   };
-  const CONDITION_ICON = { frozen: '❄️', ash: '🌋', flooded: '🌊', infested: '🐛', blessed: '🌟' };
+  const CONDITION_ICON = { blighted: '❄️', ash: '🌋', blessed: '🌟' };
   const HEALTH_SHADE = [0.62, 0.38, 0.12, 0];
 
   function glyph(art, slot, emoji, x, y, size) {
@@ -257,6 +257,7 @@
       // Owner: a thick ring in the owner's colour.
       if (p.owner !== null && p.owner !== undefined) {
         const colour = (players[p.owner] && players[p.owner].colour) || '#fff';
+        tiles += `<polygon points="${corners(hx, 0.97)}" fill="${colour}" fill-opacity=".30" pointer-events="none"/>`;
         tiles += `<polygon points="${corners(hx, 0.86)}" fill="none" stroke="${colour}" stroke-width="${o.mine === p.owner ? '.15' : '.11'}" pointer-events="none"/>`;
         // Seat numbers distinguish ownership without reliance on colour alone.
         // Keep the marker in a fixed position independent of feature/condition icons.
@@ -272,13 +273,22 @@
       }
       if (p.condition) {
         tiles += `<circle cx="${f3(hx.x + 0.44)}" cy="${f3(hx.y - 0.5)}" r=".2" fill="#150e20" fill-opacity=".85" pointer-events="none"/>`;
-        tiles += glyph(art, 'cond-' + p.condition, CONDITION_ICON[p.condition] || '', hx.x + 0.44, hx.y - 0.5, 0.3);
+        tiles += glyph(art, 'cond-' + (p.condition), CONDITION_ICON[p.condition] || '', hx.x + 0.44, hx.y - 0.5, 0.3);
       }
       for (let k = 0; k < 3; k++) {
         const filled = k < p.health;
         tiles += `<circle cx="${f3(hx.x - 0.2 + k * 0.2)}" cy="${f3(hx.y + 0.55)}" r=".075" fill="${filled ? '#f5c451' : '#150e20'}" stroke="#150e20" stroke-width=".025" pointer-events="none"/>`;
       }
     });
+
+    // The TV replays one Pray at a time: display a moving, high-contrast
+    // marker along its public source-to-destination path.
+    if (o.prayEffect && o.prayEffect.from && o.prayEffect.to && byId[o.prayEffect.from] && byId[o.prayEffect.to]) {
+      const a = topo.hexById[o.prayEffect.from], b = topo.hexById[o.prayEffect.to];
+      const path = `M ${f3(a.x)} ${f3(a.y)} L ${f3(b.x)} ${f3(b.y)}`;
+      marks += `<path d="${path}" fill="none" stroke="#fff3a5" stroke-width=".11" stroke-dasharray=".15 .09" pointer-events="none"/>`;
+      marks += `<circle r=".27" fill="#ffcf44" stroke="#20132b" stroke-width=".07" pointer-events="none"><animateMotion path="${path}" dur="1s" fill="freeze"/></circle>`;
+    }
 
     if (o.ghost && o.ghost.at && byId[o.ghost.at]) {
       const h = topo.hexes.find(x => x.id === o.ghost.at);

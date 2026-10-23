@@ -1,117 +1,94 @@
-# RAGNAGROK V2 — The Last Garden Show
+# RAGNAGROK: The Last Garden Show — V2 Rulebook
 
-**Development rules reference, v1.1.0-dev.1.** This document describes the supplied implementation, including the new Garden Design rule. Where there is a contradiction, report it as a defect rather than assuming an unwritten rule.
+**Rules for v1.2.0-dev.2.** This is a development playtest edition. The live engine (`src/engine/garden.js`) and tunable content (`src/data/v2.json`) are authoritative if a discrepancy is discovered.
 
-## The story and objective
+## Premise and victory
 
-The end of the world is ravaging a suburban village, but the residents' gardening competition will still go ahead. Build and protect your own garden, survive forecast disasters, compete for Garden Shows, and collect Goodwill by assisting during neighbourhood emergencies. Whoever finishes with the most **Prestige** wins the Golden Flamingo.
+The Norse apocalypse is consuming a respectable English suburb, but the Village Garden Show refuses to cancel. Build a garden, survive catastrophes, cause neighbourly disasters and pursue the Golden Flamingo. Whoever has the most **Prestige** after the final Show wins. Prestige is **Garden Show points + printed Prestige on surviving features + Goodwill**. Ties use Goodwill, then surviving feature count, then combined plot health; complete ties share victory. End-game honours are cosmetic only.
 
-## Players, displays and setup
+## Set-up
 
-For 2–8 people, use one shared TV or computer browser and one phone browser per player. Start a Node.js server (see `INSTALL-WINDOWS.md`), open the host screen, create a room, scan the join QR code or enter the code, and join with a name. Each phone shows only its owner's resources, plans and private god information. The TV shows public board information, score and events. The first player / TV host can start the match.
+One shared TV/computer displays the board; 2–8 players use separate phones as private controllers. Host a room, join using the code or QR link, draft a god, then begin. Each player begins with two plots and **2 Turf, 2 Fertiliser, 1 Sprinklers, 2 Compost, 2 Gnome Dust**. There is no player-to-player trading. Private plans and resources stay on the player's controller.
 
-The game chooses a board appropriate to the number of players, assigns two starting plots to each player, and gives each player 1 Turf, 1 Fertiliser, 1 Sprinklers, 1 Compost and 1 Gnome Dust. Gods are drafted in reverse player-seat order; each god can be selected once.
+## Lengths
 
-## Match lengths and actions
+| Mode | Rounds | Shows | Actions per round |
+| --- | ---: | --- | --- |
+| **Standard** (default) | 9 | After 3, 6, 9 | 2 |
+| **Extended** (advanced option; internal ID `long`) | 12 | After 4, 8, 12 | 2 |
+| **Epic** (advanced option) | 24 | After 4, 8, 12, 16, 20, 24 | Act I: 2, Act II: 3, Act III: 4 |
 
-| Mode | Rounds | Garden Shows | Actions per round | Default planning timer |
-|---|---:|---:|---|---:|
-| Standard | 9 | After rounds 3, 6 and 9 | 2 | See current in-game options |
-| Long | 12 | After rounds 4, 8 and 12 | 2 | See current in-game options |
-| Epic | 24 | Six Shows at specified rounds | 2 in Act I, 3 in Act II, 4 in Act III | 100 seconds (plus large-group bonus) |
+A lobby host may adjust the planning timer. The Sympathy Vote lasts **20 seconds** by default.
 
-Timers can be adjusted in the lobby. Five or more players receive an additional planning allowance. The exact settings used for the current match appear on the TV.
+## Every round
 
-## Each round
+1. **Omens** show this round's forecast disaster targets. The forecast is determined from a seeded random generator.
+2. **Plan**: simultaneously and privately choose the available number of actions, make any emergency pledge, and **Lock in**. You can change an unlocked plan. Action costs and pledges are checked so the same resource is not spent twice. Incomplete plans receive safe Car-Boot choices after the deadline.
+3. **Reveal**: plans resolve in a fixed action type order, not in each player's submitted slot order.
+4. **Disasters** hit their *final* forecast targets, after any successful Prayers. Shelters and blessings can prevent losses.
+5. **Harvest**: surviving working plots produce resources; shed capacity is 10, with excess composted.
+6. **Garden Show**, on its scheduled round: the announced categories are scored. After non-final Shows comes a **Sympathy Vote**.
 
-1. **Omens:** the next threats are announced. Red dashed plot borders indicate disaster targets for *this* round. The next round's forecast also appears.
-2. **Plan:** all players secretly select their actions simultaneously. You may edit a complete plan and trade while **unlocked**. Tap **Lock in** to commit. The engine checks that you hold enough resources for the complete plan and your current emergency pledge. If you are not ready when the timer expires, missing actions become safe Car-Boot choices.
-3. **Resolve:** all plans are revealed and processed in a fixed action-type order; competing Claims can fail when another player gets the plot first.
-4. **Disasters:** forecast calamities strike their specified plots; Shelter and some conditions can protect them. If an emergency occurs, supplies pledged by the neighbourhood are collected and the outcome resolved.
-5. **Harvest:** working owned plots produce supplies based on terrain, health and status. Shed overflow must be composted; if you do not choose which surplus cards to discard, the game discards them automatically before the next action resolution.
-6. **Show:** at announced Show rounds, the announced categories are judged and Prestige awarded.
+### Actions, in exact resolution order
 
-Disconnecting does not count as locking a plan. The regular timer continues, with a short grace period near its expiry. A returning player can recover the existing plan with the original phone's rejoin credentials. This is not an indefinite pause.
+| Action | Cost | How it works |
+| --- | --- | --- |
+| **🙏 Pray to the Wrong God** | 1 Gnome Dust | Select one forecast disaster hit *this round* and redirect only that hit to a legal adjacent plot not already hit by that same disaster. Can redirect good or bad effects. Multiple ordinary Prayers targeting the same original hit all fail **but still spend their cost**. Redirecting onto Heimdall's plots is forbidden. Loki reaches up to two plots and cannot be cancelled by conflicting Prayers. Gnome Battalion makes Pray free. |
+| **Shelter** | 1 Turf | Protect a plot you own against this round's disaster effects and Meddle. Resolves after Pray, so a targeted player can counter a redirected hit. |
+| **Meddle** | 1 Gnome Dust | Attack an adjacent rival plot: Trample damages health or Pilfer first steals one resource matching the target plot; if none is available, it steals one of the rival’s most abundant supplies instead. If the rival has no supplies, nothing is stolen. Heimdall blocks attacks against his plots. Gnome Battalion makes Meddle free. |
+| **Tend** | 1 Compost | Repair an owned plot by one health and clear one bad condition. Freya repairs by two. |
+| **Claim** | 1 Turf + 1 Fertiliser | Take an unowned plot adjacent to your territory. Thor pays only one Turf. |
+| **Cultivate** | Feature-specific | Build one of the six feature types on a suitable owned plot. |
+| **Car-Boot Sale** | Free | Gain two chosen supplies, including duplicates. Happens last, so it cannot fund actions earlier in the same resolution. |
 
-## The six actions, in resolution order
+A failed action can lose its cost if it was a legitimate but conflicting attempt; an invalid input is rejected. Secret plans and choices of others cannot be inspected in advance.
 
-| Action | Standard cost | Effect |
-|---|---|---|
-| **Shelter** | 1 Turf | Protect a plot you own against this round's disaster damage and Meddle. |
-| **Meddle** | 1 Gnome Dust | Target an adjacent rival plot and either **Trample** (1 health damage) or **Pilfer** (take 1 matching terrain resource if they hold it). |
-| **Tend** | 1 Compost | Repair an owned plot by 1 health and, if present, also clear one harmful condition. Freya repairs by 2. |
-| **Claim** | 1 Turf + 1 Fertiliser | Take an unowned plot adjacent to your garden. Thor pays only 1 Turf. |
-| **Cultivate** | Varies by feature | Place one feature on a healthy or withered owned plot that has no feature. Claim can resolve earlier in the same round. |
-| **Car-Boot Sale** | Free | Gain two chosen supplies, including two of the same kind. These arrive **after** all spending actions this round. |
+## Health and conditions
 
-Bee Hotels can make nearby Tend actions free; Gnome Battalions make Meddle free while at least one survives. Heimdall stops hostile Meddle and receives its Gnome Dust cost. Loki bypasses Hedge Maze Meddle protection and can transfer health using Trample. A blocked Meddle still spends its cost. Invalid or unaffordable actions can fail without their normal cost. To avoid planning a Car-Boot income source for an earlier cost, remember that Car-Boot always resolves last.
+Health: **0 Ruined** (feature destroyed), **1 Withered** (0 harvest), **2 Healthy** (1 harvest), **3 Lush** (2 harvest, before feature/condition effects). Only three conditions remain:
 
-Trading requires an unlocked player. You may make up to three open offers and accept incoming offers while unlocked. A player who locks closes outgoing offers. Neither party may complete a trade while either has locked their plan. Unlock to edit or resume trading, while the planning timer remains active.
+- **Blighted**: blocks regular harvest until Tend clears it. **Njord's** Blighted plots can still harvest.
+- **Ash**: health is capped at Healthy (2); it does not by itself block harvesting.
+- **Blessed**: +1 harvest and absorbs one damaging disaster before being consumed.
 
-## Plot health and conditions
+Named disasters retain their distinctive Norse presentation even when they now apply the shared Blighted condition. Terrain, health, features and forecast geometry affect results. Features are destroyed when the host plot reaches health 0.
 
-Health ranges from **0 Ruined** to **3 Lush**. Healthy (2) harvests one supply, Lush (3) normally harvests two, and Withered (1) or Ruined (0) harvests none. At 0 health the feature is destroyed. A player can Tend ruined plots to bring them back to productive health over time.
+## Six garden features
 
-| Condition | What it does |
-|---|---|
-| **Frozen** | Blocks ordinary harvesting until Tend clears it. |
-| **Ash** | Caps health at 2; does not by itself stop harvesting. |
-| **Flooded** | Blocks ordinary harvesting; Njord's plots still harvest. |
-| **Infested** | Blocks ordinary harvesting and disables the feature's scoring. |
-| **Blessed** | Improves harvesting; absorbs a harmful disaster once and is then consumed. |
+| Feature | Cost | Prestige | Tags / special effects |
+| --- | --- | ---: | --- |
+| Golden Gazebo | 1 of each supply | 6 | Ornament |
+| Prize Marrow | 2 Fertiliser + 1 Compost | 5 | Flora |
+| Rose Arch | 1 Turf + 1 Fertiliser + 1 Gnome Dust | 3 | Flora; extra yield when Lush |
+| Water Feature | 2 Sprinklers + 1 Gnome Dust | 3 | Water, Flora; immune to Ash |
+| Bird Bath of Valhalla | 1 Sprinklers + 1 Gnome Dust + 1 Compost | 3 | Water, Ornament |
+| Gnome Battalion | 2 Gnome Dust + 1 Compost | 2 | Ornament; allows free Meddle and Pray |
 
-Unowned plots can be affected by disasters too. Some features grant an immunity listed in their description. Foretold disasters may affect a region, terrain type, feature tag, line, coast or other pattern. Forecast target plots are determined when revealed, so plan around the displayed targets.
+There is **no additional adjacency-based Garden Design Prestige** in this edition. Water features gain Njord's god bonus when appropriate.
 
-## Feature placement and Garden Design bonuses
+## Eight gods
 
-Every surviving garden feature scores its printed Prestige at the end, except when disabled by infestation. They can also satisfy Show categories based on tags such as Flora, Produce, Ornament, Water and Defence.
+- **Thor**: Claim costs just 1 Turf.
+- **Freya**: Tend repairs two health and removes a bad condition.
+- **Heimdall**: blocks Meddle on his territory and receives the meddler's Gnome Dust; prayers cannot be redirected *onto* his plots.
+- **Njord**: Water-tagged features gain +2 Prestige, count double in Water Wonderland, and Blighted owned plots still harvest.
+- **Frigg**: pledges count double for emergencies; earns extra Goodwill when contributing to successful emergencies.
+- **Hel**: gains Compost when disasters damage plots she does not own, with a per-round cap.
+- **Odin**: forecasts farther ahead and can shift an eligible sector event once per act.
+- **Loki**: may redirect a disaster hit up to two plots away without ordinary conflict cancellation; Trample transfers a health point to an adjacent friendly plot when possible.
 
-**New Garden Design points:** A surviving, uninfested feature earns **+1 extra final Prestige** when the relevant placement requirement is met:
+## Garden Shows, Sympathy Vote and Goodwill
 
-- **Bee Hotel:** beside an owned Rose Arch or Prize Marrow.
-- **Water Feature:** beside an owned Rose Arch.
-- **Hedge Maze:** beside at least two other owned, surviving, uninfested features.
+Shows judge categories announced in advance. Tied qualifying players share the rank reward. Temporary **Show race** displays compare the current public garden, not future secret actions or disasters.
 
-A feature can earn at most its own single +1 bonus; both sides of a qualifying pair may score their respective bonuses. These are counted inside the final Features subtotal; the game also displays the Garden Design portion separately for transparency. Plots and features must be **yours** for the bonus. A garden damaged or changed before the end can lose its bonus.
+After every Show **except the final Show**, the player with the fewest current total Prestige (ties: lowest seat number) is offered three categories drawn from the seeded RNG. They choose one category for the next Show within **20 seconds**; if they do not choose, the first listed category is used. Remaining categories for that Show are drawn without duplicates. This choice **does not give Prestige**.
 
-## Emergencies and Goodwill
+On emergency rounds, everyone may pledge resources. The TV shows **aggregate progress only**, not identities. If the collective contribution reaches the displayed threshold, contributors earn Goodwill; otherwise the listed emergency penalty applies. Frigg contributes at double value. No zero-score Goodwill honour is awarded.
 
-Some rounds introduce a shared emergency. Every player may secretly pledge available supplies during planning. Committed action costs and pledges cannot double-spend the same supply. When the emergency resolves, each contributed card counts toward the common threshold (Frigg's count double). If the threshold is reached, contributors gain Goodwill, and the largest contributors can earn an additional point. If it fails, partial refunds and the declared neighbourhood penalty apply. Check the current emergency card for the exact threshold and consequences.
+## Reconnecting, fairness and limits
 
-## Garden Shows and victory
+The game is server-authoritative. If disconnected, players can rejoin with their original credentials; previously locked choices remain locked. A missing player does not instantly force a resolution. If all phone players disconnect, the server pauses until reconnection or room expiry. The game may rely on non-persistent storage if `SAVE_DIR` is not configured.
 
-Each Show announces scoring categories in advance. Compete for categories such as most Water features, most Lush plots, healthiest garden, fewest damaged plots (when eligible), or most Goodwill. The category defines whether high or low is better; see the TV text for the exact rule. Ties share the same ranked award; subsequent players are ranked by the number of opponents who surpassed them. The awards depend on player count and current game configuration.
+**Compatibility:** This update uses V2 save schema **4**. Existing schema-3 saved rooms are not migrated automatically; archive an original save before upgrading. V1 is kept separately and must not be silently converted into V2.
 
-At the end, every player's Prestige is: **Show points + surviving feature Prestige (including Garden Design) + Goodwill.** The highest total wins. Ties compare Goodwill, then feature count, then combined plot health; a complete tie creates joint winners.
-
-## The eight gods — quick reference
-
-| God | Identity / core power |
-|---|---|
-| Thor | Claims land with 1 Turf instead of the usual two-resource cost. |
-| Freya | Tend restores 2 health and also clears bad conditions. |
-| Heimdall | Blocks Meddle on his plots; receives the meddler's Gnome Dust. |
-| Njord | Water features gain Prestige and Show strength; Flooded plots still harvest. |
-| Frigg | Contributions count double toward emergencies; extra Goodwill for a successful pledge. |
-| Hel | Generates Compost when disasters damage rivals' plots, up to a per-round cap. |
-| Odin | Sees disasters further ahead and can shift one eligible sector event per act. |
-| Loki | Trample can transfer health to a nearby friendly plot and bypasses Hedge Mazes. |
-
-## Important caveats for current build
-
-This is an automated-test-backed **development build**, not a commercially certified ruleset. Reconnect behaviour, cross-device UI, human negotiation balance, actual game durations and accessibility still need independent testing. See `RELEASE-NOTES.md` and `PLAYTEST.md`.
-
-## v1.1.0-dev.3 balance clarification
-
-Act III retains the wide-area disasters of the original design, but its normal
-number of simultaneous disasters is now **one with 2–4 players** and **two with
-5–8 players**. Surtur's Mower now deals one health damage to affected plots.
-These are provisional playtest values, not a guarantee of fairness. They were
-chosen to reduce excessive irreversible ruin while retaining the end-of-world
-threat. Large groups still face multiple simultaneous events.
-
-**Hardy Perennial** judges the fewest owned Withered or Ruined plots among
-gardens with at least three owned plots. A garden with **zero** damaged plots
-qualifies and beats one with any damaged plots.
-
-A Ruined plot (health zero) cannot harvest, even if it has the Blessed condition.
+**Status:** Human enjoyment, full browser compatibility, LAN reconnects and real-device viewing-distance tests remain to be established through structured playtests.

@@ -22,7 +22,7 @@ function scan(dir) {
   }
 }
 scan(root);
-for (const file of ['public/index.html', 'public/play.html', 'public/v2/index.html', 'public/v2/play.html']) {
+for (const file of ['archive/v1/public/index.html', 'archive/v1/public/play.html', 'public/v2/index.html', 'public/v2/play.html']) {
   const contents = fs.readFileSync(path.join(root, file), 'utf8');
   assert.match(contents, /<title>RAGNAGROK/);
   assert.match(contents, /(?:class="(?:title|t)"|alt="?)[^>]*RAGNAGROK/);

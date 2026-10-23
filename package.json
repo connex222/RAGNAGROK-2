@@ -1,7 +1,7 @@
 {
   "name": "ragnagrok",
-  "version": "1.1.0-dev.9",
-  "description": "RAGNAGROK V2: The Last Garden Show — multiplayer garden survival strategy game",
+  "version": "1.2.0-dev.4",
+  "description": "RAGNAGROK V2: The Last Garden Show \u2014 multiplayer garden survival strategy game",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
@@ -12,14 +12,19 @@
     "balance": "node test/sim2.js 2000 long && node test/sim2.js 700 standard && node test/sim2.js 500 epic",
     "test:rules": "node test/garden.test.js",
     "test:core": "npm run test:offline && node test/sim2.js 60 standard",
-    "test:offline": "node test/garden.test.js && node test/rooms-protocol.test.js && node test/assets.test.js && node test/audio.test.js && node test/ux-protocol.test.js && node test/branding.test.js && node test/cache-policy.test.js && node test/build-version.test.js && node test/engine-contracts.test.js && node test/resilience.test.js && node test/preloader.test.js && node test/fun-loop.test.js",
+    "test:offline": "node test/garden.test.js && node test/rooms-protocol.test.js && node test/assets.test.js && node test/audio.test.js && node test/ux-protocol.test.js && node test/branding.test.js && node test/cache-policy.test.js && node test/build-version.test.js && node test/engine-contracts.test.js && node test/resilience.test.js && node test/preloader.test.js && node test/fun-loop.test.js && node test/party-upgrade.test.js && node test/phase3-validation.test.js && node test/phase4-protocol.test.js",
     "test:modes": "node test/modes-smoke.js",
     "test:balance-lab": "node test/balance-lab.js baseline 35 && node test/balance-lab.js candidate 35",
     "test:ux": "node test/ux-protocol.test.js",
     "test:branding": "node test/branding.test.js",
     "test:audio": "node test/audio.test.js",
     "test:vitest": "vitest run test/vitest/engine.spec.mjs",
-    "test:fun": "node test/fun-loop.test.js"
+    "test:fun": "node test/fun-loop.test.js",
+    "test:party": "node test/party-upgrade.test.js",
+    "test:balance-audit": "node test/phase2-benchmark.js 60",
+    "test:phase3": "node test/phase3-validation.test.js",
+    "test:protocol-acceptance": "node test/phase4-protocol.test.js 2 && node test/phase4-protocol.test.js 4 && node test/phase4-protocol.test.js 6 && node test/phase4-protocol.test.js 8",
+    "test:phase4": "node test/phase4-protocol.test.js"
   },
   "engines": {
     "node": ">=18"

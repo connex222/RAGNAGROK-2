@@ -1,0 +1,103 @@
+{
+  "build": "1.2.0-dev.2",
+  "seedRule": "140000+k*47; playerCount=2+k%7",
+  "perMode": 7,
+  "scenarios": [
+    {
+      "mode": "standard",
+      "games": 7,
+      "playerGames": 35,
+      "medianMarginPct": 35.59,
+      "medianWithoutRandomPct": 26.32,
+      "nonRandomGames": 3,
+      "ruinedPct": 24.16,
+      "zeroPrestigePct": 0,
+      "goodwillSharePct": 12.36,
+      "emergencySuccessPct": 57.14,
+      "fizzledPct": 8.1,
+      "carBootPct": 13.97,
+      "interactionPct": 30.16,
+      "styleRatios": {
+        "menace": 0.971,
+        "random": 0,
+        "baron": 0.753,
+        "gardener": 1.869,
+        "chaser": 2.222
+      },
+      "godRatios": {
+        "freya": 0.727,
+        "odin": 2.167,
+        "heimdall": 1.642,
+        "hel": 1.302,
+        "thor": 0,
+        "loki": 0,
+        "frigg": 0,
+        "njord": 0
+      }
+    },
+    {
+      "mode": "long",
+      "games": 7,
+      "playerGames": 35,
+      "medianMarginPct": 18.18,
+      "medianWithoutRandomPct": 17.31,
+      "nonRandomGames": 3,
+      "ruinedPct": 33.13,
+      "zeroPrestigePct": 0,
+      "goodwillSharePct": 8.13,
+      "emergencySuccessPct": 47.62,
+      "fizzledPct": 6.9,
+      "carBootPct": 15.12,
+      "interactionPct": 28.33,
+      "styleRatios": {
+        "menace": 0.486,
+        "random": 1.283,
+        "baron": 0,
+        "gardener": 1.246,
+        "chaser": 4.444
+      },
+      "godRatios": {
+        "freya": 1.455,
+        "odin": 1.445,
+        "heimdall": 0,
+        "hel": 0,
+        "thor": 1.131,
+        "loki": 3.152,
+        "frigg": 0,
+        "njord": 0
+      }
+    },
+    {
+      "mode": "epic",
+      "games": 7,
+      "playerGames": 35,
+      "medianMarginPct": 19.75,
+      "medianWithoutRandomPct": 19.75,
+      "nonRandomGames": 3,
+      "ruinedPct": 28,
+      "zeroPrestigePct": 0,
+      "goodwillSharePct": 12.92,
+      "emergencySuccessPct": 61.9,
+      "fizzledPct": 9.44,
+      "carBootPct": 20.99,
+      "interactionPct": 29.76,
+      "styleRatios": {
+        "menace": 0.971,
+        "random": 0,
+        "baron": 2.26,
+        "gardener": 1.246,
+        "chaser": 0
+      },
+      "godRatios": {
+        "freya": 1.455,
+        "odin": 0.722,
+        "heimdall": 3.284,
+        "hel": 0,
+        "thor": 0,
+        "loki": 0,
+        "frigg": 0,
+        "njord": 0
+      }
+    }
+  ]
+}

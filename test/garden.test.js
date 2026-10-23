@@ -160,29 +160,22 @@ test('Reconnected player keeps an unfinished plan and can lock it', () => {
   assert.strictEqual(s.phase.step, 'resolve');
 });
 
-test('Locking closes outgoing trade offers, and trading cannot change a locked hand', () => {
-  const s = setup(['freya', 'hel']);
-  plan(s, 0, rest); plan(s, 1, rest);
-  const offer = { type: 'offerTrade', give: { turf: 1 }, want: { compost: 1 } };
-  ok(E.apply(s, 0, offer, 2000));
-  const id = s.trades[0].id;
-  ok(E.apply(s, 0, { type: 'lock' }, 2000));
-  assert.strictEqual(s.trades[0].status, 'expired');
-  const a = JSON.stringify(s.players.map(p => p.hand));
-  assert.strictEqual(E.apply(s, 1, { type: 'respondTrade', id, accept: true }, 2000).ok, false);
-  assert.strictEqual(E.apply(s, 0, offer, 2000).ok, false);
-  assert.strictEqual(JSON.stringify(s.players.map(p => p.hand)), a);
+test('Trading commands are removed and cannot mutate a player\'s resources', () => {
+  const s = setup(['freya','hel']);
+  const original = JSON.stringify(s);
+  for (const type of ['offerTrade','respondTrade','cancelTrade']) {
+    assert.equal(E.apply(s, 0, { type, give: { turf: 1 }, want: { compost: 1 } }, 2000).ok, false);
+  }
+  assert.strictEqual(JSON.stringify(s), original);
 });
 
-test('Locked recipient cannot accept trade while unlocked proposer remains available', () => {
-  const s = setup(['freya', 'hel']);
+test('No legacy trade offers can be executed after lock-in', () => {
+  const s = setup(['freya','hel']);
   plan(s, 0, rest); plan(s, 1, rest);
-  ok(E.apply(s, 0, { type: 'offerTrade', give: { turf: 1 }, want: { compost: 1 } }, 2000));
-  ok(E.apply(s, 1, { type: 'lock' }, 2000));
-  const before = JSON.stringify(s.players.map(p => p.hand));
-  const r = E.apply(s, 1, { type: 'respondTrade', id: s.trades[0].id, accept: true }, 2000);
-  assert.strictEqual(r.ok, false);
-  assert.deepStrictEqual(JSON.stringify(s.players.map(p => p.hand)), before);
+  ok(E.apply(s, 0, { type: 'lock' }, 2000));
+  const original = JSON.stringify(s.players.map(p => p.hand));
+  assert.strictEqual(E.apply(s, 1, { type: 'respondTrade', id: 't1', accept: true }, 2000).ok, false);
+  assert.strictEqual(JSON.stringify(s.players.map(p => p.hand)), original);
 });
 
 test('Prototype property names cannot be used as commands or features', () => {
@@ -241,18 +234,14 @@ test('Pilfer takes the plot\'s supply from its owner', () => {
   assert.strictEqual(s.players[1].hand.compost, 10);
 });
 
-test('Hedge Maze blocks Meddle, except Loki', () => {
-  const s1 = setup(['thor', 'freya']);
-  const c = centre(s1); const [a] = nb(s1, c);
-  own(s1, c, 0, { feature: 'hedgeMaze' }); own(s1, a, 1);
-  plan(s1, 0, rest); plan(s1, 1, { kind: 'meddle', target: c, mode: 'trample' }); lockAll(s1);
-  assert.strictEqual(plot(s1, c).health, 2);
-  const s2 = setup(['thor', 'loki']);
-  own(s2, c, 0, { feature: 'hedgeMaze' }); own(s2, a, 1, { health: 1 });
-  plan(s2, 0, rest); plan(s2, 1, { kind: 'meddle', target: c, mode: 'trample' }); lockAll(s2);
-  assert.strictEqual(plot(s2, c).health, 1, 'Loki tramples through the maze');
-  assert.strictEqual(plot(s2, a).health, 2, 'and moves the health to his own plot');
-  assert.strictEqual(evOf(s2, 1, 'meddle').power, 'loki', 'Loki\'s power is announced');
+test('Loki transfers health on Trample without needing a Hedge Maze', () => {
+  const s = setup(['thor', 'loki']);
+  const c = centre(s); const [a] = nb(s,c);
+  own(s,c,0,{ feature:'roseArch' }); own(s,a,1,{health:1});
+  plan(s,0,rest); plan(s,1,{kind:'meddle',target:c,mode:'trample'}); lockAll(s);
+  assert.equal(plot(s,c).health,1);
+  assert.equal(plot(s,a).health,2);
+  assert.equal(evOf(s,1,'meddle').power,'loki');
 });
 
 test('Heimdall: Meddle fails and he receives the Gnome Dust', () => {
@@ -269,7 +258,7 @@ test('Heimdall: Meddle fails and he receives the Gnome Dust', () => {
 test('Tend clears a condition; Freya also adds health', () => {
   const s = setup(['freya', 'thor']);
   const c = centre(s); const [a] = nb(s, c);
-  own(s, c, 0, { condition: 'frozen', health: 1 }); own(s, a, 1, { condition: 'frozen', health: 1 });
+  own(s, c, 0, { condition: 'blighted', health: 1 }); own(s, a, 1, { condition: 'blighted', health: 1 });
   plan(s, 0, { kind: 'tend', target: c }); plan(s, 1, { kind: 'tend', target: a }); lockAll(s);
   assert.strictEqual(plot(s, c).condition, null); assert.strictEqual(plot(s, c).health, 3, 'Freya +2');
   assert.strictEqual(plot(s, a).condition, null); assert.strictEqual(plot(s, a).health, 2, 'others clear and heal 1');
@@ -278,8 +267,8 @@ test('Tend clears a condition; Freya also adds health', () => {
 test('Tend clears a hazard and repairs the plot in the same action', () => {
   const s = setup(['thor', 'freya']);
   const c = centre(s); const [a] = nb(s, c);
-  own(s, c, 0, { health: 1, condition: 'frozen' });
-  own(s, a, 1, { health: 1, condition: 'frozen' });
+  own(s, c, 0, { health: 1, condition: 'blighted' });
+  own(s, a, 1, { health: 1, condition: 'blighted' });
   plan(s, 0, { kind: 'tend', target: c });
   plan(s, 1, { kind: 'tend', target: a });
   lockAll(s);
@@ -289,21 +278,13 @@ test('Tend clears a hazard and repairs the plot in the same action', () => {
   assert.strictEqual(plot(s, a).health, 3);
 });
 
-test('Garden Design rewards intentional neighbouring features only', () => {
-  const s = setup(['freya', 'hel']);
-  const c = centre(s); const [a, b, d] = nb(s, c);
-  own(s, c, 0, { feature: 'beeHotel' });
-  own(s, a, 0, { feature: 'roseArch' });
-  own(s, b, 0, { feature: 'waterFeature' });
-  own(s, d, 0, { feature: 'hedgeMaze' });
-  assert.strictEqual(E.gardenDesignBonus(s, 0), 3, 'bee, water and hedge placements each score 1');
-  // A Hedge Maze needs TWO neighbouring owned features, not just plots.
-  const hb = nb(s, d).find(x => x !== c && x !== a && x !== b);
-  if (hb) own(s, hb, 0, { feature: 'prizeMarrow' });
-  assert.strictEqual(E.gardenDesignBonus(s, 0), 3);
-  assert.strictEqual(E.scoreOf(s, 0).designBonus, 3);
-  plot(s, a).condition = 'infested';
-  assert.strictEqual(E.gardenDesignBonus(s, 0), 1, 'infestation disables linked bonuses');
+test('Invisible adjacency Prestige has been removed', () => {
+  const s = setup(['freya','hel']);
+  const c = centre(s); const [a,b] = nb(s,c);
+  own(s,c,0,{feature:'roseArch'});own(s,a,0,{feature:'waterFeature'});own(s,b,0,{feature:'prizeMarrow'});
+  assert.equal(E.gardenDesignBonus(s,0),0);
+  assert.equal(E.scoreOf(s,0).designBonus,0);
+  assert.equal(E.scoreOf(s,0).features,11);
 });
 
 test('Automatic overflow composting preserves locked action supplies if possible', () => {
@@ -319,21 +300,21 @@ test('Automatic overflow composting preserves locked action supplies if possible
   assert.strictEqual(s.secrets.compostOwed[0], undefined);
 });
 
-test('Ash caps health at Healthy; Greenhouse is immune to Ash', () => {
-  const s = setup(['thor', 'freya']);
-  const c = centre(s); const [a] = nb(s, c);
-  own(s, c, 0, { health: 3 }); own(s, a, 0, { health: 3, feature: 'greenhouse' });
-  s.forecast.now = [{ key: 'smoulder', name: 'Ash', good: false, health: 0, condition: 'ash', target: { kind: 'random' }, plots: [c, a] }];
-  plan(s, 0, rest); plan(s, 1, rest); lockAll(s); E.advance(s);
-  assert.strictEqual(plot(s, c).health, 2); assert.strictEqual(plot(s, c).condition, 'ash');
-  assert.strictEqual(plot(s, a).health, 3); assert.strictEqual(plot(s, a).condition, null);
+test('Ash caps health at Healthy and Water Feature remains immune to Ash', () => {
+  const s = setup(['thor','freya']);
+  const c = centre(s); const [a] = nb(s,c);
+  own(s,c,0,{health:3}); own(s,a,0,{health:3, feature:'waterFeature'});
+  s.forecast.now = [{key:'smoulder',name:'Ash',good:false,health:0,condition:'ash',target:{kind:'random'},plots:[c,a]}];
+  plan(s,0,rest);plan(s,1,rest);lockAll(s);E.advance(s);
+  assert.equal(plot(s,c).health,2);assert.equal(plot(s,c).condition,'ash');
+  assert.equal(plot(s,a).health,3);assert.equal(plot(s,a).condition,null);
 });
 
-test('Harvest: yield by health; Frozen yields nothing; Blessed +1', () => {
+test('Harvest: yield by health; Blighted yields nothing; Blessed +1', () => {
   const s = setup(['thor', 'freya']);
   const [h1, h2, h3] = nb(s, centre(s));
   own(s, h1, 0, { health: 3, terrain: 'compost' });
-  own(s, h2, 0, { health: 3, terrain: 'compost', condition: 'frozen' });
+  own(s, h2, 0, { health: 3, terrain: 'compost', condition: 'blighted' });
   own(s, h3, 0, { health: 2, terrain: 'compost', condition: 'blessed' });
   plan(s, 0, rest); plan(s, 1, rest); lockAll(s); toHarvestEnd(s);
   assert.strictEqual(s.harvestReport[0].compost, 2 + 0 + 2);
@@ -424,7 +405,7 @@ test('A ruined Blessed plot never harvests, but a living Blessed plot does', () 
 
 test('Odin shifts a sector disaster once per act', () => {
   const s = setup(['odin', 'thor']);
-  s.forecast.now = [{ key: 'frost', name: 'Frost', good: false, health: 0, condition: 'frozen', target: { kind: 'sector' }, sector: 2, plots: [] }];
+  s.forecast.now = [{ key: 'frost', name: 'Frost', good: false, health: 0, condition: 'blighted', target: { kind: 'sector' }, sector: 2, plots: [] }];
   const r = ok(E.apply(s, 0, { type: 'odinShift', index: 0, dir: 1 }, 2000));
   assert.ok(r.events.some(e => e.type === 'godPower' && e.god === 'odin'), 'Odin\'s power is announced');
   assert.strictEqual(s.forecast.now[0].sector, 3);
@@ -464,7 +445,7 @@ test('Save and reload mid-plan keeps everything', () => {
   const s = setup(['thor', 'freya']);
   plan(s, 0, { kind: 'carBoot', supplies: ['compost', 'compost'] });
   const t = JSON.parse(JSON.stringify(s));
-  assert.strictEqual(t.schemaVersion, 3);
+  assert.strictEqual(t.schemaVersion, 4);
   plan(t, 1, rest); lockAll(t);
   assert.strictEqual(t.phase.step, 'resolve');
 });
@@ -478,8 +459,8 @@ test('A full standard game lasts exactly 9 rounds with 3 shows', () => {
   assert.ok(s.final.winners.length >= 1);
 });
 
-test('Long is the default length: 12 rounds, shows after 4, 8 and 12', () => {
-  const s = E.createGame({ seed: 3, now: 1000 });
+test('Extended remains available: 12 rounds, shows after 4, 8 and 12', () => {
+  const s = E.createGame({ seed: 3, now: 1000, config: { length: 'long' } });
   assert.strictEqual(s.config.length, 'long');
   ['a', 'b'].forEach(n => E.addPlayer(s, { name: n }, 1000));
   ok(E.apply(s, 0, { type: 'start' }, 1000));
