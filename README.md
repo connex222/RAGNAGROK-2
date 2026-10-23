@@ -2,7 +2,7 @@
 
 **A 2–8-player TV-and-phone party strategy game.** The Norse apocalypse has reached a respectable English suburb, and the Village Garden Show is carrying on regardless. Everyone plans secretly on their phone, watches disaster and mischief unfold on the shared TV, and competes for the Golden Flamingo.
 
-**Current build:** `1.2.0-dev.12` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
+**Current build:** `1.2.0-dev.13` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
 
 ## Start on Windows
 
@@ -81,3 +81,7 @@ The pulse measures **stated** willingness to replay, which is not the same as an
 ## Phase 9 — Observed match starts
 
 The TV and phone lobbies show the current match number. Only the authenticated host phone sees aggregate counts for matches started, matches completed and **rematches actually started**. Pressing Rematch merely prepares a new lobby; a rematch counts when the host successfully presses Start. The host can copy a games-night CSV record, independent of the optional Phase 8 pulse. This anonymous session tally survives restarts when `SAVE_DIR` uses durable storage; feedback votes never do. Host-controlled starts do not establish player consent, enjoyment or voluntary return. See [Phase 9 games-night protocol](docs/PHASE9-GAMES-NIGHT.md).
+
+## Emergency planning secrecy and balance checks
+
+During planning, no player or television sees *any* pledge total, including the street aggregate, because it reveals an opponent's contribution in a two-person game. The TV still displays the public target; the full result and contributions appear only after the resolution. Run `node test/phase13-pledge-secrecy.test.js` to check all 2–8 player sizes and `npm run test:emergency-sensitivity` for a paired-seed, robot-only balance sensitivity diagnostic. Neither test changes deployed game rules.
