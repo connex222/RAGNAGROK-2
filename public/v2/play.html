@@ -1022,6 +1022,9 @@ function renderSheet() {
   if (!s || !view || !view.me) {
     const hadDialog = !wrap.hidden;
     wrap.hidden = true;
+    // Remove modal background shielding before restoring focus.
+    $('#app').inert = false;
+    $('#joinScreen').inert = false;
     if (hadDialog) {
       const opener = sheetFocusReturn && document.querySelector(sheetFocusReturn);
       const fallback = document.querySelector('[data-act="rules"], [data-act="menu"], [data-act="editSlot"]');
@@ -1036,6 +1039,9 @@ function renderSheet() {
   const focused = sheet.contains(document.activeElement) ? document.activeElement : null;
   const focusMatch = focused ? [...sheet.querySelectorAll('button,input')].indexOf(focused) : -1;
   wrap.hidden = false;
+  // Prevent keyboard and screen-reader interaction behind the active modal.
+  $('#app').inert = true;
+  $('#joinScreen').inert = true;
   sheet.dataset.sheet = s.type;
   sheet.innerHTML = ({ rules: sheetRules, menu: sheetMenu, slot: sheetSlot })[s.type](s);
   // Every changing modal page needs a programme-readable accessible name.
