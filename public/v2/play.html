@@ -84,7 +84,7 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 #tabs button { min-height:60px; font-size:13px; font-weight:700; color:var(--muted); position:relative; }
 #tabs button span { display:block; font-size:22px; }
 #tabs button[aria-current="page"] { color:var(--primary); box-shadow:inset 0 3px 0 var(--primary); }
-.badge { position:absolute; top:6px; right:calc(50% - 30px); min-width:20px; height:20px; border-radius:10px; padding:0 5px; background:var(--bad); color:#fff; font-size:12px; line-height:20px; }
+.badge { position:absolute; top:6px; right:calc(50% - 30px); min-width:20px; height:20px; border-radius:10px; padding:0 5px; background:var(--bad); color:var(--on-primary); font-size:12px; line-height:20px; }
 
 /* blocks */
 .card { background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); padding:14px; }
@@ -318,7 +318,7 @@ const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(P
 const params = new URLSearchParams(location.search);
 const ui = { tab: 'plan', sheet: null, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null, pulseRating: null, pulseAgain: null };
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.10';
+const CLIENT_VERSION = '1.2.0-dev.11';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
