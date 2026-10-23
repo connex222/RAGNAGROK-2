@@ -1,5 +1,12 @@
 # RAGNAGROK — Development Changelog
 
+## v1.2.0-dev.13 — Sealed emergency pledges and balance sensitivity (23 October 2026)
+
+- Closed a real multiplayer privacy loophole: the TV and public server view previously showed the **live aggregate** emergency pledge during planning. In a two-player match, subtracting your own amount disclosed your rival's confidential contribution. **All aggregate pledge totals are now hidden until emergency resolution**; the publicly known target remains visible, and the actual settlement and individual contributions are still shown afterwards.
+- Added regression tests of public/private engine views for every supported room size (2–8 players), changes to secret pledges, retained own-pledge access and full post-resolution reveal. Strengthened the real Socket.io network acceptance check so the total cannot silently return.
+- Added a paired-seed, test-only emergency-threshold sensitivity experiment; it modifies in-memory content only and resets settings before exit. 70 Standard baseline samples showed 95.24% success and 18.59% ruined plots. Raising all per-player targets by 15% produced 78.57% emergency success and 23.23% ruined plots; 30% produced 57.14% emergency success **but** 25.93% ruined plots and an 18.18% median winning margin. These limited robot results do not support safely adopting a blanket increase.
+- No gameplay costs, disaster probabilities, god abilities, rewards or save schema changed. The emergency difficulty target remains unresolved pending targeted balancing and November participant testing. Render remains suspended by user action; a successful GitHub test does not demonstrate Render deployment.
+
 ## v1.2.0-dev.12 — Action-picker pacing fix and controlled balance audit (23 October 2026)
 
 - Corrected a first-run UX defect: the phone action picker counted future Car-Boot Sale supplies as spendable, even though Car-Boot pays out after all other actions. The picker now reports shortages, disables unaffordable actions and explains that Car-Boot supplies only help future rounds. Scoring and engine rules are unchanged.
