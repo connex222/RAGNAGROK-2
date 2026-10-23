@@ -23,3 +23,4 @@ jobs:
       - run: npm run test:phase9:offline
       - run: npm run test:phase9:network
       - run: node test/phase11-balanced-audit.js 14
+      - run: node test/phase11-emergency-sensitivity.js 7
