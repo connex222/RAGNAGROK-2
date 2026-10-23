@@ -512,7 +512,7 @@ function renderPanel() {
 `;
   } else if (st === 'sympathy' && view.sympathy) {
     const v = view.sympathy;
-    panel.innerHTML = `<h2>🥀 The Sympathy Vote</h2><p class="sub">The judges took pity on ${nm(v.chooser)}. They get to choose the next Garden Show category.</p><p class="big">${v.options.map(k => esc(C.categories[k].name)).join(' · ')}</p>`;
+    panel.innerHTML = `<h2>🥀 The Sympathy Vote</h2><p class="sub">The judges took pity on ${nm(v.chooser)}. They're choosing the next Garden Show category.</p><p class="big">Awaiting the judges' decision…</p>`;
   } else if (st === 'resolve' && view.resolution) {
     const evs = view.resolution.events;
     const shown = theatreShown();
