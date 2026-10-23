@@ -408,6 +408,27 @@ function legalTargets(kind, idx, slots) {
   }
 }
 
+// Match the server's Pray distance, already-hit and Heimdall protections.
+// Hide dead ends before a player commits time or Dust to an impossible redirect.
+function prayerDestinations(from, disaster) {
+  if (!from || !disaster || !Array.isArray(disaster.plots) || !C) return [];
+  const banned = new Set(disaster.plots);
+  const maximum = myGod() === 'loki' ? C.pray.lokiMaxDistance : C.pray.maxDistance;
+  const seen = new Set([from]);
+  let edge = [from];
+  for (let hop = 0; hop < maximum; hop++) {
+    edge = edge.flatMap(neighbours).filter(id => {
+      if (seen.has(id)) return false;
+      seen.add(id); return true;
+    });
+  }
+  return [...seen].filter(id => {
+    const p = plotById(id);
+    return id !== from && p && !banned.has(id) &&
+      !(p.owner !== null && pl(p.owner).god === 'heimdall');
+  });
+}
+
 function describeSlot(s) {
   if (!s) return { title: 'Choose an action', sub: 'Tap to plan' };
   const a = ACT[s.kind];
@@ -996,18 +1017,14 @@ function sheetSlot(s) {
       <button class="btn primary" data-act="targetOk"${s.target ? '' : ' disabled'}>${s.kind === 'meddle' || s.kind === 'cultivate' ? 'Next' : 'Use this plot'}</button></div></div>`;
   }
   if (s.kind === 'pray') {
-    const options = view.forecast.now.map((d, i) => ({ d, i })).filter(x => x.d.plots.includes(s.target));
-    const selected = options.find(o => o.i === s.index) || options[0];
-    if (!selected) return `<div class="card">No current disaster still targets that plot. Choose again.</div><button class="btn" data-act="slotBack">Back</button>`;
-    const banned = new Set(selected.d.plots);
-    const distance = myGod() === 'loki' ? C.pray.lokiMaxDistance : C.pray.maxDistance;
-    let edge = [s.target]; const seen = new Set(edge);
-    for (let i = 0; i < distance; i++) {
-      edge = edge.flatMap(neighbours).filter(id => { if (seen.has(id)) return false; seen.add(id); return true; });
-    }
-    const legal = [...seen].filter(id => id !== s.target && !banned.has(id) && !(!plotById(id) || (plotById(id).owner !== null && pl(plotById(id).owner).god === 'heimdall')));
+    const options = view.forecast.now.map((d, i) => ({ d, i, legal: prayerDestinations(s.target, d) }))
+      .filter(x => x.d.plots.includes(s.target));
+    const selected = options.find(o => o.i === s.index && o.legal.length) || options.find(o => o.legal.length);
+    if (!selected) return `<div class="card">No legal destination remains for this forecast. Choose another plot or action.</div><button class="btn" data-act="slotBack">Back</button>`;
+    if (s.index !== selected.i) s.index = selected.i;
+    const legal = selected.legal;
     return `<div class="head"><div><h2>🙏 Redirect the apocalypse</h2><p class="muted small">From ${esc(plotName(plotById(s.target)))}. Choose the disaster, then its new target.</p></div>${closeBtn}</div>
-      <div class="card">${options.map(({d,i}) => `<button class="btn small" data-act="prayIndex" data-index="${i}" aria-pressed="${s.index === i}">${esc(d.name)}${d.good ? ' 🌟' : ' ⚠️'}</button>`).join('')}</div>
+      <div class="card">${options.map(({d,i,legal}) => `<button class="btn small" data-act="prayIndex" data-index="${i}" aria-pressed="${s.index === i}"${legal.length ? '' : ' disabled title="No legal destination"'}>${esc(d.name)}${d.good ? ' 🌟' : ' ⚠️'}</button>`).join('')}</div>
       ${mapHtml({ mode: 'hex', legal, sel: s.to, zoom: ui.zoom })}
       <p class="small muted">${myGod() === 'loki' ? 'Loki reaches two plots and ignores conflicts.' : 'Conflicting prayers cancel one another, and still cost Dust.'} Shelter can protect the new target.</p>
       <div class="foot"><div class="row"><button class="btn" data-act="slotBack">Back</button><button class="btn primary" data-act="saveSlot"${s.to ? '' : ' disabled'}>Plan this</button></div></div>`;
@@ -1168,13 +1185,21 @@ async function onAct(el) {
       render();
       return;
     case 'targetOk': {
-      if (s.kind === 'pray') { s.targetDone = true; s.index = view.forecast.now.findIndex(f => f.plots.includes(s.target)); s.to = null; render(); return; }
+      if (s.kind === 'pray') {
+        const index = view.forecast.now.findIndex(f => f.plots.includes(s.target) && prayerDestinations(s.target, f).length);
+        if (index < 0) { toast('No legal redirect from that plot. Choose another.', 'bad'); s.target = null; render(); return; }
+        s.targetDone = true; s.index = index; s.to = null; render(); return;
+      }
       if (['meddle', 'cultivate'].includes(s.kind)) { s.targetDone = true; render(); return; }
       s.targetDone = true;
       render();
       return;
     }
-    case 'prayIndex': s.index = Number(d.index); s.to = null; render(); return;
+    case 'prayIndex': {
+      const disaster = view.forecast.now[Number(d.index)];
+      if (!disaster || !disaster.plots.includes(s.target) || !prayerDestinations(s.target, disaster).length) return;
+      s.index = Number(d.index); s.to = null; render(); return;
+    }
     case 'mode': s.mode = d.mode; render(); return;
     case 'feature': s.feature = d.f; render(); return;
     case 'cbPick': s.supplies = (s.supplies || []).concat(d.res).slice(0, 2); render(); return;

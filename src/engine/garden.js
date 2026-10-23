@@ -1294,7 +1294,12 @@ function legalTargets(state, seat) {
   const out = { pray: [], shelter: [], tend: [], meddle: [], claim: [], cultivate: [], features: Object.keys(C.features) };
   if (!s.board || s.phase.stage !== 'playing') return out;
   const topo = getTopology(s.board.layoutId);
-  out.pray = [...new Set(s.forecast.now.flatMap(d => d.plots || []))];
+  // A forecast hit is a useful Pray choice only when *some* disaster hitting
+  // it can legally be redirected. Do not offer dead ends to phone planners.
+  out.pray = [...new Set(s.forecast.now.flatMap(d => d.plots || []))].filter(from =>
+    s.forecast.now.some((d, index) => d.plots.includes(from) &&
+      s.board.plots.some(dest => prayError(s, topo, seat, { index, target: from, to: dest.id }) === null)));
+
   s.board.plots.forEach(p => {
     if (p.owner === seat) {
       out.shelter.push(p.id);

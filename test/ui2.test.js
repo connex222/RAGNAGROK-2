@@ -78,14 +78,14 @@ function botStep(p) {
     if (s.kind === 'pray' && s.targetDone && !s.to) {
       const destination = qa(p, '#sheet [data-spot]').find(enabled);
       if (destination) return tap(p, destination);
-      return tapFirst(p, '[data-act="slotBack"]');
+      return tapFirst(p, '[data-act="closeSheet"]');
     }
     if (s.kind === 'meddle' && !s.mode) return tapAny(p, '[data-act="mode"]');
     if (s.kind === 'cultivate' && !s.feature) {
       const ok = qa(p, '[data-act="feature"]').filter(b => !b.querySelector('.why'));
       if (ok.length) return tap(p, pick(ok));
       tapFirst(p, '[data-act="slotBack"]');
-      return tapFirst(p, '[data-act="slotBack"]');
+      return tapFirst(p, '[data-act="closeSheet"]');
     }
     if (s.kind === 'carBoot' && (s.supplies || []).length < 2) return tapAny(p, '[data-act="cbPick"]');
     return tapFirst(p, '[data-act="saveSlot"]');

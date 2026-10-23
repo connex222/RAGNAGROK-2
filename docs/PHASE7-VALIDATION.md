@@ -32,3 +32,13 @@ Browser test can still fail on scheduling, UI state or other bugs. When stalled,
 ## Still outstanding
 
 The CI run for this **exact version**, stress/repeated browser tests on separate runners, device disconnect/reconnect on actual phones, 320px accessibility testing on hardware, and measured human rematches must be completed before claiming release readiness. Follow `docs/PHASE6-ACCEPTANCE.md` for the physical-session script.
+
+## Blocked-Pray defect found and corrected
+
+GitHub CI with fixed seed `215063` exposed a repeatable round-9 stall: an ordinary player was choosing Pray for a forecast with **no legal redirect destination**. The planner offered the hit anyway and the simulated phone cycled between the source and destination steps. This was a genuine usability defect, not a failure of the game's scoring engine.
+
+- The server's public legal target projection filters out forecast hits with no legal destination, obeying the exact same distance, hit-set and Heimdall checks as action validation.
+- The phone picker now chooses a disaster that actually has a legal destination, disables impossible alternatives and provides a clear way back if state has changed.
+- The automated browser player closes an impossible Pray sheet rather than looping indefinitely. A regression test now checks fully protected Heimdall rings and Loki's two-plot ability.
+
+The original deterministic server action validation still rejects illegal redirects; the UI fix adds discoverability and prevents dead-end choices.

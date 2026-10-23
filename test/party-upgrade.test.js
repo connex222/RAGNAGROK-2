@@ -35,6 +35,19 @@ test('Three conditions, six features, no invisible bonuses, standard opening sup
  assert.equal(E.gardenDesignBonus(s,0),0);
  assert.equal(s.trades,undefined);
 });
+test('Pray legal targets omit hits that cannot be moved, including Heimdall blocks',()=>{
+ const s=game(['heimdall','thor']);const c=centre(s),topo=getTopology(s.board.layoutId);
+ const adjacent=topo.hexById[c].neighbors;
+ adjacent.forEach(id => {plot(s,id).owner=0;});
+ forecast(s,c);
+ assert.ok(!E.privateView(s,1).me.legal.pray.includes(c), 'ordinary player cannot Pray into an all-Heimdall ring');
+ plot(s,adjacent[0]).owner=null;
+ assert.ok(E.privateView(s,1).me.legal.pray.includes(c), 'opening one legal neighbour restores the option');
+ const loki=game(['heimdall','loki']);const cl=centre(loki),tl=getTopology(loki.board.layoutId);
+ tl.hexById[cl].neighbors.forEach(id => {plot(loki,id).owner=0;});
+ forecast(loki,cl);
+ assert.ok(E.privateView(loki,1).me.legal.pray.includes(cl), 'Loki can reach an unowned plot through the two-step ring');
+});
 test('Pray moves a forecast hit, costs Dust, and Shelter protects the destination',()=>{
  const s=game(); const c=centre(s),n=getTopology(s.board.layoutId).hexById[c].neighbors[0];
  plot(s,n).owner=1;

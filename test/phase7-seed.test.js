@@ -28,4 +28,10 @@ assert.match(ui, /No progress for 10 s[\s\S]*diagnostics|const diagnostics = pho
 assert.strictEqual(Math.random, original, 'testing must not patch global RNG');
 console.log('  ✔ explicit browser game seed is stable, validated, and unavailable to clients');
 console.log('  ✔ ordinary production games retain random seeds');
+const phone = fs.readFileSync(path.join(__dirname, '../public/v2/play.html'), 'utf8');
+assert.match(phone, /function prayerDestinations\(from, disaster\)/);
+assert.match(phone, /No legal destination remains for this forecast/);
+assert.match(phone, /if \(index < 0\) \{ toast\('No legal redirect/);
+assert.match(ui, /return tapFirst\(p, '\[data-act=\"closeSheet\"\]'\)/);
+console.log('  ✔ impossible Pray choices are filtered and browser bot exits the dead end');
 console.log('  ✔ stalled-browser diagnostics and full real-network acceptance remain enabled');
