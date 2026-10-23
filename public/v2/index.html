@@ -276,7 +276,7 @@ let tipIndex = 0;
 let theatre = { key: null, start: 0, shown: 0 };
 let lastBoardKey = '';
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.5';
+const CLIENT_VERSION = '1.2.0-dev.6';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -471,10 +471,16 @@ function renderBoard() {
   const sel = focusPlot();
   const ev = view.phase.step === 'resolve' && view.resolution ? view.resolution.events[Math.max(0, theatre.shown - 1)] : null;
   const prayEffect = ev && ev.kind === 'pray' && ev.ok ? ev : null;
-  const key = view.stateVersion + '|' + sel + '|' + threats.length + '|' + Object.keys(ART).length;
+  // Revealing another action does not increment stateVersion. Include the
+  // theatre cursor and redirect identity or the memoised board misses Pray.
+  const effectId = prayEffect ? `${prayEffect.from}>${prayEffect.to}` : '';
+  const key = [view.stateVersion, view.phase.step, theatre.shown, effectId, sel,
+    threats.join(','), Object.keys(ART).length].join('|');
   if (key === lastBoardKey) return;
   lastBoardKey = key;
-  $('#boardWrap').innerHTML = RagnaBoard.gardenSvg({ topo, plots: view.board.plots, players: view.players, art: ART, threats, sel, prayEffect, idPrefix: 'tv' });
+  $('#boardWrap').innerHTML = RagnaBoard.gardenSvg({ topo, plots: view.board.plots, players: view.players, art: ART, threats, sel, prayEffect,
+    reducedMotion: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+    idPrefix: 'tv' });
 }
 
 function evLine(e, fresh) {

@@ -314,7 +314,7 @@ const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(P
 const params = new URLSearchParams(location.search);
 const ui = { tab: 'plan', sheet: null, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null };
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.5';
+const CLIENT_VERSION = '1.2.0-dev.6';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;

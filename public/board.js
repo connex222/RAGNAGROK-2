@@ -291,7 +291,11 @@
       if (a && b) {
         const path = `M ${f3(a.x)} ${f3(a.y)} L ${f3(b.x)} ${f3(b.y)}`;
         marks += `<path d="${path}" fill="none" stroke="#fff3a5" stroke-width=".11" stroke-dasharray=".15 .09" pointer-events="none"/>`;
-        marks += `<circle r=".27" fill="#ffcf44" stroke="#20132b" stroke-width=".07" pointer-events="none"><animateMotion path="${path}" dur="1s" fill="freeze"/></circle>`;
+        // SVG animateMotion is not governed by ordinary CSS transition rules.
+        // Respect the operating system's reduced-motion setting directly.
+        marks += o.reducedMotion
+          ? `<circle cx="${f3(b.x)}" cy="${f3(b.y)}" r=".27" fill="#ffcf44" stroke="#20132b" stroke-width=".07" pointer-events="none"/>`
+          : `<circle r=".27" fill="#ffcf44" stroke="#20132b" stroke-width=".07" pointer-events="none"><animateMotion path="${path}" dur="1s" fill="freeze"/></circle>`;
       }
     }
 
