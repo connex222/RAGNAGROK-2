@@ -1,5 +1,14 @@
 # RAGNAGROK — Development Changelog
 
+## v1.2.0-dev.9 — Games-night rematch evidence (23 October 2026)
+
+- Server now distinguishes an offered rematch lobby from a **rematch actually started** by an accepted host action. Completed matches are counted once despite duplicate final-state snapshots.
+- Public TV and phone lobbies display the current match number, and the TV final ceremony labels the match.
+- The authenticated host phone alone receives anonymous aggregate matches started, matches completed and rematches started; it can copy those counts as CSV. No individual or feedback results are exposed through this feature.
+- Aggregate counters are saved only with durable room saves; existing saved matches remain readable, and malformed counter objects are rejected. Phase 8 enjoyment feedback remains strictly volatile and opt-in.
+- Added regression coverage and physical games-night acceptance instructions. No game-rule, scoring, god-power, or dependency changes. These numbers are **not** proof of voluntary player rematches or enjoyment.
+
+
 ## v1.2.0-dev.8 — Optional post-match enjoyment pulse (23 October 2026)
 
 - Added the opt-in 1–5 enjoyment and immediate-rematch question on the final-results phone screen. Rematch remains available without giving feedback.

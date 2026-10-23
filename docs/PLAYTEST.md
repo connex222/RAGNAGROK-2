@@ -50,3 +50,7 @@ Ask new players to choose a first action without coaching. Note whether they dis
 ## Phase 8: after-game feedback pulse
 
 On build 1.2.0-dev.8 and later, the phone displays an **optional** post-game enjoyment rating and willingness-to-rematch question. The host can copy only grouped responses after at least three participants reply. Do not mistake the copied `would_rematch_now` count for observed rematches. Record an actual started rematch separately in `PLAYTEST-SESSIONS.csv`. No responses are retained between games or server restarts, so a host who wants an aggregate must copy it **before** beginning a rematch. For two-player sessions, record feedback with the existing anonymous paper template; no 2-person group score is exposed to the host phone. See `PHASE8-GAME-NIGHT.md`.
+
+## Phase 9: measured game starts, not intentions
+
+Build `1.2.0-dev.9` gives the host phone a private **Games-night record**: how many matches the server actually started, completed, and started again after a rematch. Pressing **Play again** only opens a lobby; it is not counted until the host subsequently presses **Start the game**. Unlike the optional Phase 8 survey, this is a non-identifying room tally and is retained in durable saves when `SAVE_DIR` is configured. It does not prove that players agreed to another game. Record observed voluntary participation and rematches on the anonymous session sheet as well. See [Phase 9 acceptance](PHASE9-GAMES-NIGHT.md).

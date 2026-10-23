@@ -276,7 +276,7 @@ let tipIndex = 0;
 let theatre = { key: null, start: 0, shown: 0 };
 let lastBoardKey = '';
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.8';
+const CLIENT_VERSION = '1.2.0-dev.9';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -410,7 +410,7 @@ function renderLobby() {
   }
   $('#lobbyPlayers').innerHTML = html;
   const L = lenCfg();
-  $('#lobbyMode').innerHTML = L ? `<b>${esc(L.name)} game</b> · ${L.rounds} rounds · ${n < 2 ? 'waiting for at least 2 gardeners' : `${esc(view.players[0].name)} starts the game from their phone`}` : '';
+  $('#lobbyMode').innerHTML = L ? `<b>Match ${view.meta.matchNumber} · ${esc(L.name)} game</b> · ${L.rounds} rounds · ${n < 2 ? 'waiting for at least 2 gardeners' : `${esc(view.players[0].name)} starts the game from their phone`}` : '';
   renderTips();
   if (ART.logo && !$('#logo').dataset.done) { $('#logo').innerHTML = `<img src="${ART.logo}" alt="RAGNAGROK">`; $('#logo').dataset.done = '1'; }
 }
@@ -605,7 +605,7 @@ function renderOver() {
       <div class="quip">${winners.length === 1 && winners[0].god ? godIcon(winners[0].god) + ' ' + esc(C.gods[winners[0].god].name) + ' smiles. ' : ''}${esc(quip)}</div>
       <table><tr><th>Gardener</th><th>Shows</th><th>Features</th><th>Goodwill</th><th>Total</th></tr>
       ${f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${nm(s.seat)}</td><td>${s.shows}</td><td>${s.features}</td><td>${s.goodwill}</td><td class="tot">${s.total}</td></tr>`).join('')}</table>
-      <div class="stats">${(f.honours || []).map(h => `<span title="${esc(h.description)}">${esc(h.icon)} ${esc(h.name)}: <b>${h.seats.map(nm).join(' & ')}</b>${h.seats.length > 1 ? ' (tie)' : ''}</span>`).join('')}<span>🗓️ ${view.round} rounds survived</span></div>
+      <div class="stats">${(f.honours || []).map(h => `<span title="${esc(h.description)}">${esc(h.icon)} ${esc(h.name)}: <b>${h.seats.map(nm).join(' & ')}</b>${h.seats.length > 1 ? ' (tie)' : ''}</span>`).join('')}<span>🗓️ ${view.round} rounds survived</span><span>🎮 Match ${view.meta.matchNumber} of this room</span></div>
       <div class="quip" style="margin-top:24px">${nm(0)} can start a rematch from their phone.</div></div>`;
 }
 

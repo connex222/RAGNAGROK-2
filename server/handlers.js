@@ -299,6 +299,7 @@ function attachHandlers(io, rooms, { rate = DEFAULT_RATE, qrCode = null } = {}) 
     on('host:start', hostOnly(room => {
       const res = E.apply(room.state, 0, { type: 'start' });
       if (!res.ok) return { ok: false, error: res.error };
+      rooms.markStarted(room);
       rooms.sync(room, res.events);
       return { ok: true };
     }));

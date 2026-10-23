@@ -318,7 +318,7 @@ const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(P
 const params = new URLSearchParams(location.search);
 const ui = { tab: 'plan', sheet: null, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null, pulseRating: null, pulseAgain: null };
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.8';
+const CLIENT_VERSION = '1.2.0-dev.9';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -717,10 +717,11 @@ function renderLobby() {
     ? `<div class="card"><h3>Game length</h3><div class="stack">${lengthBtn(lengths.find(([k]) => k === 'standard'))}<details><summary>Advanced: longer games</summary><div class="stack">${lengths.filter(([k]) => k !== 'standard').map(lengthBtn).join('')}</div></details></div>
        <h3 style="margin-top:14px">Planning time</h3><div class="row">${[null, 45, 90, 120].map(t => `<button class="btn small" data-act="planTime" data-t="${t === null ? 'auto' : t}" aria-pressed="${(view.config.planSec || null) === t}">${t === null ? 'Auto' : t + 's'}</button>`).join('')}</div></div>`
     : `<div class="card"><h3>${C && C.lengths[len] ? esc(C.lengths[len].name) : ''} game</h3><p class="muted small">${C && C.lengths[len] ? C.lengths[len].rounds + ' rounds · ' + (timeGuess[len] || '') : ''}</p></div>`;
-  return `<div class="card"><div class="muted small">Room code</div><div class="big">${esc(view.meta.code)}</div>
+  return `<div class="card"><div class="muted small">Match ${view.meta.matchNumber} · Room code</div><div class="big">${esc(view.meta.code)}</div>
       <div class="muted small" style="text-align:center">${view.players.length} of ${view.config.maxPlayers} gardeners</div></div>
     <div class="card"><table class="players">${rows}</table></div>
     ${options}
+    ${isHost && view.meta.matchNumber > 1 ? renderSessionTotals() : ''}
     <div class="stack" style="margin-top:14px">
       ${isHost ? `<button class="btn primary" data-act="start"${view.players.length < 2 ? ' disabled' : ''}>Start the game</button>` : '<p class="muted" style="text-align:center">The host will start the game</p>'}
       <button class="btn" data-act="leave">Leave</button>
@@ -976,6 +977,15 @@ function renderPlaytestTotals() {
   return `<div class="card"><h3>📋 Host playtest summary</h3><p class="small">${a.count} of ${a.players} responses</p>${result}${a.mean === undefined ? '' : '<button class="btn small" data-act="pulseCopy">Copy group totals</button>'}</div>`;
 }
 
+function renderSessionTotals() {
+  const a = view.meta && view.meta.session;
+  if (!a) return ''; // never exposed to the TV or another gardener
+  return `<div class="card"><h3>🎮 Games-night record</h3>
+    <p class="small">Matches started: <b>${a.gamesStarted}</b> · completed: <b>${a.gamesFinished}</b> · rematches started: <b>${a.rematchesStarted}</b></p>
+    <p class="small muted">Opening a rematch lobby does not count. These host-controlled starts cannot prove that everyone wanted to play again.</p>
+    <button type="button" class="btn small" data-act="sessionCopy">Copy games-night record</button></div>`;
+}
+
 function renderGameOver() {
   const f = view.final;
   if (!f) return '';
@@ -988,6 +998,7 @@ function renderGameOver() {
     <div class="card"><table class="players">${rows}</table></div>
     ${honourCards}
     <div style="margin:14px 0">${view.meta.isHost ? '<button class="btn primary" data-act="rematch">Play again with the same gardeners →</button>' : '<p class="muted" style="text-align:center">The host can start a rematch</p>'}</div>
+    ${renderSessionTotals()}
     ${renderPlaytestPulse()}
     ${renderPlaytestTotals()}`;
 }
@@ -1169,6 +1180,15 @@ async function onAct(el) {
       const result = await emit('playtest:feedback', { enjoyment: ui.pulseRating, rematch: ui.pulseAgain });
       if (!result.ok) toast(esc(result.error || 'Feedback was not recorded'), 'bad');
       else toast('Thanks for helping improve RAGNAGROK.', 'good');
+      return;
+    }
+    case 'sessionCopy': {
+      const a = view?.meta?.session;
+      if (!view?.meta?.isHost || !a) return;
+      const row = ['version,players,matches_started,matches_completed,rematches_started',
+        [CLIENT_VERSION, view.players.length, a.gamesStarted, a.gamesFinished, a.rematchesStarted].join(',')].join('\n');
+      try { await navigator.clipboard.writeText(row); toast('Games-night record copied.', 'good'); }
+      catch (_) { toast('Clipboard unavailable. You can copy the figures shown above.', 'bad'); }
       return;
     }
     case 'pulseCopy': {

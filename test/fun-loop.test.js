@@ -149,7 +149,7 @@ test('Phone Show-race markup renders the actual standings, not just a static pla
   const escape = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
   const context = { view: v, C: E.CONTENT, mySeat: () => 0, document: { querySelector: () => null },
     nm: seat => v.players[seat].name, esc: escape,
-    renderPlaytestPulse: () => '', renderPlaytestTotals: () => '' };
+    renderPlaytestPulse: () => '', renderPlaytestTotals: () => '', renderSessionTotals: () => '' };
   vm.createContext(context);
   vm.runInContext(page.slice(begin, end) + ';this.previewMarkup=renderShowRace;', context);
   const html = context.previewMarkup();
@@ -173,7 +173,7 @@ test('Phone and TV award screens render tied honours without modifying winner', 
   s.phase.deadline = 2000;
   E.advance(s);
   const v = E.privateView(s, 0);
-  v.meta = { isHost: true }; // room manager adds transport metadata after engine projection
+  v.meta = { isHost: true, matchNumber: 1 }; // room manager adds transport metadata after engine projection
   assert.deepEqual(v.final.winners, [1]);
   const phone = fs.readFileSync(path.join(__dirname, '../public/v2/play.html'), 'utf8');
   const start = phone.indexOf('function renderGameOver() {');
@@ -181,7 +181,7 @@ test('Phone and TV award screens render tied honours without modifying winner', 
   const escape = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
   const ctx = { view: v, ART: {}, mySeat: () => 0, pl: seat => v.players[seat],
     nm: seat => v.players[seat].name, esc: escape,
-    renderPlaytestPulse: () => '', renderPlaytestTotals: () => '' };
+    renderPlaytestPulse: () => '', renderPlaytestTotals: () => '', renderSessionTotals: () => '' };
   vm.createContext(ctx);
   vm.runInContext(phone.slice(start, end) + ';this.awardMarkup=renderGameOver;', ctx);
   const html = ctx.awardMarkup();

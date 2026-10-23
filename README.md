@@ -2,7 +2,7 @@
 
 **A 2–8-player TV-and-phone party strategy game.** The Norse apocalypse has reached a respectable English suburb, and the Village Garden Show is carrying on regardless. Everyone plans secretly on their phone, watches disaster and mischief unfold on the shared TV, and competes for the Golden Flamingo.
 
-**Current build:** `1.2.0-dev.8` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
+**Current build:** `1.2.0-dev.9` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
 
 ## Start on Windows
 
@@ -21,6 +21,7 @@ Run the archived original edition with `npm run start:v1`. Its rules, pages and 
 | `npm run test:modes` | 63 completed seeded V2 games across 2–8 players and all three lengths |
 | `npm run test:party` | Pray, Sympathy Vote and simplification contracts |
 | `npm run test:phase8` | Anonymous post-match pulse privacy, acknowledgement and rematch tests |
+| `npm run test:phase9` | Server-authoritative match starts, host privacy and restart-persistent aggregates |
 | `npm run test:phase8:browser` | Optional Chromium phone viewports, feedback and consent controls (requires Python Playwright and Chromium) |
 | `npm run test:phase3` | Abandoned-room and UI structure regressions |
 | `npm run test:protocol-acceptance` | Complete 9-round protocol matches with 2/4/6/8 simulated controllers, no Socket.io transport |
@@ -72,3 +73,7 @@ Run `npm run test:phase6` for the reveal/privacy contract suite and `python test
 After the final results, every phone offers a **completely optional** two-question enjoyment pulse. It does not delay Rematch or affect scoring. Responses are held only in the current server process, deduplicated by authenticated seat, discarded on rematch or restart, and **never included in saved games**. The host phone sees group totals only after **at least three** gardeners respond; the TV and other phones never receive the totals, and no one receives individual votes. Two-player matches do not expose aggregate scores. The host may copy the grouped figures as a short CSV if enough players answered. No external telemetry, accounts or new dependencies were introduced.
 
 The pulse measures **stated** willingness to replay, which is not the same as an actual rematch. Facilitators should separately record who actually plays again and whether the playtest was enjoyable for people who lost. See `docs/PHASE8-GAME-NIGHT.md`.
+
+## Phase 9 — Observed match starts
+
+The TV and phone lobbies show the current match number. Only the authenticated host phone sees aggregate counts for matches started, matches completed and **rematches actually started**. Pressing Rematch merely prepares a new lobby; a rematch counts when the host successfully presses Start. The host can copy a games-night CSV record, independent of the optional Phase 8 pulse. This anonymous session tally survives restarts when `SAVE_DIR` uses durable storage; feedback votes never do. Host-controlled starts do not establish player consent, enjoyment or voluntary return. See [Phase 9 games-night protocol](docs/PHASE9-GAMES-NIGHT.md).
