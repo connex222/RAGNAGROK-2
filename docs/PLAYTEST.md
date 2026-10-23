@@ -54,3 +54,46 @@ On build 1.2.0-dev.8 and later, the phone displays an **optional** post-game enj
 ## Phase 9: measured game starts, not intentions
 
 Build `1.2.0-dev.9` gives the host phone a private **Games-night record**: how many matches the server actually started, completed, and started again after a rematch. Pressing **Play again** only opens a lobby; it is not counted until the host subsequently presses **Start the game**. Unlike the optional Phase 8 survey, this is a non-identifying room tally and is retained in durable saves when `SAVE_DIR` is configured. It does not prove that players agreed to another game. Record observed voluntary participation and rematches on the anonymous session sheet as well. See [Phase 9 acceptance](PHASE9-GAMES-NIGHT.md).
+
+## November 2026 — minimum private acceptance plan
+
+**No participant or hardware result has been recorded yet.** A facilitator should
+run and record seven independent acceptance conditions, preferably starting with
+Standard. Avoid collecting names, contact details, room codes, authentication
+keys, IP addresses or identifiable screenshots.
+
+| Condition | Required observation |
+|---|---|
+| 2 people, Standard | Each independently understands a first legal move; test private Sympathy information and loss experience. |
+| 4 people, Standard | Complete a full game and independently explain the Show score breakdown. |
+| 6 people, Standard | Exercise overlapping Pray/Meddle decisions and a real phone reconnect. |
+| 8 people, Standard | Verify action deadlines, no missed locks, spectator comprehension and legible ownership markers. |
+| Phone-only hosting | Host starts, pauses, resumes and closes without a separate television. |
+| Shared-TV hosting | Confirm 720p/1080p/4K as available, TV safe area, 2–3 metre readability, sound and mute with real speakers. |
+| Second consecutive match | Verify the room returns to a lobby, players voluntarily join another game, counters increment only on an accepted start, and feedback resets. |
+
+Try multiple phone types and browsers; include an interrupted Wi-Fi to mobile-data connection if permitted and safe. Record exact **device/browser**, operating system, actual screen dimensions, game mode, duration and observed technical behaviour for reproducible faults. Ask players what they found funny, what felt unfair and whether they *actually choose* to rematch. Do not prime them by explaining expected improvements in advance.
+
+### Completion checklist and defect triage
+
+- [ ] Join and QR work on real iPhone and Android handsets
+- [ ] 320px-class phone, daylight and dusk, enlarged text, screen reader and keyboard/switch-control accessible first move
+- [ ] Actual TV leaves legible, unclipped essential content with physical overscan settings
+- [ ] Two, four, six and eight participants complete full games with reconnect/disconnect checks
+- [ ] Host loss and replacement/recovery, pause/resume, save/restart, invalid commands, and repeat ACKs behave securely
+- [ ] Music and effects sound appropriate; mute and reduced motion behave correctly
+- [ ] Postmatch feedback is genuinely optional and privacy-preserving
+- [ ] Actual voluntarily started rematches, not just willingness, are recorded
+- [ ] The release build, GitHub CI commit and actual Render deployment SHA are verified to match
+- [ ] No open critical or high-priority defects remain
+
+Log every defect in `PLAYTEST-DEFECTS.csv`; distinguish **critical** (security,
+permanent state loss, game stuck), **high** (blocked play, severe privacy or
+synchronisation), **medium** (intermittent disruption/serious confusion) and
+**low** (cosmetic or optional). Record an exact reproduction, environment, phase,
+expected and observed outcome; don't mark it fixed until the regression test and
+original failing scenario both pass.
+
+For a release candidate, **all** automated and physical gates applicable to the
+build must pass, including verified Render persistent storage and client version
+compatibility. Otherwise label the build *internal playtest*, not production-ready.
