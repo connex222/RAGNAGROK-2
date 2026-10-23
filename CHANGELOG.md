@@ -7,6 +7,7 @@
 - Corrected the phone notification badge to use theme-appropriate foreground colour: dusk mode previously had only 2.52:1 contrast (white over light red), and now has 7.18:1. An automated two-theme contrast check is included.
 - Existing real-browser phone checks also passed at 320px, 375px and 430px. Reduced-motion and keyboard first-run checks passed; neither simulated Chromium nor these checks constitute real-device approval.
 - Independent seeded balance survey: 210 games (70 each Standard, Extended and Epic) reveal candidate issues in long-format ruined plots, emergency success and winning margins. These are small-sample robot results, not human preference measurements; no scoring, probabilities, god powers or resources were changed on that evidence alone.
+- Extended the existing November physical-test protocol with required phone-only/TV/rematch checks, a structured anonymous defect log, and explicit release-candidate gates. This is a preparation template, not a record of actual player testing.
 - Phase 10 fun/pacing, Phase 11 statistical fairness, Phase 12 audio hardware review, Phase 13 WCAG 2.2 AA, Phase 14 release candidate and Phase 15 human acceptance remain **open**. This build is not certified production-ready.
 
 ## v1.2.0-dev.10 — Phase 9 comprehensive multiplayer reliability tests (23 October 2026)
