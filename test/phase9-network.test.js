@@ -33,6 +33,8 @@ async function phone(url, label, clients, faults) {
       faults.push(`${label}: private engine data leaked`);
     if (c.seat !== null && view.me && view.me.seat !== c.seat)
       faults.push(`${label}: received another player's private view`);
+    if (view.emergency && view.emergency.result === null && Object.hasOwn(view.emergency, 'pledged'))
+      faults.push(`${label}: secret group pledge total leaked before resolution`);
     if (view.sympathy?.options && (c.seat === null || view.sympathy.chooser !== c.seat))
       faults.push(`${label}: received someone else's Sympathy choices`);
     if (c.seat !== 0 && view.meta?.playtest)
