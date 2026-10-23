@@ -276,7 +276,7 @@ let tipIndex = 0;
 let theatre = { key: null, start: 0, shown: 0 };
 let lastBoardKey = '';
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.12';
+const CLIENT_VERSION = '1.2.0-dev.13';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -516,7 +516,7 @@ function renderPanel() {
     panel.innerHTML = `<h2>📝 Plan your moves</h2><p class="sub">Secretly choose your actions on your phone, then lock in.</p>
       <div class="big">${ready} of ${view.players.length} ready</div>
       <div class="chips" style="margin-top:12px">${view.players.map(p => `<span class="chip${p.locked ? ' ok' : ''}">${esc(p.avatar)} ${esc(p.name)} ${p.locked ? '✔' : p.connected ? '…' : 'offline'}</span>`).join('')}</div>
-      ${view.emergency ? `<div class="pledge-status"><b>🚨 ${esc(view.emergency.name)}</b><p>Street pledges: ${view.emergency.pledged || 0} / ${view.emergency.target} (identities secret)</p><progress value="${Math.min(view.emergency.target, view.emergency.pledged || 0)}" max="${view.emergency.target}"></progress></div>` : ''}
+      ${view.emergency ? `<div class="pledge-status"><b>🚨 ${esc(view.emergency.name)}</b><p>Target: ${view.emergency.target} supplies. Pledges stay secret until the reveal.</p></div>` : ''}
 `;
   } else if (st === 'sympathy' && view.sympathy) {
     const v = view.sympathy;
