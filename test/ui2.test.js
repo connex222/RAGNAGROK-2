@@ -182,7 +182,7 @@ async function main() {
     }
     if (tvView && tvView.phase.step === 'plan') {
       const v = view(host);
-      if (v.me && v.phase.step === 'plan') assert.strictEqual(qa(host, '[data-act="editSlot"]').length, v.me.slots, 'one slot per action');
+      if (v.me && v.phase.step === 'plan') assert.strictEqual(qa(host, '.slots [data-act="editSlot"]').length, v.me.slots, 'one slot per action');
     }
     await sleep(4);
   }
