@@ -1,5 +1,13 @@
 # RAGNAGROK — Development Changelog
 
+## v1.2.0-dev.6 — TV reveal and reduced-motion acceptance (23 October 2026)
+
+- **Theatre board refresh:** A newly revealed Pray action can share the same authoritative `stateVersion` as a previous reveal. The board cache now includes phase, theatre cursor, redirect destination and the complete threatened-plot set, preventing stale board frames.
+- **Reduced-motion redirect:** The animated Pray SVG marker has a motion-free version that appears at the redirected destination when the user's OS requests reduced motion. CSS-only reduced-motion rules did not cover this SVG animation.
+- **Actual code execution in automated tests:** Added four dependency-free contracts that render the TV Sympathy panel from a public-only view, exercise board memoisation during action reveals and verify the reduced-motion SVG.
+- **Chromium TV coverage:** Seven authorised public-state TV screens (Omens, Plan, Sympathy Vote, Resolve, Disasters, Harvest, Show) at 1280×720, with no JavaScript errors or horizontal overflow; Resolve additionally verifies reduced motion. Snapshot tests mock networking, so they do not certify live Socket.io or real devices.
+- **No changes** to scores, god powers, disasters, timers, save schema or npm dependencies. Prior Phase 5 hotfixes for the public Sympathy Vote still require verified GitHub publication and a green pipeline before release.
+
 ## v1.2.0-dev.5 — Real CI repair and first-round accessibility (23 October 2026)
 
 - **GitHub real integration result:** Phase 4 CI successfully executed the real Socket.io V2 server integration suite, including reconnect, persistence and a full nine-round game. The subsequent phone UI test failed because it still assumed Long was the default; the browser robot was also outdated for Pray and Sympathy Vote. Updated these expectations and interactions so the genuine end-to-end suite can exercise the new game.

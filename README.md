@@ -2,7 +2,7 @@
 
 **A 2–8-player TV-and-phone party strategy game.** The Norse apocalypse has reached a respectable English suburb, and the Village Garden Show is carrying on regardless. Everyone plans secretly on their phone, watches disaster and mischief unfold on the shared TV, and competes for the Golden Flamingo.
 
-**Current build:** `1.2.0-dev.4` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
+**Current build:** `1.2.0-dev.6` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
 
 ## Start on Windows
 
@@ -58,3 +58,9 @@ Run the archived original edition with `npm run start:v1`. Its rules, pages and 
 The phone displays an optional first-round action suggestion based on legal targets and supplies; it opens a picker without submitting a move. Phase changes are screen-reader announced and planning dialogs support keyboard focus wrapping.
 
 Run `npm run test:phase5` for first-run contracts and `python test/phase5-browser.py` for optional real-Chromium keyboard/responsive checks with a mock Socket.io connection. GitHub Actions runs `npm ci`, the **real** Socket.io/browser integration (`npm test`), full protocol acceptance and game-mode tests; check the latest run before claiming success. See `docs/PHASE5-VALIDATION.md`.
+
+## Phase 6 — TV reveal reliability and live acceptance
+
+The reveal renderer now refreshes when the action being shown changes, even if the authoritative server-state version does not. The Pray redirect marker respects system reduced-motion preferences by appearing directly at the destination instead of sliding there. Tests include dependency-free TV contract checks and seven Chromium public-screen snapshots; **these do not substitute for physical TV/phone testing**.
+
+Run `npm run test:phase6` for the reveal/privacy contract suite and `python test/phase6-browser.py` for optional Chromium checks (Python Playwright and Chromium required). Follow the complete device acceptance protocol in [`docs/PHASE6-ACCEPTANCE.md`](docs/PHASE6-ACCEPTANCE.md). The game is not certified for release until the full GitHub Actions pipeline is green on the exact deployed commit.
