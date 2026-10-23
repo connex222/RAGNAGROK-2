@@ -20,3 +20,5 @@ jobs:
       - run: npm test
       - run: npm run test:protocol-acceptance
       - run: npm run test:modes
+      - run: npm run test:phase9:offline
+      - run: npm run test:phase9:network
