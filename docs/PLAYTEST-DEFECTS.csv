@@ -1,0 +1,1 @@
+session_id,defect_id,build,device_browser,mode,players,host_mode,round_phase,severity,reproduction_steps,expected,observed,reproducible,status,fix_commit
