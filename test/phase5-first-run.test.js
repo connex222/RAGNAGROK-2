@@ -79,4 +79,21 @@ check('TV and phone scripts parse after the Phase 5 UI changes', () => {
     scripts.forEach(s => new vm.Script(s, { filename: file }));
   }
 });
+check('TV Pray path works with the lean serialised client topology', () => {
+  const board = fs.readFileSync(path.join(root, 'public/board.js'), 'utf8');
+  const context = {};
+  vm.runInNewContext(board, context);
+  const topo = { vertices: [{ x: -1, y: -1 }, { x: 2, y: 2 }],
+    hexes: [{ id: 'h1', x: 0, y: 0 }, { id: 'h2', x: 1, y: 0 }] };
+  const plots = ['h1', 'h2'].map(id => ({ id, terrain: 'turf', owner: null,
+    health: 3, feature: null, condition: null }));
+  // Real broadcast client topology has no hexById index.
+  assert.equal(topo.hexById, undefined);
+  const svg = context.RagnaBoard.gardenSvg({ topo, plots,
+    prayEffect: { from: 'h1', to: 'h2' } });
+  assert.match(svg, /<animateMotion path="M 0\.000 0\.000 L 1\.000 0\.000"/);
+  const safe = context.RagnaBoard.gardenSvg({ topo, plots,
+    prayEffect: { from: 'h1', to: 'missing' } });
+  assert.doesNotMatch(safe, /animateMotion/);
+});
 console.log(`✔ All ${passed} Phase 5 contracts passed`);

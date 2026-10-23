@@ -284,10 +284,15 @@
     // The TV replays one Pray at a time: display a moving, high-contrast
     // marker along its public source-to-destination path.
     if (o.prayEffect && o.prayEffect.from && o.prayEffect.to && byId[o.prayEffect.from] && byId[o.prayEffect.to]) {
-      const a = topo.hexById[o.prayEffect.from], b = topo.hexById[o.prayEffect.to];
-      const path = `M ${f3(a.x)} ${f3(a.y)} L ${f3(b.x)} ${f3(b.y)}`;
-      marks += `<path d="${path}" fill="none" stroke="#fff3a5" stroke-width=".11" stroke-dasharray=".15 .09" pointer-events="none"/>`;
-      marks += `<circle r=".27" fill="#ffcf44" stroke="#20132b" stroke-width=".07" pointer-events="none"><animateMotion path="${path}" dur="1s" fill="freeze"/></circle>`;
+      // Client topologies deliberately contain only serialisable arrays, not
+      // the engine's private hexById index. Resolve positions from those arrays.
+      const a = topo.hexes.find(h => h.id === o.prayEffect.from);
+      const b = topo.hexes.find(h => h.id === o.prayEffect.to);
+      if (a && b) {
+        const path = `M ${f3(a.x)} ${f3(a.y)} L ${f3(b.x)} ${f3(b.y)}`;
+        marks += `<path d="${path}" fill="none" stroke="#fff3a5" stroke-width=".11" stroke-dasharray=".15 .09" pointer-events="none"/>`;
+        marks += `<circle r=".27" fill="#ffcf44" stroke="#20132b" stroke-width=".07" pointer-events="none"><animateMotion path="${path}" dur="1s" fill="freeze"/></circle>`;
+      }
     }
 
     if (o.ghost && o.ghost.at && byId[o.ghost.at]) {
