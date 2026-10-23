@@ -1,5 +1,14 @@
 # RAGNAGROK — Development Changelog
 
+## v1.2.0-dev.12 — Action-picker pacing fix and controlled balance audit (23 October 2026)
+
+- Corrected a first-run UX defect: the phone action picker counted future Car-Boot Sale supplies as spendable, even though Car-Boot pays out after all other actions. The picker now reports shortages, disables unaffordable actions and explains that Car-Boot supplies only help future rounds. Scoring and engine rules are unchanged.
+- Added a targeted dynamic regression test of the real action picker and projection function. The offline test suite and 320/375/430px Chromium first-run checks passed.
+- Added test-only strategy overrides to the seeded simulator. Normal bot selection and server-authoritative game behaviour are unchanged.
+- Completed 420 additional seeded robot matches (140 each Standard, Extended and Epic) rotating four non-random strategies across seats; 800 game-level bootstrap resamples per mode provide approximate 95% uncertainty ranges. Results and reproducible script are stored in reports and test folders.
+- Emergency success reached 93.81%, 95.95%, 95.71% for Standard, Extended and Epic respectively — far above the 55–70% target. Median winning margins were 13.34%, 13.55% and 12.82%. Previous mixed-robot results included a deliberately random robot that substantially affected this benchmark. God-level estimates remain uncertain; bot play is not human evidence.
+- Exploratory difficulty increases in small paired-seed samples reduced emergency success but could increase ruined plots, particularly in longer games. No speculative gameplay-number changes were made. Release, real-device accessibility and November human-playtest gates remain open; Render was user-suspended at last inspection.
+
 ## v1.2.0-dev.11 — Safe-area TV presentation and independent reviews (23 October 2026)
 
 - Fixed a genuine shared-television overscan issue: the 1920×1080 show stage and clock previously reached the physical edges. Fit now preserves five per cent on each side at proportional 720p, 1080p and 4K resolutions; the surrounding mat uses the Norse purple backdrop rather than black.
