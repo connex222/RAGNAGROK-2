@@ -28,14 +28,15 @@ function startServer({
   quiet = false,
   rate = undefined,
   rules = process.env.RAGNAGROK_RULES || 'v2',
-  gameConfig = {}
+  gameConfig = {},
+  gameSeed = undefined // Test harness only; never read from public requests or environment.
 } = {}) {
   const logger = quiet ? { log() {}, error() {} } : console;
   const version = require('../package.json').version;
   const app = express();
   app.disable('x-powered-by');
 
-  const rooms = new RoomManager({ saveDir, idleMinutes, maxRooms, logger, rules, gameConfig });
+  const rooms = new RoomManager({ saveDir, idleMinutes, maxRooms, logger, rules, gameConfig, gameSeed });
   const restored = rooms.loadAll();
 
   app.get('/healthz', (req, res) => {

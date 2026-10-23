@@ -53,8 +53,13 @@ function validSave(data, filename, rules, schemaVersion) {
 }
 
 class RoomManager {
-  constructor({ saveDir = null, idleMinutes = 30, finishedMinutes = 60, maxRooms = 100, logger = console, rules = 'v1', gameConfig = {} } = {}) {
+  constructor({ saveDir = null, idleMinutes = 30, finishedMinutes = 60, maxRooms = 100, logger = console, rules = 'v1', gameConfig = {}, gameSeed = undefined } = {}) {
     this.gameConfig = gameConfig;
+    // Optional deterministic seed is supplied only by automated test harnesses.
+    // A normal server NEVER sets it, so real games keep secure random seeds.
+    if (gameSeed !== undefined && (!Number.isInteger(gameSeed) || gameSeed < 0 || gameSeed > 0xffffffff))
+      throw new Error('Invalid deterministic test seed');
+    this.gameSeed = gameSeed;
     this.maxRooms = Math.max(1, Math.min(1000, Number.isInteger(maxRooms) ? maxRooms : 100));
     if (!ENGINES[rules]) throw new Error(`Unknown rules version: ${rules}`);
     this.rules = rules;
@@ -87,7 +92,8 @@ class RoomManager {
     const room = {
       code,
       hostKey: crypto.randomBytes(12).toString('hex'),
-      state: this.E.createGame({ roomCode: code, now, config: { ...this.gameConfig } }),
+      state: this.E.createGame({ roomCode: code, now, config: { ...this.gameConfig },
+        ...(this.gameSeed === undefined ? {} : { seed: this.gameSeed }) }),
       paused: null,
       lastActivity: now,
       sockets: new Set(),

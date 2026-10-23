@@ -1,5 +1,14 @@
 # RAGNAGROK — Development Changelog
 
+## v1.2.0-dev.7 — Reproducible multiplayer acceptance (23 October 2026)
+
+- GitHub Phase 6 source verified byte-for-byte against the complete 225-file ZIP.
+- GitHub Actions completed a fully green run on 23 October after introducing diagnostic logging for a previously intermittent round-7 browser stall; no engine regression was established by that earlier failure.
+- Added a **test-only fixed game seed** passed explicitly from the real Socket.io browser acceptance harness through the server and room manager. Production servers retain cryptographic randomness, and neither HTTP nor socket commands accept the test seed.
+- Added reproducibility tests, enhanced failure diagnostics and CI version synchronisation. Existing rules, scoring, player actions and graphics are unchanged.
+- Human playtesting, physical TV/phone acceptance and repeat CI reliability remain outstanding; one green CI run is not a guarantee against future flaky failures.
+
+
 ## v1.2.0-dev.6 — TV reveal and reduced-motion acceptance (23 October 2026)
 
 - **Theatre board refresh:** A newly revealed Pray action can share the same authoritative `stateVersion` as a previous reveal. The board cache now includes phase, theatre cursor, redirect destination and the complete threatened-plot set, preventing stale board frames.

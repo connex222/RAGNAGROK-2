@@ -10,6 +10,8 @@ const { startServer } = require('../server/index');
 const { next } = require('../src/engine/rng');
 
 const FAST_RATE = { capacity: 100000, refillPerSec: 100000 };
+// Fixed V2 board/disaster seed so a failing browser scenario can be replayed.
+const UI_GAME_SEED = 215063;
 const FAST_GAME = { omensSec: 0.3, resolveMinSec: 0.3, resolvePerEventSec: 0.02, resolveMaxSec: 1, disastersSec: 0.3, harvestSec: 0.2, showSec: 0.4, draftSec: 20 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const rs = { s: 99 };
@@ -121,9 +123,9 @@ function botStep(p) {
 }
 
 async function main() {
-  const srv = await startServer({ port: 0, quiet: true, tickMs: 50, rate: FAST_RATE, rules: 'v2', gameConfig: FAST_GAME });
+  const srv = await startServer({ port: 0, quiet: true, tickMs: 50, rate: FAST_RATE, rules: 'v2', gameConfig: FAST_GAME, gameSeed: UI_GAME_SEED });
   const base = `http://localhost:${srv.port}`;
-  console.log('V2 phone UI test');
+  console.log(`V2 phone UI test (game seed ${UI_GAME_SEED}, action seed 99)`);
 
   // The real V2 TV page in its own headless browser.
   const tvp = await openPhone(`${base}/`, 'tv');
