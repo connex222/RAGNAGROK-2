@@ -52,3 +52,9 @@ Run the archived original edition with `npm run start:v1`. Its rules, pages and 
 - `CHANGELOG.md`: full development and historical release notes.
 
 **Upgrade warning:** V2 schema 4 is not compatible with unconverted schema-3 saved matches. Back up old saves before upgrading. Headless Chromium layout checks use simulated authorised snapshots. Full live Socket.io tests and physical-device/human playtests are still required before release.
+
+## First-time experience and Phase 5 tests
+
+The phone displays an optional first-round action suggestion based on legal targets and supplies; it opens a picker without submitting a move. Phase changes are screen-reader announced and planning dialogs support keyboard focus wrapping.
+
+Run `npm run test:phase5` for first-run contracts and `python test/phase5-browser.py` for optional real-Chromium keyboard/responsive checks with a mock Socket.io connection. GitHub Actions runs `npm ci`, the **real** Socket.io/browser integration (`npm test`), full protocol acceptance and game-mode tests; check the latest run before claiming success. See `docs/PHASE5-VALIDATION.md`.

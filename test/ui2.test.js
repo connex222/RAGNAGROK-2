@@ -73,6 +73,11 @@ function botStep(p) {
       if (!s.target) return tapAny(p, '#sheet [data-spot]');
       return tapFirst(p, '[data-act="targetOk"]');
     }
+    if (s.kind === 'pray' && s.targetDone && !s.to) {
+      const destination = qa(p, '#sheet [data-spot]').find(enabled);
+      if (destination) return tap(p, destination);
+      return tapFirst(p, '[data-act="slotBack"]');
+    }
     if (s.kind === 'meddle' && !s.mode) return tapAny(p, '[data-act="mode"]');
     if (s.kind === 'cultivate' && !s.feature) {
       const ok = qa(p, '[data-act="feature"]').filter(b => !b.querySelector('.why'));
@@ -86,6 +91,10 @@ function botStep(p) {
 
   const stage = v.phase.stage;
   if (stage === 'draft') return tapAny(p, '[data-act="pickGod"]');
+  if (v.phase.step === 'sympathy' && v.sympathy && v.sympathy.chooser === v.me.seat) {
+    seen.add('sympathy');
+    return tapFirst(p, '[data-act="sympathyPick"]');
+  }
   if (stage !== 'playing' || v.phase.step !== 'plan') return false;
   if (v.players[v.me.seat].locked) return false;
   if (q(p, '[data-act="compostGo"]')) {
@@ -150,10 +159,12 @@ async function main() {
   const host = phones[0];
   await waitFor(() => qa(host, '[data-act="length"]').length === 3, 'game length options');
   assert.strictEqual(qa(phones[1], '[data-act="length"]').length, 0, 'only the host sees length options');
-  assert.strictEqual(view(host).config.length, 'long', 'Long is the default');
+  assert.strictEqual(view(host).config.length, 'standard', 'Standard is the party-game default');
+  tap(host, q(host, '[data-act="length"][data-len="long"]'));
+  await waitFor(() => phones.every(p => view(p).config.length === 'long'), 'Extended chosen on every phone');
   tap(host, q(host, '[data-act="length"][data-len="standard"]'));
   await waitFor(() => phones.every(p => view(p).config.length === 'standard'), 'Standard chosen on every phone');
-  console.log('  ✔ host picked the game length; Long was the default');
+  console.log('  ✔ Standard is default; host can select Extended and switch back');
 
   tap(host, q(host, '[data-act="start"]'));
   await waitFor(() => phones.every(p => view(p).phase.stage === 'draft'), 'god draft');

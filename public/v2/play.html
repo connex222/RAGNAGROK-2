@@ -92,6 +92,9 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 .card h3 { margin:0 0 6px; font-size:18px; display:flex; align-items:center; gap:8px; }
 .card.prompt { border-color:var(--primary); }
 .card.tip { border-style:dashed; border-color:var(--warn); }
+.card.tip .coach-action { margin-top:10px; }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; scroll-behavior:auto !important; } }
 .card.danger { border-color:var(--bad); }
 .muted { color:var(--muted); }
 .small { font-size:14px; }
@@ -227,6 +230,7 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 <div id="app" class="wrap" hidden>
   <header id="top"></header>
   <div id="turnLine"><span id="turnText"></span><span id="timer"></span></div>
+  <div id="phaseAnnouncement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
   <div id="hand"></div>
   <main id="content"></main>
   <div id="actionBar"></div>
@@ -310,7 +314,7 @@ const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(P
 const params = new URLSearchParams(location.search);
 const ui = { tab: 'plan', sheet: null, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null };
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.4';
+const CLIENT_VERSION = '1.2.0-dev.5';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -482,12 +486,20 @@ socket.on('state', v => {
   const before = view ? `${view.round}:${view.phase.step}` : '';
   view = v;
   const now = `${v.round}:${v.phase.step}`;
-  if (before !== now) onStepChange();
+  if (before !== now) { onStepChange(); announcePhase(v); }
   syncSheets();
   maybeShowRules();
   render();
 });
 socket.on('events', list => { list.forEach(handleEvent); render(); });
+
+function announcePhase(v) {
+  // Announce genuine phase transitions, not the countdown every second.
+  const part = v.phase.stage === 'playing'
+    ? `Round ${v.round}: ${v.phase.step === 'plan' ? 'Choose your actions, then lock in' : v.phase.step === 'sympathy' ? 'Sympathy Vote' : v.phase.step}`
+    : v.phase.stage === 'draft' ? 'Choose a god' : v.phase.stage === 'gameOver' ? 'The final results are ready' : 'Waiting in the lobby';
+  $('#phaseAnnouncement').textContent = part;
+}
 
 function onStepChange() {
   if (step() === 'plan') { ui.tab = 'plan'; }
@@ -725,16 +737,30 @@ function renderOmens(compact) {
     ${show ? `<div class="card"><h3>🏆 Show after round ${show.after}</h3><ul class="list">${cats}</ul></div>` : ''}`;
 }
 
+// A first-round recommendation is a navigational shortcut, never an automatic
+// or server-side choice. Only offer actions the player's current public legal
+// options and affordable supplies support. It doesn't inspect rival secrets.
+function firstMoveCoach(slots) {
+  if (view.round !== 1 || slots.some(Boolean) || !C || !me()) return null;
+  const hand = projection(slots).hand;
+  const can = kind => legalTargets(kind, 0, slots).length > 0;
+  const affordableFeature = Object.values(C.features).some(f => hasAll(hand, f.cost));
+  if (can('cultivate') && affordableFeature) return { kind: 'cultivate', reason: 'Build a feature to impress the judges.' };
+  if (can('claim') && hasAll(hand, costOf({ kind: 'claim' }))) return { kind: 'claim', reason: 'Expand onto a neighbouring empty plot.' };
+  if (can('tend') && hasAll(hand, costOf({ kind: 'tend' }))) return { kind: 'tend', reason: 'Restore a damaged plot before the apocalypse takes it.' };
+  return { kind: 'carBoot', reason: 'Gather supplies for a stronger next round.' };
+}
 function renderTips(slots) {
   if (!prefs.tips || !planning() || locked() || view.round > 3) return '';
   const threatened = myPlots().filter(p => threatsNow().has(p.id));
   const sheltered = slots.filter(s => s && s.kind === 'shelter').length;
+  const suggestion = firstMoveCoach(slots);
   let tip = '';
-  if (!slots.some(Boolean)) tip = 'Tap an action below to start planning. Nothing happens until everyone locks in.';
+  if (suggestion) tip = `Welcome to your first plan. <b>${esc(suggestion.reason)}</b> You can always choose a different action. Nothing resolves until plans are locked.`;
   else if (threatened.length && !sheltered) tip = `${threatened.length} of your plots will be hit this round (red dashed outline on the Garden tab). <b>Shelter</b> protects one for 1 ${sup('turf')}.`;
   else if (slots.every(Boolean)) tip = 'All set? Tap <b>Lock in</b>. You can still change your mind until the timer ends.';
-  else tip = 'Check the show categories: building matching features scores big at the next show.';
-  return `<div class="card tip small">💡 ${tip} <button class="btn small" data-act="hideTips" style="margin-top:8px">Hide tips</button></div>`;
+  else tip = 'Check the announced Show categories before choosing your next move.';
+  return `<div class="card tip small">💡 ${tip}${suggestion ? `<button class="btn primary coach-action" data-act="coachPlan" data-kind="${suggestion.kind}">Try ${esc(ACT[suggestion.kind].name)} →</button>` : ''}<button class="btn small" data-act="hideTips" style="margin-top:8px">Hide tips</button></div>`;
 }
 
 /* Current Show race uses the same server-side ranking as the judges.
@@ -1111,6 +1137,16 @@ async function onAct(el) {
     case 'closeRoom': ui.sheet = null; await host('close'); return;
 
     /* planning */
+    case 'coachPlan': {
+      // Open a guided action picker. Never spend supplies or submit a plan here.
+      const slots = draftSlots();
+      const idx = slots.findIndex(x => !x);
+      if (idx < 0 || !planning() || locked() || !ACT[d.kind]) return;
+      ui.sheet = { type: 'slot', idx, kind: d.kind, target: null, targetDone: false,
+        mode: null, feature: null, supplies: [], index: null, to: null };
+      render();
+      return;
+    }
     case 'editSlot': {
       const slots = draftSlots();
       const cur = slots[Number(d.i)];
@@ -1193,7 +1229,19 @@ document.addEventListener('click', e => {
 }, true);
 $('#sheetWrap').addEventListener('click', e => { if (e.target === $('#sheetWrap')) { ui.sheet = null; render(); } });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && ui.sheet) { e.preventDefault(); ui.sheet = null; render(); }
+  if (!ui.sheet || $('#sheetWrap').hidden) return;
+  if (e.key === 'Escape') { e.preventDefault(); ui.sheet = null; render(); return; }
+  if (e.key !== 'Tab') return;
+  // Keep keyboard/switch-control focus inside the active dialog.
+  const candidates = [...$('#sheet').querySelectorAll('button:not(:disabled), input:not(:disabled), a[href]')]
+    .filter(el => el.getClientRects().length || !el.hidden);
+  if (!candidates.length) return;
+  const first = candidates[0], last = candidates[candidates.length - 1];
+  if (e.shiftKey && (document.activeElement === first || !$('#sheet').contains(document.activeElement))) {
+    e.preventDefault(); last.focus();
+  } else if (!e.shiftKey && (document.activeElement === last || !$('#sheet').contains(document.activeElement))) {
+    e.preventDefault(); first.focus();
+  }
 });
 
 /* phone niceties */

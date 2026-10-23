@@ -35,7 +35,7 @@ assert.match(page, /<button class="slot-clear" data-act="clearSlot"/);
 assert.doesNotMatch(page, /role="button" data-act="clearSlot"/, 'clear controls must be true buttons, not nested roles');
 assert.match(page, /class="plan-brief"/);
 assert.match(page, /sheet\.scrollTop = scroll/);
-assert.match(page, /e\.key === 'Escape' && ui\.sheet/);
+assert.match(page, /if \(e\.key === 'Escape'\)/);
 console.log('  ✔ planning controls are independent and sheets keep scroll/focus support');
 
 const start = page.indexOf('let rejoinPending = false;');

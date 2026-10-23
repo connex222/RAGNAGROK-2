@@ -4,11 +4,11 @@
 
 ## Test matrix
 
-Run at least two sessions each with 2, 4, 6 and 8 people, including new and returning players. Start with Standard, then Long and Epic after the first-session UX issues are resolved. Prefer testing on a genuine TV from 2–3 metres and at least one 320px-class phone.
+Run at least two sessions each with 2, 4, 6 and 8 people, including new and returning players. Start with Standard, then Extended and Epic after the first-session UX issues are resolved. Prefer testing on a genuine TV from 2–3 metres and at least one 320px-class phone.
 
 ## Facilitator observation sheet
 
-Record: date, build version, player count, experience level, phone/browser model, session length, and whether any devices disconnected. During each round note: time to lock in, timing confusion, unaffordable actions, accidental taps, requests for rules explanation, stalled turns, trading attempts and what surprised the players about disasters.
+Record: date, build version, player count, experience level, phone/browser model, session length, and whether any devices disconnected. During each round note: time to lock in, timing confusion, unaffordable actions, accidental taps, requests for rules explanation, stalled turns, confusing or abandoned actions and what surprised the players about disasters.
 
 After the match, ask each player to score 1–5:
 
@@ -40,3 +40,8 @@ After the game, ask each player **without suggesting an answer**:
 Record the same metrics in both versions. Useful exploratory targets include a median 4/5 or better for decision clarity, 4/5 enjoyment and at least 60% immediate rematch willingness, but these are **hypotheses**, not a definition of proven fun. Also watch whether the optional Show race panel lengthens average planning time; if it does, simplify or move it further down. Record observed rematches separately from stated intentions.
 
 Use the anonymised CSV templates in this folder. Do not collect player names, email addresses or phone identifiers. The game does not automatically transmit survey responses.
+
+
+## Phase 5: first-round guide and accessibility
+
+Ask new players to choose a first action without coaching. Note whether they discover the suggestion, whether they understand it is optional, and whether they can choose a different action. Do not rate its usefulness for them. At least one tester should try keyboard-only operation at 320px width, large browser text, daylight/dusk themes, and reduced motion. Record whether a screen reader announces actual phase changes without announcing every second of the countdown. See `PHASE5-VALIDATION.md`.

@@ -1,5 +1,13 @@
 # RAGNAGROK — Development Changelog
 
+## v1.2.0-dev.5 — CI repair and first-round accessibility (23 October 2026)
+
+- Updated the browser UI acceptance test for Standard default, Extended optional length, Pray and Sympathy Vote.
+- Added optional first-round action guidance that uses actual affordable, legal moves but never commits a move automatically.
+- Added screen-reader phase announcements, modal focus containment, Escape controls and reduced-motion support.
+- Added eight regression checks and three headless Chromium viewport checks at 320, 375 and 430 pixels.
+- No changes to scoring or game probabilities; further physical device and human playtesting remain necessary.
+
 ## v1.2.0-dev.4 — Multiplayer protocol acceptance and private decisions (23 October 2026)
 
 - **Full-match protocol tests:** four tests now run actual room-manager, handler and V2-engine flows with 2, 4, 6 and 8 simulated phone controllers. Every scenario completes all nine Standard rounds, chooses gods, uses Pray and the Sympathy Vote, exercises a disconnected seat's saved plan and duplicate command acknowledgement, reaches final scoring and rematches. Test sockets are local fakes; this is **not** an actual Socket.io transport test.
