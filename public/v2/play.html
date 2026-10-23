@@ -151,7 +151,8 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 .pick button[aria-pressed="true"] { border-color:var(--primary); }
 .pick button:disabled, .stepper button:disabled { opacity:.3; }
 .opt { display:grid; grid-template-columns:44px 1fr auto; gap:2px 12px; align-items:center; width:100%; text-align:left; padding:12px; border-radius:var(--radius); background:var(--surface); border:2px solid var(--line); min-height:64px; }
-.opt + .opt { margin-top:8px; }
+.option + .option { margin-top:8px; }
+.option .why { font-size:13px; color:var(--bad); background:var(--surface); border:1px solid var(--line); border-top:0; border-radius:0 0 10px 10px; padding:7px 12px; margin:-5px 0 0; }
 .opt .ic { font-size:26px; grid-row:span 2; text-align:center; }
 .opt .ic .gi { width:36px; height:36px; }
 .opt .why { font-size:13px; color:var(--bad); grid-column:2/-1; }
@@ -318,7 +319,7 @@ const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(P
 const params = new URLSearchParams(location.search);
 const ui = { tab: 'plan', sheet: null, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null, pulseRating: null, pulseAgain: null };
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.11';
+const CLIENT_VERSION = '1.2.0-dev.12';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -1031,20 +1032,27 @@ const closeBtn = '<button class="iconbtn" data-act="closeSheet" aria-label="Clos
 function sheetSlot(s) {
   const slots = draftSlots();
   const others = slots.map((x, i) => (i === s.idx ? null : x));
-  const proj = projection(others);
+  // Car-Boot pays out AFTER every other action. Its future gain must never
+  // make an earlier Pray, Meddle, Claim, etc. look affordable in this picker.
+  const proj = projection(others, undefined, { carBoot: false });
   if (!s.kind) {
     const opts = ORDER.map(kind => {
       const a = ACT[kind];
       const targets = kind === 'carBoot' ? [1] : legalTargets(kind, s.idx, slots);
       const c = kind === 'cultivate' ? null : costOf({ kind, target: targets[0] });
+      const shortage = c && !hasAll(proj.hand, c);
+      const noFeature = kind === 'cultivate' && !Object.values(C.features).some(f => hasAll(proj.hand, f.cost));
+      const blocked = !targets.length || shortage || noFeature;
       let why = '';
       if (!targets.length) why = `No ${a.target} available`;
-      else if (c && !hasAll(proj.hand, c)) why = SUP.filter(r => c[r] > (proj.hand[r] || 0)).map(r => `Need ${c[r] - (proj.hand[r] || 0)} more ${SUP_NAME[r]}`).join('; ');
+      else if (noFeature) why = 'No affordable garden features this round';
+      else if (shortage) why = SUP.filter(r => c[r] > (proj.hand[r] || 0)).map(r => `Need ${c[r] - (proj.hand[r] || 0)} more ${SUP_NAME[r]}`).join('; ');
+      if (shortage || noFeature) why += '. Car-Boot supplies only arrive after every other action.';
       const costTxt = kind === 'cultivate' ? '<span class="small muted">Cost depends on the feature</span>' : kind === 'carBoot' ? '<span class="chip">Free</span>' : chips(c);
-      return `<button class="opt" data-act="pickKind" data-kind="${kind}"${!targets.length ? ' disabled' : ''}><span class="ic">${a.icon}</span>
-        <span><b>${esc(a.name)}</b><div class="small muted">${esc(a.what)}</div></span><span></span><span class="chips cost">${costTxt}</span>${why ? `<span class="why">${esc(why)}</span>` : ''}</button>`;
+      return `<div class="option"><button class="opt" data-act="pickKind" data-kind="${kind}"${blocked ? ' disabled' : ''}><span class="ic">${a.icon}</span>
+        <span><b>${esc(a.name)}</b><div class="small muted">${esc(a.what)}</div></span><span></span><span class="chips cost">${costTxt}</span></button>${why ? `<p class="why" role="note">${esc(why)}</p>` : ''}</div>`;
     }).join('');
-    return `<div class="head"><div><h2>Action ${s.idx + 1}</h2><p class="muted small">What do you want to do? Actions resolve in this order.</p></div>${closeBtn}</div>${opts}`;
+    return `<div class="head"><div><h2>Action ${s.idx + 1}</h2><p class="muted small">Actions resolve in the order below. Unaffordable actions are explained; use Car-Boot for next round's supplies.</p></div>${closeBtn}</div>${opts}`;
   }
   const a = ACT[s.kind];
   const needsTarget = s.kind !== 'carBoot';
