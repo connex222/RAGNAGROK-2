@@ -352,7 +352,9 @@ function beginSympathy(ctx) {
   const options = shuffle(randFn(s), Object.keys(C.categories)).slice(0, C.sympathyVote.choices);
   s.sympathy = { chooser, nextIndex, options };
   setStep(ctx, 'sympathy', C.sympathyVote.durationSec);
-  emit(ctx, 'sympathyStart', { chooser, options });
+  // The three choices are private to the chooser's authenticated seat view.
+  // Never broadcast them in public events, even while the vote is pending.
+  emit(ctx, 'sympathyStart', { chooser });
   log(ctx, 'sympathy', `${nameOf(s, chooser)} has been given the Sympathy Vote.`);
 }
 function finishSympathy(ctx, category) {

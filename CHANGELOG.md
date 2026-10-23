@@ -1,12 +1,12 @@
 # RAGNAGROK — Development Changelog
 
-## v1.2.0-dev.5 — CI repair and first-round accessibility (23 October 2026)
+## v1.2.0-dev.5 — Real CI repair and first-round accessibility (23 October 2026)
 
-- Updated the browser UI acceptance test for Standard default, Extended optional length, Pray and Sympathy Vote.
-- Added optional first-round action guidance that uses actual affordable, legal moves but never commits a move automatically.
-- Added screen-reader phase announcements, modal focus containment, Escape controls and reduced-motion support.
-- Added eight regression checks and three headless Chromium viewport checks at 320, 375 and 430 pixels.
-- No changes to scoring or game probabilities; further physical device and human playtesting remain necessary.
+- **GitHub real integration result:** Phase 4 CI successfully executed the real Socket.io V2 server integration suite, including reconnect, persistence and a full nine-round game. The subsequent phone UI test failed because it still assumed Long was the default; the browser robot was also outdated for Pray and Sympathy Vote. Updated these expectations and interactions so the genuine end-to-end suite can exercise the new game.
+- **First-time guidance:** Added an optional first-round action recommendation based solely on the player’s visible legal targets and current affordable hand. The shortcut opens the normal action picker and never submits an action automatically. Hide Tips still controls its visibility.
+- **Accessibility:** Polite screen-reader phase announcements, Tab/Shift+Tab modal focus containment, Escape support and reduced-motion handling; added eight offline checks and three headless Chromium tests at 320/375/430px.
+- **Quality gates:** All offline, game-mode and simulated-controller full-match suites pass; true end-to-end integration on this build needs a fresh GitHub Actions run. Physical phones/TV, actual disconnect conditions and human enjoyment are not yet verified. See `docs/PHASE5-VALIDATION.md`. No scoring or networking rules changed.
+
 
 ## v1.2.0-dev.4 — Multiplayer protocol acceptance and private decisions (23 October 2026)
 

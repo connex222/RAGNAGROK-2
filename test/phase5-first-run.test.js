@@ -96,4 +96,11 @@ check('TV Pray path works with the lean serialised client topology', () => {
     prayEffect: { from: 'h1', to: 'missing' } });
   assert.doesNotMatch(safe, /animateMotion/);
 });
+check('TV Sympathy panel respects the private choice boundary', () => {
+  const tv = fs.readFileSync(path.join(root, 'public/v2/index.html'), 'utf8');
+  assert.match(tv, /Awaiting the judges' decision/);
+  assert.doesNotMatch(tv, /v\.options\.map/);
+  const engine = fs.readFileSync(path.join(root, 'src/engine/garden.js'), 'utf8');
+  assert.match(engine, /emit\(ctx, 'sympathyStart', \{ chooser \}\)/);
+});
 console.log(`✔ All ${passed} Phase 5 contracts passed`);

@@ -126,6 +126,15 @@ async function main() {
           'TV must not see Sympathy Vote options before choice');
         assert.deepEqual(phones[chooser].latest('state').sympathy.options,
           room.state.sympathy.options, 'chooser alone can see the three options');
+        // Events are publicly broadcast unless marked private. They must not
+        // accidentally disclose the options stripped from public snapshots.
+        for (const screen of [hostScreen, ...phones]) {
+          const announcements = screen.outbox.filter(m => m.name === 'events')
+            .flatMap(m => m.data).filter(e => e.type === 'sympathyStart');
+          assert.ok(announcements.length >= 1, 'TV and phones receive the public Sympathy start cue');
+          assert.ok(announcements.every(e => e.options === undefined),
+            'the public event stream must not leak Sympathy Vote options');
+        }
         for (let opponent = 0; opponent < seatCount; opponent++) {
           if (opponent !== chooser)
             assert.equal(phones[opponent].latest('state').sympathy.options, undefined,
