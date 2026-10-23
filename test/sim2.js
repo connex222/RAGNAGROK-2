@@ -250,13 +250,15 @@ function check(state) {
 
 /* ---------- one game ---------- */
 
-function playGame(gameNo, n, length = LENGTH) {
+function playGame(gameNo, n, length = LENGTH, options = {}) {
   const rand = rng(gameNo * 2654435761);
   let state = E.createGame({ seed: gameNo + 1, now: 1_700_000_000_000 });
   const strats = [];
   for (let i = 0; i < n; i++) {
     E.addPlayer(state, { name: 'Bot ' + i }, state.updatedAt);
-    strats.push(pick(rand, STRATS));
+    const chosen = options.strategies ? options.strategies[i] : pick(rand, STRATS);
+    assert.ok(STRATS.includes(chosen), `invalid test robot strategy at seat ${i}`);
+    strats.push(chosen);
   }
   const ok = r => { if (!r.ok) throw new Error(r.error); return r; };
   ok(E.apply(state, 0, { type: 'setOption', length }, state.updatedAt));
