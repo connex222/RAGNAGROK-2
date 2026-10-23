@@ -679,16 +679,21 @@ function onEvent(e) {
 /* ================= rules overlay ================= */
 let rulesPage = 0;
 let rulesReturnFocus = null;
+function shieldRulesBackground(active) {
+  for (const id of ['#lobby', '#draft', '#game', '#over', '#corner']) $(id).inert = active;
+}
 function openRules() {
   if (!$('#rules').hidden) return;
   rulesReturnFocus = document.activeElement;
   rulesPage = 0;
   $('#rules').hidden = false;
+  shieldRulesBackground(true);
   drawRules();
 }
 function closeRules() {
   if ($('#rules').hidden) return;
   $('#rules').hidden = true;
+  shieldRulesBackground(false);
   const target = rulesReturnFocus?.isConnected ? rulesReturnFocus : $('#rulesBtn');
   rulesReturnFocus = null;
   if (target?.focus) target.focus({ preventScroll: true });
