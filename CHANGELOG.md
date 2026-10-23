@@ -1,5 +1,13 @@
 # RAGNAGROK — Development Changelog
 
+## v1.2.0-dev.10 — Phase 9 comprehensive multiplayer reliability tests (23 October 2026)
+
+- Reconciled the new master brief with the existing development history: the earlier dev.9 "Phase 9" concerned rematch evidence, **not** the comprehensive transport-acceptance mandate. Those features are preserved.
+- Added `test/phase9-network.test.js`: 21 full matches with real Socket.io transport and actual authoritative server, covering seven controller counts (2–8) in Standard (9), Extended (12) and Epic (24); deterministic test seeds and accelerated server timers keep the test reproducible.
+- The live-network matrix exercises QR generation/recovery, host and spectator permissions, invalid/oversized messages, private controller projections, simultaneous secret planning, unauthorised Sympathy choices, browser-refresh-style reconnection, safe request-ID retries, pause/resume, completion, genuine rematch starts and room closure.
+- Extended the existing protocol acceptance harness to support odd player counts (3, 5 and 7), with a seven-count offline command; CI now runs both the offline matrix and real-network matrix following all existing tests.
+- No scoring, god abilities, asset mappings, game saving schema or dependencies changed. **Local Socket.io tests were blocked by missing npm packages in this environment; GitHub Actions is required to certify the new live-network matrix.** The test simulates WebSocket reconnects, not real Wi-Fi-to-mobile-data handovers. Real phones, TV overscan and human feedback remain open November playtest gates.
+
 ## v1.2.0-dev.9 — Games-night rematch evidence (23 October 2026)
 
 - Server now distinguishes an offered rematch lobby from a **rematch actually started** by an accepted host action. Completed matches are counted once despite duplicate final-state snapshots.
