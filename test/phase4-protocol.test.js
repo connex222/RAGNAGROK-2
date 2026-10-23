@@ -37,7 +37,7 @@ class FakeSocket {
 async function main() {
   const originalNow = Date.now;
   const seatCount = Number(process.argv[2] || process.env.RAGNA_PLAYERS || 4);
-  assert.ok([2,4,6,8].includes(seatCount));
+  assert.ok(Number.isInteger(seatCount) && seatCount >= 2 && seatCount <= 8);
   let now = 1_730_000_000_000;
   Date.now = () => now;
   try {
