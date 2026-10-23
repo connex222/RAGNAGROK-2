@@ -178,7 +178,22 @@ async function main() {
     if (tvView && tvView.stateVersion !== lastVersion) { lastVersion = tvView.stateVersion; lastProgress = Date.now(); }
     if (Date.now() - lastProgress > 10000) {
       const v = view(host);
-      throw new Error(`No progress for 10 s at ${v.phase.stage}/${v.phase.step}, round ${v.round}`);
+      const diagnostics = phones.map(p => {
+        const state = view(p);
+        const sheet = p.win.__rg.ui.sheet;
+        const summary = {
+          phone: p.label, step: state?.phase.step,
+          round: state?.round, locked: state?.players[state?.me?.seat]?.locked,
+          slots: (state?.me?.plan || []).map(a => a ? a.kind : null),
+          owed: state?.me?.compostOwed,
+          pane: p.win.__rg.ui.tab,
+          sheet: sheet && { kind: sheet.kind, target: sheet.target, targetDone: sheet.targetDone, to: sheet.to },
+          available: qa(p, '[data-act]').filter(enabled).slice(0, 12).map(e => e.dataset.act),
+          short: !!q(p, '#lockShort'), errors: errors.slice(-2)
+        };
+        return summary;
+      });
+      throw new Error(`No progress for 10 s at ${v.phase.stage}/${v.phase.step}, round ${v.round}: ${JSON.stringify(diagnostics)}`);
     }
     if (tvView && tvView.phase.step === 'plan') {
       const v = view(host);
