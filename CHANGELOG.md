@@ -1,5 +1,13 @@
 # RAGNAGROK — Development Changelog
 
+## v1.2.0-dev.14 — Keyboard navigation and screen-reader dialog fixes (23 October 2026)
+
+- **Phone:** action/rules/menu sheets now receive an accessible name from the visible heading; closing via Escape, the close button, or the backdrop restores keyboard and switch-control focus to the original Menu, Rules or action-slot button even after the controller UI was re-rendered. The underlying app is inert while the sheet is open.
+- **Phone joining:** the twelve avatar options are now a correctly named screen-reader group rather than an unassociated visual label.
+- **Shared TV:** the rules overlay is a named modal dialog, Tab/Shift+Tab cannot escape it, its focus remains visible and on changing slide pages, and closing returns focus to the opening control. Background controls are inert while rules are visible. Added a large high-contrast TV keyboard focus outline.
+- Added dependency-free regression contracts to `npm run test:offline` and an optional real-Chromium keyboard test, run at 320/375/430px phone layouts and 720p/1080p TV layouts. All local browser checks and the 63-game mode smoke test passed with synthetic snapshots.
+- No game rules, save format, sound cues or new dependencies changed. This is an incremental accessibility fix, **not** a full WCAG 2.2 AA certification. Physical handset/TV and assistive-technology acceptance remain outstanding. Render remains user-suspended until separately resumed.
+
 ## v1.2.0-dev.13 — Sealed emergency pledges and balance sensitivity (23 October 2026)
 
 - Closed a real multiplayer privacy loophole: the TV and public server view previously showed the **live aggregate** emergency pledge during planning. In a two-player match, subtracting your own amount disclosed your rival's confidential contribution. **All aggregate pledge totals are now hidden until emergency resolution**; the publicly known target remains visible, and the actual settlement and individual contributions are still shown afterwards.

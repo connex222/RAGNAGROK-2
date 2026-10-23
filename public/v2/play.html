@@ -35,7 +35,7 @@ button:disabled { cursor:not-allowed; }
 #joinScreen { padding:28px 20px; }
 .title { font-weight:900; font-size:clamp(34px,10vw,48px); line-height:.95; color:var(--primary); margin:0; }
 .subtitle { color:var(--muted); margin:6px 0 24px; }
-label.f { display:block; font-weight:700; margin:16px 0 6px; }
+label.f, .avatar-label { display:block; font-weight:700; margin:16px 0 6px; }
 input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; border-radius:var(--radius); border:2px solid var(--line); background:var(--surface); color:var(--ink); }
 #joinCode { text-transform:uppercase; letter-spacing:.35em; font-weight:900; font-size:24px; }
 .avatars { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
@@ -226,8 +226,8 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
   <input class="f" id="joinCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false">
   <label class="f" for="joinName">Your name</label>
   <input class="f" id="joinName" maxlength="16" autocomplete="nickname">
-  <label class="f">Pick a face</label>
-  <div class="avatars" id="avatarGrid"></div>
+  <div class="f avatar-label" id="avatarGroupTitle">Pick a face</div>
+  <div class="avatars" id="avatarGrid" role="group" aria-labelledby="avatarGroupTitle"></div>
   <div style="margin-top:22px"><button class="btn primary" data-act="join">Join the street</button></div>
   <p class="muted small" id="joinMsg" role="alert" style="min-height:1.4em"></p>
 </section>
@@ -319,7 +319,7 @@ const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(P
 const params = new URLSearchParams(location.search);
 const ui = { tab: 'plan', sheet: null, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null, pulseRating: null, pulseAgain: null };
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.13';
+const CLIENT_VERSION = '1.2.0-dev.14';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -572,6 +572,16 @@ function maybeShowRules() {
 }
 function syncSheets() {
   if (ui.sheet && ui.sheet.type === 'slot' && (!planning() || locked())) ui.sheet = null;
+}
+// Re-rendering replaces controller buttons. Retain a selector for the opener so
+// Escape, backdrop dismissal, state synchronisation and Close all restore
+// keyboard/switch-control focus to a real button in the refreshed interface.
+let sheetFocusReturn = null;
+function rememberSheetOpener(el) {
+  if (ui.sheet || !el?.dataset?.act) return;
+  const action = el.dataset.act;
+  if (!['menu', 'rules', 'editSlot', 'coachPlan'].includes(action)) return;
+  sheetFocusReturn = `[data-act="${action}"]` + (action === 'editSlot' ? `[data-i="${Number(el.dataset.i)}"]` : '');
 }
 function openSheet(s) { ui.sheet = s; render(); }
 
@@ -1009,14 +1019,36 @@ function renderSheet() {
   const s = ui.sheet;
   const wrap = $('#sheetWrap');
   const sheet = $('#sheet');
-  if (!s || !view || !view.me) { wrap.hidden = true; return; }
+  if (!s || !view || !view.me) {
+    const hadDialog = !wrap.hidden;
+    wrap.hidden = true;
+    // Remove modal background shielding before restoring focus.
+    $('#app').inert = false;
+    $('#joinScreen').inert = false;
+    if (hadDialog) {
+      const opener = sheetFocusReturn && document.querySelector(sheetFocusReturn);
+      const fallback = document.querySelector('[data-act="rules"], [data-act="menu"], [data-act="editSlot"]');
+      const target = opener && !opener.disabled ? opener : fallback;
+      if (target && !target.disabled) target.focus({ preventScroll: true });
+    }
+    sheetFocusReturn = null;
+    return;
+  }
   const opening = wrap.hidden || sheet.dataset.sheet !== s.type;
   const scroll = opening ? 0 : sheet.scrollTop;
   const focused = sheet.contains(document.activeElement) ? document.activeElement : null;
   const focusMatch = focused ? [...sheet.querySelectorAll('button,input')].indexOf(focused) : -1;
   wrap.hidden = false;
+  // Prevent keyboard and screen-reader interaction behind the active modal.
+  $('#app').inert = true;
+  $('#joinScreen').inert = true;
   sheet.dataset.sheet = s.type;
   sheet.innerHTML = ({ rules: sheetRules, menu: sheetMenu, slot: sheetSlot })[s.type](s);
+  // Every changing modal page needs a programme-readable accessible name.
+  const heading = sheet.querySelector('h2');
+  if (heading) { heading.id = 'sheetHeading'; sheet.setAttribute('aria-labelledby', 'sheetHeading'); }
+  else { sheet.removeAttribute('aria-labelledby'); sheet.setAttribute('aria-label', 'Game options'); }
+  if (heading) sheet.removeAttribute('aria-label');
   sheet.scrollTop = scroll;
   // Keep keyboard focus in the modal when state syncs or options are selected.
   if (focusMatch >= 0) {
@@ -1326,6 +1358,7 @@ document.addEventListener('click', e => {
   const el = t.closest('[data-act]');
   if (!el || el.disabled) return;
   if (el.dataset.act !== 'join') sfx('tap');
+  rememberSheetOpener(el);
   onAct(el);
 }, true);
 $('#sheetWrap').addEventListener('click', e => { if (e.target === $('#sheetWrap')) { ui.sheet = null; render(); } });
