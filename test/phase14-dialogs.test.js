@@ -14,6 +14,8 @@ for (const [name, html] of [['play.html', phone], ['index.html', tv]]) {
 }
 assert.match(phone, /id="sheet"\s+role="dialog"\s+aria-modal="true"/);
 assert.match(phone, /sheet\.setAttribute\('aria-labelledby', 'sheetHeading'\)/);
+assert.match(phone, /\$\('#app'\)\.inert = true/);
+assert.match(phone, /\$\('#app'\)\.inert = false/);
 assert.match(phone, /sheet\.querySelector\('h2'\)/);
 assert.match(phone, /function rememberSheetOpener\(el\)/);
 assert.match(phone, /rememberSheetOpener\(el\);[\s\S]*?onAct\(el\)/);
@@ -22,6 +24,7 @@ assert.match(phone, /if \(target && !target\.disabled\) target\.focus/);
 assert.match(phone, /id="avatarGrid"\s+role="group"\s+aria-labelledby="avatarGroupTitle"/);
 assert.match(tv, /id="rules"\s+role="dialog"\s+aria-modal="true"\s+aria-labelledby="tvRulesTitle"/);
 assert.match(tv, /id="tvRulesTitle"/);
+assert.match(tv, /function shieldRulesBackground\(active\)/);
 assert.match(tv, /:focus-visible\s*\{\s*outline:/);
 assert.match(tv, /function closeRules\(\)[\s\S]*?rulesReturnFocus[\s\S]*?\.focus\(/);
 assert.match(tv, /if \(e\.key === 'Tab'\)[\s\S]*?\.focus\(/);
