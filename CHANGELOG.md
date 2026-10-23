@@ -4,6 +4,7 @@
 
 - Fixed a genuine shared-television overscan issue: the 1920×1080 show stage and clock previously reached the physical edges. Fit now preserves five per cent on each side at proportional 720p, 1080p and 4K resolutions; the surrounding mat uses the Norse purple backdrop rather than black.
 - Added a dependency-free execution of the real TV fitting function across five 16:9 resolutions; a separate Playwright/Chromium test checks the rendered stage, main controls and clock at 720p, 1080p and 4K. Both test categories passed locally with synthetic room snapshots.
+- Corrected the phone notification badge to use theme-appropriate foreground colour: dusk mode previously had only 2.52:1 contrast (white over light red), and now has 7.18:1. An automated two-theme contrast check is included.
 - Existing real-browser phone checks also passed at 320px, 375px and 430px. Reduced-motion and keyboard first-run checks passed; neither simulated Chromium nor these checks constitute real-device approval.
 - Independent seeded balance survey: 210 games (70 each Standard, Extended and Epic) reveal candidate issues in long-format ruined plots, emergency success and winning margins. These are small-sample robot results, not human preference measurements; no scoring, probabilities, god powers or resources were changed on that evidence alone.
 - Phase 10 fun/pacing, Phase 11 statistical fairness, Phase 12 audio hardware review, Phase 13 WCAG 2.2 AA, Phase 14 release candidate and Phase 15 human acceptance remain **open**. This build is not certified production-ready.
