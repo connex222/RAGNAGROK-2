@@ -1,6 +1,6 @@
 {
   "name": "ragnagrok",
-  "version": "1.2.0-dev.9",
+  "version": "1.2.0-dev.10",
   "description": "RAGNAGROK V2: The Last Garden Show — multiplayer garden survival strategy game",
   "main": "server/index.js",
   "scripts": {
@@ -30,7 +30,9 @@
     "test:phase7": "node test/phase7-seed.test.js",
     "test:phase8": "node test/phase8-pulse.test.js",
     "test:phase9": "node test/phase9-series.test.js",
-    "test:phase8:browser": "python test/phase8-browser.py"
+    "test:phase8:browser": "python test/phase8-browser.py",
+    "test:phase9:network": "node test/phase9-network.test.js",
+    "test:phase9:offline": "node test/phase4-protocol.test.js 2 && node test/phase4-protocol.test.js 3 && node test/phase4-protocol.test.js 4 && node test/phase4-protocol.test.js 5 && node test/phase4-protocol.test.js 6 && node test/phase4-protocol.test.js 7 && node test/phase4-protocol.test.js 8"
   },
   "engines": {
     "node": ">=18"
