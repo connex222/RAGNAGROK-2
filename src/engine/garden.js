@@ -1312,14 +1312,6 @@ function legalTargets(state, seat) {
   return out;
 }
 
-function sPledged(s) {
-  if (!s.emergency || s.emergency.result) return 0;
-  return s.players.reduce((n,p) => {
-    const bundle=s.secrets.pledges[p.seat];
-    return n + (bundle ? handTotal(bundle) * (p.god === 'frigg' ? 2 : 1) : 0);
-  },0);
-}
-
 function publicView(state) {
   const v = JSON.parse(JSON.stringify(state));
   delete v.secrets;
@@ -1333,7 +1325,8 @@ function publicView(state) {
   if (v.board) delete v.board.index;
   if (v.emergency && v.emergency.result === null) {
     v.emergency.paid = null;
-    v.emergency.pledged = sPledged(state);
+    // Pledges stay sealed until resolution. Even a group total reveals rival's
+    // contribution by subtraction in a two-person game. Do not broadcast it.
   }
   if (!over) v.final = null;
   // The Sympathy Vote is a private decision for the last-placed gardener.
