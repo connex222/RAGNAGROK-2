@@ -2,7 +2,7 @@
 
 **A 2–8-player TV-and-phone party strategy game.** The Norse apocalypse has reached a respectable English suburb, and the Village Garden Show is carrying on regardless. Everyone plans secretly on their phone, watches disaster and mischief unfold on the shared TV, and competes for the Golden Flamingo.
 
-**Current build:** `1.2.0-dev.9` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
+**Current build:** `1.2.0-dev.10` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
 
 ## Start on Windows
 
@@ -22,6 +22,8 @@ Run the archived original edition with `npm run start:v1`. Its rules, pages and 
 | `npm run test:party` | Pray, Sympathy Vote and simplification contracts |
 | `npm run test:phase8` | Anonymous post-match pulse privacy, acknowledgement and rematch tests |
 | `npm run test:phase9` | Server-authoritative match starts, host privacy and restart-persistent aggregates |
+| `npm run test:phase9:offline` | Seven player-count full-game protocol tests using real engine and mock transport |
+| `npm run test:phase9:network` | Twenty-one actual Socket.io full-game tests: 2–8 players × Standard / Extended / Epic; requires installed npm dependencies |
 | `npm run test:phase8:browser` | Optional Chromium phone viewports, feedback and consent controls (requires Python Playwright and Chromium) |
 | `npm run test:phase3` | Abandoned-room and UI structure regressions |
 | `npm run test:protocol-acceptance` | Complete 9-round protocol matches with 2/4/6/8 simulated controllers, no Socket.io transport |
