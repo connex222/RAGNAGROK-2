@@ -45,3 +45,8 @@ Use the anonymised CSV templates in this folder. Do not collect player names, em
 ## Phase 5: first-round guide and accessibility
 
 Ask new players to choose a first action without coaching. Note whether they discover the suggestion, whether they understand it is optional, and whether they can choose a different action. Do not rate its usefulness for them. At least one tester should try keyboard-only operation at 320px width, large browser text, daylight/dusk themes, and reduced motion. Record whether a screen reader announces actual phase changes without announcing every second of the countdown. See `PHASE5-VALIDATION.md`.
+
+
+## Phase 8: after-game feedback pulse
+
+On build 1.2.0-dev.8 and later, the phone displays an **optional** post-game enjoyment rating and willingness-to-rematch question. The host can copy only grouped responses after at least three participants reply. Do not mistake the copied `would_rematch_now` count for observed rematches. Record an actual started rematch separately in `PLAYTEST-SESSIONS.csv`. No responses are retained between games or server restarts, so a host who wants an aggregate must copy it **before** beginning a rematch. For two-player sessions, record feedback with the existing anonymous paper template; no 2-person group score is exposed to the host phone. See `PHASE8-GAME-NIGHT.md`.

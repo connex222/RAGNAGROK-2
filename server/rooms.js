@@ -14,6 +14,7 @@ const path = require('path');
 const crypto = require('crypto');
 const BUILD_VERSION = require('../package.json').version;
 const { validSavedReplies } = require('./action-requests');
+const { groupedFeedback } = require('./playtest-pulse');
 const ENGINES = {
   v1: () => require('../src/engine/rules'),
   v2: () => require('../src/engine/garden')
@@ -98,6 +99,7 @@ class RoomManager {
       lastActivity: now,
       sockets: new Set(),
       actionReplies: new Map(),
+      feedback: new Map(), // opt-in, short-lived and never written to disk
       saveTimer: null
     };
     this.rooms.set(code, room);
@@ -163,11 +165,13 @@ class RoomManager {
   viewFor(room, socket) {
     const meta = { code: room.code, paused: !!room.paused, serverNow: Date.now(), version: BUILD_VERSION };
     if (socket.data.role === 'tv') {
-      return { ...this.E.publicView(room.state), meta: { ...meta, isHost: !!socket.data.isHost } };
+      return { ...this.E.publicView(room.state), meta: { ...meta, isHost: !!socket.data.isHost } }; // TV never receives pulse results
     }
     const seat = this.seatOf(room, socket);
     if (seat < 0) return null;
-    return { ...this.E.privateView(room.state, seat), meta: { ...meta, isHost: seat === 0 } };
+    return { ...this.E.privateView(room.state, seat), meta: { ...meta, isHost: seat === 0,
+      feedbackSubmitted: !!room.feedback?.has(seat),
+      ...(seat === 0 && room.state.phase.stage === 'gameOver' ? { playtest: groupedFeedback(room) } : {}) } }; 
   }
 
   // A reconnect or stale-screen refresh must reach only its intended socket.
@@ -277,6 +281,7 @@ class RoomManager {
     fresh.stateVersion = old.stateVersion + 1;
     room.state = fresh;
     room.actionReplies = new Map(); // A rematch is a new game; old request IDs must not apply.
+    room.feedback = new Map(); // Don't carry responses into another match
     room.paused = null;
     room.sockets.forEach(s => { s.data.layoutSent = null; });
     this.refreshConnected(room, now);
@@ -377,6 +382,7 @@ class RoomManager {
             lastActivity: now,
             sockets: new Set(),
             actionReplies: new Map(data.actionReplies || []),
+            feedback: new Map(), // private feedback is intentionally not saved
             saveTimer: null
           };
           room.state.players.forEach(p => { p.connected = false; });

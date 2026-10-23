@@ -1,6 +1,6 @@
 {
   "name": "ragnagrok",
-  "version": "1.2.0-dev.7",
+  "version": "1.2.0-dev.8",
   "description": "RAGNAGROK V2: The Last Garden Show — multiplayer garden survival strategy game",
   "main": "server/index.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "balance": "node test/sim2.js 2000 long && node test/sim2.js 700 standard && node test/sim2.js 500 epic",
     "test:rules": "node test/garden.test.js",
     "test:core": "npm run test:offline && node test/sim2.js 60 standard",
-    "test:offline": "node test/garden.test.js && node test/rooms-protocol.test.js && node test/assets.test.js && node test/audio.test.js && node test/ux-protocol.test.js && node test/branding.test.js && node test/cache-policy.test.js && node test/build-version.test.js && node test/engine-contracts.test.js && node test/resilience.test.js && node test/preloader.test.js && node test/fun-loop.test.js && node test/party-upgrade.test.js && node test/phase3-validation.test.js && node test/phase4-protocol.test.js && node test/phase5-first-run.test.js && node test/phase6-reveal.test.js && node test/phase7-seed.test.js",
+    "test:offline": "node test/garden.test.js && node test/rooms-protocol.test.js && node test/assets.test.js && node test/audio.test.js && node test/ux-protocol.test.js && node test/branding.test.js && node test/cache-policy.test.js && node test/build-version.test.js && node test/engine-contracts.test.js && node test/resilience.test.js && node test/preloader.test.js && node test/fun-loop.test.js && node test/party-upgrade.test.js && node test/phase3-validation.test.js && node test/phase4-protocol.test.js && node test/phase5-first-run.test.js && node test/phase6-reveal.test.js && node test/phase7-seed.test.js && node test/phase8-pulse.test.js",
     "test:modes": "node test/modes-smoke.js",
     "test:balance-lab": "node test/balance-lab.js baseline 35 && node test/balance-lab.js candidate 35",
     "test:ux": "node test/ux-protocol.test.js",
@@ -27,7 +27,9 @@
     "test:phase4": "node test/phase4-protocol.test.js",
     "test:phase5": "node test/phase5-first-run.test.js",
     "test:phase6": "node test/phase6-reveal.test.js",
-    "test:phase7": "node test/phase7-seed.test.js"
+    "test:phase7": "node test/phase7-seed.test.js",
+    "test:phase8": "node test/phase8-pulse.test.js",
+    "test:phase8:browser": "python test/phase8-browser.py"
   },
   "engines": {
     "node": ">=18"

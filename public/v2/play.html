@@ -132,6 +132,10 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 .plan-brief b { display:block; font-size:15px; }
 .plan-brief small { color:var(--muted); font-size:12px; }
 @media (max-width:355px) { .plan-brief { grid-template-columns:1fr; } }
+.pulse-picks { display:flex; flex-wrap:wrap; gap:7px; margin:10px 0 14px; }
+.pulse-picks button { min-width:44px; min-height:48px; padding:8px 12px; border:2px solid var(--line); border-radius:12px; background:var(--surface2); font-weight:800; }
+.pulse-picks button[aria-pressed="true"] { border-color:var(--primary); background:var(--primary); color:var(--on-primary); }
+.playtest-recap { font-variant-numeric:tabular-nums; }
 .show-race { border-color:var(--gold); }
 .show-race summary { cursor:pointer; list-style-position:inside; font-size:15px; line-height:1.5; }
 .show-race summary small { display:block; margin:3px 0 0; color:var(--muted); font-size:12px; }
@@ -312,9 +316,9 @@ let clockOffset = 0;
 let saved = store.get(KEY);
 const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(PREFS) || {});
 const params = new URLSearchParams(location.search);
-const ui = { tab: 'plan', sheet: null, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null };
+const ui = { tab: 'plan', sheet: null, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null, pulseRating: null, pulseAgain: null };
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.7';
+const CLIENT_VERSION = '1.2.0-dev.8';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -523,6 +527,7 @@ function announcePhase(v) {
 }
 
 function onStepChange() {
+  if (view && view.phase.stage !== 'gameOver') { ui.pulseRating = null; ui.pulseAgain = null; }
   if (step() === 'plan') { ui.tab = 'plan'; }
   if (ui.sheet && ui.sheet.type === 'slot' && !planning()) ui.sheet = null;
 }
@@ -948,6 +953,29 @@ function renderGarden() {
     <div class="card"><h3>📊 Scores</h3><table class="players">${board}</table></div>`;
 }
 
+/* Feedback is optional, never bundled with actions, and only the host phone
+   receives group figures. Individual responses never appear on the shared TV. */
+function renderPlaytestPulse() {
+  const meta = view.meta || {};
+  if (meta.feedbackSubmitted) return '<div class="card"><h3>💬 Thank you</h3><p class="small muted">Your playtest response has been recorded for this match.</p></div>';
+  const rate = [1,2,3,4,5].map(n => `<button type="button" data-act="pulseRating" data-rating="${n}" aria-pressed="${ui.pulseRating === n}" aria-label="Enjoyment ${n} out of 5">${n}</button>`).join('');
+  const options = [[true,'Yes, again!'],[false,'Not yet']].map(([yes,label]) => `<button type="button" data-act="pulseAgain" data-again="${yes}" aria-pressed="${ui.pulseAgain === yes}">${label}</button>`).join('');
+  return `<div class="card"><h3>💬 One-minute playtest pulse</h3><p class="small muted">Optional, after the results. No names or individual answers are shown to other players.</p>
+    <p><b>How much fun was that?</b> <span class="small muted">1 = not enjoyable · 5 = brilliant</span></p>
+    <div class="pulse-picks" role="group" aria-label="Enjoyment rating">${rate}</div>
+    <p><b>Would you play another match now?</b></p>
+    <div class="pulse-picks" role="group" aria-label="Rematch willingness">${options}</div>
+    <button class="btn primary" data-act="pulseSend"${ui.pulseRating === null || ui.pulseAgain === null ? ' disabled' : ''}>Send optional feedback</button></div>`;
+}
+function renderPlaytestTotals() {
+  const a = view.meta && view.meta.playtest;
+  if (!a) return '';
+  const result = a.mean === undefined
+    ? `<p class="small muted">Group figures become available after ${a.minimum} gardeners respond, to avoid singling out anyone. No individual responses are shared.</p>`
+    : `<p class="playtest-recap"><b>Enjoyment:</b> ${a.mean}/5 · <b>Would rematch now:</b> ${a.wouldRematch} of ${a.count}</p>`;
+  return `<div class="card"><h3>📋 Host playtest summary</h3><p class="small">${a.count} of ${a.players} responses</p>${result}${a.mean === undefined ? '' : '<button class="btn small" data-act="pulseCopy">Copy group totals</button>'}</div>`;
+}
+
 function renderGameOver() {
   const f = view.final;
   if (!f) return '';
@@ -959,7 +987,9 @@ function renderGameOver() {
       <h3 style="justify-content:center;font-size:22px">${won ? 'You win the Golden Flamingo!' : f.winners.map(nm).join(' & ') + ' win' + (f.winners.length > 1 ? '' : 's') + ' the Golden Flamingo'}</h3></div>
     <div class="card"><table class="players">${rows}</table></div>
     ${honourCards}
-    <div style="margin-top:14px">${view.meta.isHost ? '<button class="btn primary" data-act="rematch">Rematch</button>' : '<p class="muted" style="text-align:center">Waiting for the host</p>'}</div>`;
+    <div style="margin:14px 0">${view.meta.isHost ? '<button class="btn primary" data-act="rematch">Play again with the same gardeners →</button>' : '<p class="muted" style="text-align:center">The host can start a rematch</p>'}</div>
+    ${renderPlaytestPulse()}
+    ${renderPlaytestTotals()}`;
 }
 
 /* ================= sheets ================= */
@@ -1131,7 +1161,25 @@ async function onAct(el) {
     case 'start': await host('start'); return;
     case 'kick': await host('kick', { seat: Number(d.seat) }); return;
     case 'leave': await emit('player:leave'); forget(); return;
-    case 'rematch': await host('rematch'); return;
+    case 'rematch': ui.pulseRating = null; ui.pulseAgain = null; await host('rematch'); return;
+    case 'pulseRating': if (view?.phase.stage === 'gameOver' && !view.meta.feedbackSubmitted) { ui.pulseRating = Number(d.rating); render(); } return;
+    case 'pulseAgain': if (view?.phase.stage === 'gameOver' && !view.meta.feedbackSubmitted) { ui.pulseAgain = d.again === 'true'; render(); } return;
+    case 'pulseSend': {
+      if (view?.phase.stage !== 'gameOver' || view.meta.feedbackSubmitted || ui.pulseRating === null || ui.pulseAgain === null) return;
+      const result = await emit('playtest:feedback', { enjoyment: ui.pulseRating, rematch: ui.pulseAgain });
+      if (!result.ok) toast(esc(result.error || 'Feedback was not recorded'), 'bad');
+      else toast('Thanks for helping improve RAGNAGROK.', 'good');
+      return;
+    }
+    case 'pulseCopy': {
+      const a = view?.meta?.playtest;
+      if (!view?.meta?.isHost || !a || a.mean === undefined) return;
+      const row = ['version,players,responses,mean_enjoyment,would_rematch_now',
+        [CLIENT_VERSION, a.players, a.count, a.mean, a.wouldRematch].join(',')].join('\n');
+      try { await navigator.clipboard.writeText(row); toast('Grouped playtest totals copied.', 'good'); }
+      catch (_) { toast('Clipboard unavailable. You can copy the figures shown above.', 'bad'); }
+      return;
+    }
     case 'length': await act({ type: 'setOption', length: d.len }); return;
     case 'planTime': await act({ type: 'setOption', planSec: d.t === 'auto' ? null : Number(d.t) }); return;
     case 'pickGod': await act({ type: 'chooseGod', god: d.god }); return;

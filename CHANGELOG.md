@@ -1,5 +1,15 @@
 # RAGNAGROK — Development Changelog
 
+## v1.2.0-dev.8 — Optional post-match enjoyment pulse (23 October 2026)
+
+- Added the opt-in 1–5 enjoyment and immediate-rematch question on the final-results phone screen. Rematch remains available without giving feedback.
+- Ratings are accepted **only** from authenticated game participants after the final scores; repeated identical submissions acknowledge safely, altered duplicates are rejected.
+- The host's phone sees grouped enjoyment and willingness totals after **three or more** replies. Other phones and the shared TV never see individual responses or aggregates. Two-player matches provide no individual-revealing summary.
+- The pulse is room-memory-only: not stored on disk, not sent externally and deleted on a rematch or server restart. A host can explicitly copy aggregated results to a CSV for playtest records.
+- Added protocol/privacy regression contracts, real Socket.io acceptance checks and optional Chromium checks at 320/375/430px. Gameplay, gods, balance and saved-game schema are unchanged.
+- Enjoyment and rematch intent have **not** yet been measured with real people; automated tests only verify functionality.
+
+
 ## v1.2.0-dev.7 — Reproducible multiplayer acceptance and blocked-Pray fix (23 October 2026)
 
 - GitHub Phase 6 source verified byte-for-byte against the complete 225-file ZIP.

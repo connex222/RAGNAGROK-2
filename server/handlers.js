@@ -37,6 +37,7 @@ function makeLimiter(RATE) {
 const { joinBase } = require('./network');
 const { validatePayload } = require('./payload-validation');
 const { ID: ACTION_ID, LIMIT: ACTION_CACHE_LIMIT, fingerprint } = require('./action-requests');
+const { recordFeedback } = require('./playtest-pulse');
 const baseUrl = socket => joinBase(socket.handshake.headers);
 
 /* Slows down anyone guessing room codes: 20 wrong codes a minute per address, then a pause. */
@@ -249,6 +250,24 @@ function attachHandlers(io, rooms, { rate = DEFAULT_RATE, qrCode = null } = {}) 
       if (!room || !rooms.viewFor(room, socket)) return { ok: false, error: 'Join a game first' };
       rooms.syncOne(room, socket);
       return { ok: true, stateVersion: room.state.stateVersion };
+    });
+
+    // Opt-in end-of-match feedback, recorded per seat for deduplication.
+    // Never broadcast individual answers; grouped results are host-phone only.
+    on('playtest:feedback', payload => {
+      const room = currentRoom();
+      if (!room || socket.data.role !== 'player') return { ok: false, error: 'Join as a gardener first' };
+      const seat = rooms.seatOf(room, socket);
+      if (seat < 0) return { ok: false, error: 'You are not in this game' };
+      const result = recordFeedback(room, seat, payload);
+      if (result.ok && !result.alreadyRecorded) {
+        rooms.touch(room);
+        // Only the submitting phone and the host phone need updated snapshots.
+        room.sockets.forEach(s => {
+          if (s.data.role === 'player' && (rooms.seatOf(room, s) === seat || rooms.seatOf(room, s) === 0)) rooms.syncOne(room, s);
+        });
+      }
+      return result;
     });
 
     /* Live "ghost" preview: the TV shows where a player is about to build. */

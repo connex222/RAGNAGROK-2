@@ -205,10 +205,27 @@ async function main() {
   assert.ok(tv2.view.final && tv2.view.final.winners.length >= 1);
   check(`finished the game after the restart (${tv2.view.round} rounds)`);
 
+  // Genuine Socket.io post-match feedback, checked over real transport.
+  // The TV and non-host phones never receive aggregates or individual votes.
+  assert.strictEqual((await call(tv2, 'playtest:feedback', { enjoyment: 5, rematch: true })).ok, false);
+  const pulse = [{ enjoyment: 5, rematch: true }, { enjoyment: 4, rematch: true },
+    { enjoyment: 2, rematch: false }];
+  for (let i = 0; i < pulse.length; i++) {
+    assert.ok((await call(phones2[i], 'playtest:feedback', pulse[i])).ok);
+  }
+  await waitFor(() => phones2[0].view?.meta.playtest?.count === 3, 'private playtest aggregate');
+  assert.equal(phones2[0].view.meta.playtest.mean, 3.7);
+  assert.equal(phones2[0].view.meta.playtest.wouldRematch, 2);
+  for (let i = 1; i < phones2.length; i++) assert.strictEqual(phones2[i].view.meta.playtest, undefined);
+  assert.strictEqual(tv2.view.meta.playtest, undefined);
+  assert.deepStrictEqual(await call(phones2[0], 'playtest:feedback', pulse[0]), { ok: true, alreadyRecorded: true });
+  check('real Socket.io optional playtest feedback is deduplicated and private to the host phone');
+
   phones2.forEach(c => { c.auto = false; });
   assert.ok((await call(phones2[0], 'host:rematch')).ok);
   await waitFor(() => tv2.view.phase.stage === 'lobby' && tv2.view.config.length === 'standard', 'rematch');
   await waitFor(() => phones2.every((c, i) => c.view && c.view.me && c.view.me.seat === i), 'seats kept');
+  assert.strictEqual(phones2[0].view.meta.playtest, undefined, 'fresh game hides old survey totals');
   check('rematch keeps every seat and the chosen game length');
 
   [tv2, guesser, ...phones2].forEach(c => c.s.close());
