@@ -179,13 +179,15 @@ test('Phone and TV award screens render tied honours without modifying winner', 
   const start = phone.indexOf('function renderGameOver() {');
   const end = phone.indexOf('/* ================= sheets', start);
   const escape = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
-  const ctx = { view: v, ART: {}, mySeat: () => 0, pl: seat => v.players[seat],
+  const avatarPic = require('../public/avatars.js').html;
+  const ctx = { view: v, ART: {}, avatarPic, mySeat: () => 0, pl: seat => v.players[seat],
     nm: seat => v.players[seat].name, esc: escape,
     renderPlaytestPulse: () => '', renderPlaytestTotals: () => '', renderSessionTotals: () => '' };
   vm.createContext(ctx);
   vm.runInContext(phone.slice(start, end) + ';this.awardMarkup=renderGameOver;', ctx);
   const html = ctx.awardMarkup();
   assert.match(html, /Your garden honours/);
+  assert.match(html, /deity-[a-z]+-face\.webp/, 'Phone awards must show portrait artwork');
   assert.match(html, /Showstopper/);
   assert.doesNotMatch(html, /You win the Golden Flamingo/);
   assert.match(html, /shared/);
@@ -193,12 +195,13 @@ test('Phone and TV award screens render tied honours without modifying winner', 
   const a = tv.indexOf('function renderOver() {');
   const b = tv.indexOf('function tickClock() {', a);
   const elem = { innerHTML: '' };
-  const tvctx = { view: v, ART: {}, C: E.CONTENT, QUIPS: ['Nice gardening!'],
+  const tvctx = { view: v, ART: {}, avatarPic, C: E.CONTENT, QUIPS: ['Nice gardening!'],
     godIcon: () => '', pl: seat => v.players[seat], nm: seat => escape(v.players[seat].name),
     esc: escape, $: () => elem };
   vm.createContext(tvctx);
   vm.runInContext(tv.slice(a, b) + ';this.showFinal=renderOver;', tvctx);
   tvctx.showFinal();
+  assert.match(elem.innerHTML, /deity-[a-z]+-face\.webp/, 'TV final ceremony must show portrait artwork');
   assert.match(elem.innerHTML, /Showstopper/);
   assert.match(elem.innerHTML, /Neighbourhood Hero/);
   assert.match(elem.innerHTML, /tie/);

@@ -93,7 +93,7 @@ async def main():
                 if kind == 'join':
                     assert dims['visible'], 'Join form is not visible'
                     avatar = await page.locator('#avatarGrid button').count()
-                    assert avatar == 12, 'The join screen must show all avatars'
+                    assert avatar == 8, 'The join screen must show all eight illustrated portraits'
                 elif kind == 'phone':
                     assert not dims['visible'], 'Authenticated phone unexpectedly shows the join screen'
                     assert await page.locator('[data-act="editSlot"][data-i="0"]').count() >= 1

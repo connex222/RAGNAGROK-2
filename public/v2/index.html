@@ -38,6 +38,16 @@ button { font:inherit; color:inherit; cursor:pointer; border:0; }
 #lobbyPlayers { display:flex; flex-wrap:wrap; gap:14px; margin-top:16px; }
 .pchip { display:flex; align-items:center; gap:14px; background:var(--surface); border:3px solid var(--line); border-radius:22px; padding:10px 22px 10px 14px; font-size:32px; font-weight:700; }
 .pchip .av { font-size:44px; }
+/* Portraits reuse the existing Norse face artwork and remain legible on TV. */
+.player-portrait { display:inline-block; width:40px; height:40px; object-fit:cover; vertical-align:middle; border:2px solid var(--line); border-radius:11px; background:var(--surface); }
+.pchip .player-portrait { width:56px; height:56px; }
+.prow .player-portrait { width:42px; height:42px; }
+#rows.compact .player-portrait { width:34px; height:34px; }
+.ev .player-portrait { width:43px; height:43px; }
+.chip .player-portrait { width:29px; height:29px; border-radius:7px; }
+#draftSub .player-portrait, .godc .by .player-portrait { width:36px; height:36px; }
+#over h1 .player-portrait { width:70px; height:70px; }
+#over table .player-portrait { width:38px; height:38px; }
 .pchip.empty { opacity:.35; border-style:dashed; font-weight:400; }
 #lobbyMode { margin-top:14px; font-size:30px; color:var(--muted); }
 #lobbyMode b { color:var(--ink); }
@@ -234,6 +244,7 @@ ul.costs li > span:last-child { margin-left:auto; padding-left:12px; white-space
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/sfx.js"></script>
+<script src="/avatars.js"></script>
 <script src="/board.js"></script>
 <script src="/assets.js"></script>
 <script src="/v2/rules.js"></script>
@@ -277,7 +288,7 @@ let tipIndex = 0;
 let theatre = { key: null, start: 0, shown: 0 };
 let lastBoardKey = '';
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.15';
+const CLIENT_VERSION = '1.2.0-dev.16';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -287,6 +298,7 @@ $('#reloadForUpdate').addEventListener('click', () => location.reload());
 const I = (k, cls) => RagnaBoard.icon(ART, k, cls);
 const sup = k => (ART[SUP_ART(k)] ? I(SUP_ART(k)) : SUP_EMOJI[k]);
 const godIcon = g => (ART['deity-' + g] ? I('deity-' + g) : GOD_ICON[g] || '');
+const avatarPic = value => RagnaAvatars.html(value);
 const DISASTER_SOUND = { frost: 'frost', hail: 'frost', winds: 'frost', ash: 'fire', sprinklers: 'fire', lava: 'fire', smoulder: 'fire', arsonists: 'fire', serpent: 'flood', fenrir: 'flood', uprising: 'gnomes', naglfar: 'gnomes' };
 let lastTick = null;
 const pl = seat => (view && view.players[seat]) || { name: '?', avatar: '❔', colour: '#999' };
@@ -428,7 +440,7 @@ function renderLobby() {
   let html = '';
   for (let i = 0; i < Math.max(4, Math.min(8, n + 1)); i++) {
     const p = view.players[i];
-    html += p ? `<div class="pchip"><span class="av">${esc(p.avatar)}</span>${esc(p.name)}${i === 0 ? ' 👑' : ''}</div>` : '<div class="pchip empty"><span class="av">🌱</span>Open seat</div>';
+    html += p ? `<div class="pchip"><span class="av">${avatarPic(p.avatar)}</span>${esc(p.name)}${i === 0 ? ' 👑' : ''}</div>` : '<div class="pchip empty"><span class="av">＋</span>Open seat</div>';
   }
   $('#lobbyPlayers').innerHTML = html;
   const L = lenCfg();
@@ -450,14 +462,14 @@ setInterval(() => { if (view && view.phase.stage === 'lobby') { tipIndex += 1; r
 
 function renderDraft() {
   const picker = view.phase.draftQueue[0];
-  $('#draftSub').innerHTML = picker !== undefined ? `${esc(pl(picker).avatar)} <b>${nm(picker)}</b> is choosing on their phone · ${remaining(view.phase.deadline) || 0}s` : '';
+  $('#draftSub').innerHTML = picker !== undefined ? `${avatarPic(pl(picker).avatar)} <b>${nm(picker)}</b> is choosing on their phone · ${remaining(view.phase.deadline) || 0}s` : '';
   if (!C) return;
   $('#gods').innerHTML = Object.entries(C.gods).map(([id, g]) => {
     const taker = view.players.find(p => p.god === id);
     return `<div class="godc${taker ? ' taken' : ''}"><span class="lvl">${esc(g.level)}</span>
       <div class="pic">${ART['deity-' + id] ? `<img src="${ART['deity-' + id]}" alt="">` : GOD_ICON[id]}</div>
       <h3>${esc(g.name)}</h3><div class="title">${esc(g.title)}</div><div class="rule"><b>${esc(g.power)}:</b> ${esc(g.rule)}</div>
-      ${taker ? `<span class="by">${esc(taker.avatar)} ${esc(taker.name)}</span>` : ''}</div>`;
+      ${taker ? `<span class="by">${avatarPic(taker.avatar)} ${esc(taker.name)}</span>` : ''}</div>`;
   }).join('');
 }
 
@@ -520,7 +532,7 @@ function evLine(e, fresh) {
     case 'carBoot': txt = `went to a car-boot sale ${(e.gained || []).map(sup).join(' ')}`; break;
     default: txt = e.kind;
   }
-  return `<div class="ev${e.ok ? '' : ' fail'}${fresh ? ' new' : ''}"><span class="av">${esc(p.avatar)}</span>
+  return `<div class="ev${e.ok ? '' : ' fail'}${fresh ? ' new' : ''}"><span class="av">${avatarPic(p.avatar)}</span>
     <span><b>${esc(p.name)}</b> ${ACT_ICON[e.kind] || ''} ${txt}${e.blame ? `<div class="blame" style="border-left:8px solid ${esc(p.colour)}">${esc(e.blame)}</div>` : ''}</span><span class="r">${e.ok ? '✔' : '✖ ' + esc(e.reason || '')}</span></div>`;
 }
 
@@ -535,7 +547,7 @@ function renderPanel() {
     const ready = view.players.filter(p => p.locked).length;
     panel.innerHTML = `<h2>📝 Plan your moves</h2><p class="sub">Secretly choose your actions on your phone, then lock in.</p>
       <div class="big">${ready} of ${view.players.length} ready</div>
-      <div class="chips" style="margin-top:12px">${view.players.map(p => `<span class="chip${p.locked ? ' ok' : ''}">${esc(p.avatar)} ${esc(p.name)} ${p.locked ? '✔' : p.connected ? '…' : 'offline'}</span>`).join('')}</div>
+      <div class="chips" style="margin-top:12px">${view.players.map(p => `<span class="chip${p.locked ? ' ok' : ''}">${avatarPic(p.avatar)} ${esc(p.name)} ${p.locked ? '✔' : p.connected ? '…' : 'offline'}</span>`).join('')}</div>
       ${view.emergency ? `<div class="pledge-status"><b>🚨 ${esc(view.emergency.name)}</b><p>Target: ${view.emergency.target} supplies. Pledges stay secret until the reveal.</p></div>` : ''}
 `;
   } else if (st === 'sympathy' && view.sympathy) {
@@ -559,11 +571,11 @@ function renderPanel() {
         return `<div class="ev"><span class="av">${d.good ? '🌟' : '⚠️'}</span><span><b>${esc(d.name)}</b></span><span class="r">${d.good ? `${d.hits.length} plots blessed` : `${dmg} gardens hit · ${saved} saved${lost ? ' · ' + lost + ' features lost' : ''}`}</span></div>`;
       }).join('') || '<p class="sub">A quiet round. Suspiciously quiet.</p>'}
       ${em ? `<div class="ev"><span class="av">🚨</span><span><b>${esc(em.name)}</b>: ${em.result === 'success' ? 'averted!' : 'the street failed'}</span><span class="r">${em.total} / ${em.target}</span></div>
-        <div class="chips" style="margin-top:8px">${Object.entries(em.paid || {}).map(([s, n]) => `<span class="chip">${esc(pl(Number(s)).avatar)} ${nm(Number(s))} ${n}</span>`).join('') || '<span class="chip">Nobody chipped in</span>'}</div>` : ''}`;
+        <div class="chips" style="margin-top:8px">${Object.entries(em.paid || {}).map(([s, n]) => `<span class="chip">${avatarPic(pl(Number(s)).avatar)} ${nm(Number(s))} ${n}</span>`).join('') || '<span class="chip">Nobody chipped in</span>'}</div>` : ''}`;
   } else if (st === 'harvest') {
     const g = view.harvestReport || {};
     panel.innerHTML = `<h2>🧺 Harvest</h2><p class="sub">Healthy plots yield 1, Lush plots 2.</p>
-      ${view.players.map(p => { const h = g[p.seat]; const items = h ? SUP.filter(r => h[r]).map(r => `<span class="chip">+${h[r]} ${sup(r)}</span>`).join('') : '<span class="chip">nothing</span>'; return `<div class="ev"><span class="av">${esc(p.avatar)}</span><span><b>${esc(p.name)}</b></span><span class="chips">${items}</span></div>`; }).join('')}`;
+      ${view.players.map(p => { const h = g[p.seat]; const items = h ? SUP.filter(r => h[r]).map(r => `<span class="chip">+${h[r]} ${sup(r)}</span>`).join('') : '<span class="chip">nothing</span>'; return `<div class="ev"><span class="av">${avatarPic(p.avatar)}</span><span><b>${esc(p.name)}</b></span><span class="chips">${items}</span></div>`; }).join('')}`;
   } else if (st === 'show') {
     const show = view.shows.filter(s => s.results).pop();
     panel.innerHTML = `<h2>${I('trophy')} Village Garden Show</h2>
@@ -584,7 +596,7 @@ function renderRows() {
   const ranked = view.players.slice().sort((a, b) => b.score - a.score);
   const top = ranked[0] ? ranked[0].score : 0;
   $('#rows').innerHTML = ranked.map(p => `<div class="prow${p.connected ? '' : ' off'}${p.score === top && top > 0 ? ' lead' : ''}">
-    <div class="bar" style="background:${p.colour}"></div><div class="av">${esc(p.avatar)}</div>
+    <div class="bar" style="background:${p.colour}"></div><div class="av">${avatarPic(p.avatar)}</div>
     <div><div class="nm"><span class="seat">${p.seat + 1}</span>${esc(p.name)} ${p.god ? godIcon(p.god) : ''}${view.phase.step === 'plan' && p.locked ? ' ✔' : ''}</div><div class="st">${p.plots} plots · ${p.handCount} cards · ${p.goodwill} Goodwill</div></div>
     <div class="sc">${p.score}</div></div>`).join('');
   $('#rows').className = view.players.length > 5 ? 'compact' : '';
@@ -593,7 +605,7 @@ function renderRows() {
 function renderOmens() {
   const line = d => {
     const owners = new Set(d.plots.map(id => (plotById(id) || {}).owner).filter(o => o !== null && o !== undefined));
-    return `<div class="it">${d.good ? '🌟' : '⚠️'} <b>${esc(d.name)}</b> <small>${d.good ? 'good news' : owners.size ? 'hits ' + [...owners].map(o => esc(pl(o).avatar)).join(' ') : 'misses every garden'}</small></div>`;
+    return `<div class="it">${d.good ? '🌟' : '⚠️'} <b>${esc(d.name)}</b> <small>${d.good ? 'good news' : owners.size ? 'hits ' + [...owners].map(o => avatarPic(pl(o).avatar)).join(' ') : 'misses every garden'}</small></div>`;
   };
   const show = view.shows.find(s => s.categories && !s.results);
   const preview = view.showPreview;
@@ -620,13 +632,13 @@ function renderOver() {
   const f = view.final;
   if (!f) return;
   const winners = f.winners.map(s => pl(s));
-  const wTxt = winners.map(p => `${esc(p.avatar)} ${esc(p.name)}`).join(' & ');
+  const wTxt = winners.map(p => `${avatarPic(p.avatar)} ${esc(p.name)}`).join(' & ');
   const quip = QUIPS[(view.round + f.scores[0].total) % QUIPS.length];
   $('#over').innerHTML = `<div class="trophy">${ART.trophy ? `<img src="${ART.trophy}" alt="The Golden Flamingo">` : '🦩'}</div>
     <div><h1>${wTxt} win${winners.length > 1 ? '' : 's'}!</h1>
       <div class="quip">${winners.length === 1 && winners[0].god ? godIcon(winners[0].god) + ' ' + esc(C.gods[winners[0].god].name) + ' smiles. ' : ''}${esc(quip)}</div>
       <table><tr><th>Gardener</th><th>Shows</th><th>Features</th><th>Goodwill</th><th>Total</th></tr>
-      ${f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${nm(s.seat)}</td><td>${s.shows}</td><td>${s.features}</td><td>${s.goodwill}</td><td class="tot">${s.total}</td></tr>`).join('')}</table>
+      ${f.scores.map((s, i) => `<tr><td>${i + 1}. ${avatarPic(pl(s.seat).avatar)} ${nm(s.seat)}</td><td>${s.shows}</td><td>${s.features}</td><td>${s.goodwill}</td><td class="tot">${s.total}</td></tr>`).join('')}</table>
       <div class="stats">${(f.honours || []).map(h => `<span title="${esc(h.description)}">${esc(h.icon)} ${esc(h.name)}: <b>${h.seats.map(nm).join(' & ')}</b>${h.seats.length > 1 ? ' (tie)' : ''}</span>`).join('')}<span>🗓️ ${view.round} rounds survived</span><span>🎮 Match ${view.meta.matchNumber} of this room</span></div>
       <div class="quip" style="margin-top:24px">${nm(0)} can start a rematch from their phone.</div></div>`;
 }

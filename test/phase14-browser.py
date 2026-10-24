@@ -70,7 +70,7 @@ async def main():
             page = await context.new_page()
             await page.set_content(html, wait_until='domcontentloaded')
             assert await page.locator('#avatarGrid').get_attribute('role') == 'group'
-            assert await page.locator('#avatarGroupTitle').inner_text() == 'Pick a face'
+            assert (await page.locator('#avatarGroupTitle').inner_text()).startswith('Choose your portrait')
             assert await page.locator('#avatarGrid').get_attribute('aria-labelledby') == 'avatarGroupTitle'
             await context.close()
             print('  ✔ join 320px: named avatar group')
