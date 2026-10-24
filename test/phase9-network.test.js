@@ -1,6 +1,8 @@
 'use strict';
-/* Phase 9: full games over real Socket.io transport (not mocked sockets).
-   2–8 player counts x Standard/Extended/Epic; deterministic test-only seeds. */
+/* Phase 9: real Socket.io transport + actual server/engine matrix.
+   Every 2–8 controller count is exercised in every game length. No fake sockets.
+   Engine time is accelerated through RoomManager.tickAll so the CI test remains bounded.
+   This is not a substitute for radio handovers or physical iPhone/Android testing. */
 const assert = require('node:assert/strict');
 const { io: connect } = require('socket.io-client');
 const { startServer } = require('../server/index');
@@ -29,6 +31,7 @@ async function phone(url, label, clients, faults) {
   const c = { socket, label, view: null, token: null, seat: null };
   clients.push(c);
   socket.on('state', view => {
+    // Check each wire snapshot. No engine secrets, other hands or private Sympathy options.
     if ('secrets' in view || view.players.some(p => 'hand' in p))
       faults.push(`${label}: private engine data leaked`);
     if (c.seat !== null && view.me && view.me.seat !== c.seat)
@@ -67,7 +70,7 @@ async function scenario(n, mode) {
     rate: RATE, gameSeed: 0x9261000 + n * 3 + MODES.indexOf(mode), gameConfig: FAST });
   const url = `http://127.0.0.1:${srv.port}`;
   try {
-    const tv = await phone(url, `TV-${n}-${mode}`, clients, faults);
+    let tv = await phone(url, `TV-${n}-${mode}`, clients, faults);
     const created = await ok(tv, 'tv:create');
     assert.match(created.code, /^[A-HJ-NP-Z]{4}$/);
     assert.ok(created.joinUrl.endsWith(`/play?room=${created.code}`));
@@ -84,6 +87,7 @@ async function scenario(n, mode) {
     const outsider = await phone(url, 'outsider', clients, faults);
     assert.equal((await rpc(outsider, 'state:request')).ok, false);
     assert.equal((await rpc(outsider, 'host:close')).ok, false);
+    // Within the transport buffer limit, but over the command's application limit.
     assert.equal((await rpc(outsider, 'player:join', {
       code: created.code, name: 'X'.repeat(2000) })).ok, false);
 
@@ -131,7 +135,7 @@ async function scenario(n, mode) {
           planEvents++;
           if (!wasReconnected && i === 1) {
             const prior = controllers[i];
-            prior.socket.disconnect();
+            prior.socket.disconnect(); // browser refresh / new WebSocket, same saved token
             await waitFor(() => !s.players[i].connected, 'disconnection state');
             const fresh = await phone(url, `${prior.label}-refresh`, clients, faults);
             fresh.seat = i; fresh.token = prior.token;
@@ -139,7 +143,7 @@ async function scenario(n, mode) {
             await waitFor(() => fresh.view?.me?.plan?.length === slots.length, 'rejoined plan');
             controllers[i] = fresh;
             const before = s.stateVersion;
-            await ok(fresh, 'action', cmd);
+            await ok(fresh, 'action', cmd); // resend after the ACK was lost
             assert.equal(s.stateVersion, before, 'duplicate mutated authoritative state');
             assert.equal((await rpc(fresh, 'action', { ...cmd, slots: [] })).ok, false);
             wasReconnected = true;

@@ -27,6 +27,6 @@ assert.match(tv, /id="tvRulesTitle"/);
 assert.match(tv, /function shieldRulesBackground\(active\)/);
 assert.match(tv, /:focus-visible\s*\{\s*outline:/);
 assert.match(tv, /function closeRules\(\)[\s\S]*?rulesReturnFocus[\s\S]*?\.focus\(/);
-assert.match(tv, /if \(e\.key === 'Tab'\)[\s\S]*?\.focus\(/);
+assert.match(tv, /if \(e\.key === 'Tab'\)[\s\S]*?\.focus\(\)/);
 assert.match(tv, /if \(e\.key === 'Escape'\)\s*\{\s*e\.preventDefault\(\);\s*closeRules\(\)/);
 console.log('✔ Phase 14 dialog name, keyboard focus, focus-return and TV styling contracts');
