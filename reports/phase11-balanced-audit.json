@@ -1,0 +1,418 @@
+{
+  "version": "1.2.0-dev.12",
+  "methodology": "Seed 240000+k*59, seat count 2+k%7, deterministic style rotation without random robot. 800 seeded game-level bootstrap resamples per mode; intervals approximate, not human data.",
+  "perMode": 14,
+  "modes": [
+    {
+      "mode": "standard",
+      "stats": {
+        "games": 14,
+        "medianWinningMarginPct": 11.26,
+        "ruinedOwnedPlotsPct": 18.02,
+        "emergencySuccessPct": 95.24,
+        "emergencyEvents": 42,
+        "goodwillOfTotalScorePct": 14.46,
+        "zeroPrestigePct": 0,
+        "carBootPct": 13.1,
+        "prayAndMeddlePct": 24.84,
+        "fizzlePct": 6.03,
+        "gods": {
+          "thor": {
+            "played": 8,
+            "fairShareWinRatio": 0
+          },
+          "freya": {
+            "played": 8,
+            "fairShareWinRatio": 0.96
+          },
+          "heimdall": {
+            "played": 9,
+            "fairShareWinRatio": 1.82
+          },
+          "njord": {
+            "played": 7,
+            "fairShareWinRatio": 0
+          },
+          "frigg": {
+            "played": 11,
+            "fairShareWinRatio": 1.79
+          },
+          "hel": {
+            "played": 12,
+            "fairShareWinRatio": 1.03
+          },
+          "odin": {
+            "played": 8,
+            "fairShareWinRatio": 0
+          },
+          "loki": {
+            "played": 7,
+            "fairShareWinRatio": 1.69
+          }
+        },
+        "strategies": {
+          "gardener": {
+            "played": 18,
+            "fairShareWinRatio": 0.52
+          },
+          "baron": {
+            "played": 18,
+            "fairShareWinRatio": 1.92
+          },
+          "chaser": {
+            "played": 17,
+            "fairShareWinRatio": 1.26
+          },
+          "menace": {
+            "played": 17,
+            "fairShareWinRatio": 0.3
+          }
+        }
+      },
+      "ci": {
+        "metrics": {
+          "medianWinningMarginPct": [
+            4.44,
+            20
+          ],
+          "ruinedOwnedPlotsPct": [
+            13.13,
+            23.21
+          ],
+          "emergencySuccessPct": [
+            88.1,
+            100
+          ],
+          "goodwillOfTotalScorePct": [
+            13.51,
+            15.16
+          ],
+          "zeroPrestigePct": [
+            0,
+            0
+          ],
+          "carBootPct": [
+            11.34,
+            14.87
+          ],
+          "prayAndMeddlePct": [
+            21.62,
+            27.37
+          ],
+          "fizzlePct": [
+            4.66,
+            7.41
+          ]
+        },
+        "gods": {
+          "thor": [
+            0,
+            0
+          ],
+          "freya": [
+            0,
+            1.8
+          ],
+          "heimdall": [
+            0.43,
+            3.49
+          ],
+          "njord": [
+            0,
+            0
+          ],
+          "frigg": [
+            0.44,
+            3.71
+          ],
+          "hel": [
+            0,
+            2.28
+          ],
+          "odin": [
+            0,
+            0
+          ],
+          "loki": [
+            0,
+            3.59
+          ]
+        }
+      }
+    },
+    {
+      "mode": "long",
+      "stats": {
+        "games": 14,
+        "medianWinningMarginPct": 18.02,
+        "ruinedOwnedPlotsPct": 25.43,
+        "emergencySuccessPct": 100,
+        "emergencyEvents": 42,
+        "goodwillOfTotalScorePct": 14.89,
+        "zeroPrestigePct": 0,
+        "carBootPct": 12.56,
+        "prayAndMeddlePct": 28.93,
+        "fizzlePct": 6.67,
+        "gods": {
+          "thor": {
+            "played": 8,
+            "fairShareWinRatio": 1.39
+          },
+          "freya": {
+            "played": 8,
+            "fairShareWinRatio": 0.48
+          },
+          "heimdall": {
+            "played": 9,
+            "fairShareWinRatio": 3.03
+          },
+          "njord": {
+            "played": 7,
+            "fairShareWinRatio": 0
+          },
+          "frigg": {
+            "played": 11,
+            "fairShareWinRatio": 0.89
+          },
+          "hel": {
+            "played": 12,
+            "fairShareWinRatio": 1.03
+          },
+          "odin": {
+            "played": 8,
+            "fairShareWinRatio": 0.73
+          },
+          "loki": {
+            "played": 7,
+            "fairShareWinRatio": 0
+          }
+        },
+        "strategies": {
+          "gardener": {
+            "played": 18,
+            "fairShareWinRatio": 0.52
+          },
+          "baron": {
+            "played": 18,
+            "fairShareWinRatio": 1.92
+          },
+          "chaser": {
+            "played": 17,
+            "fairShareWinRatio": 1.26
+          },
+          "menace": {
+            "played": 17,
+            "fairShareWinRatio": 0.3
+          }
+        }
+      },
+      "ci": {
+        "metrics": {
+          "medianWinningMarginPct": [
+            8.31,
+            30.21
+          ],
+          "ruinedOwnedPlotsPct": [
+            18.03,
+            32.04
+          ],
+          "emergencySuccessPct": [
+            100,
+            100
+          ],
+          "goodwillOfTotalScorePct": [
+            14.19,
+            15.54
+          ],
+          "zeroPrestigePct": [
+            0,
+            0
+          ],
+          "carBootPct": [
+            11.44,
+            13.89
+          ],
+          "prayAndMeddlePct": [
+            25.37,
+            32.21
+          ],
+          "fizzlePct": [
+            4.87,
+            8.85
+          ]
+        },
+        "gods": {
+          "thor": [
+            0,
+            3.49
+          ],
+          "freya": [
+            0,
+            1.85
+          ],
+          "heimdall": [
+            1.15,
+            5.1
+          ],
+          "njord": [
+            0,
+            0
+          ],
+          "frigg": [
+            0,
+            1.9
+          ],
+          "hel": [
+            0,
+            1.93
+          ],
+          "odin": [
+            0,
+            2.04
+          ],
+          "loki": [
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "mode": "epic",
+      "stats": {
+        "games": 14,
+        "medianWinningMarginPct": 13.65,
+        "ruinedOwnedPlotsPct": 20.69,
+        "emergencySuccessPct": 97.62,
+        "emergencyEvents": 84,
+        "goodwillOfTotalScorePct": 17.33,
+        "zeroPrestigePct": 0,
+        "carBootPct": 18.25,
+        "prayAndMeddlePct": 32.66,
+        "fizzlePct": 9.96,
+        "gods": {
+          "thor": {
+            "played": 8,
+            "fairShareWinRatio": 0
+          },
+          "freya": {
+            "played": 8,
+            "fairShareWinRatio": 1.91
+          },
+          "heimdall": {
+            "played": 9,
+            "fairShareWinRatio": 3.03
+          },
+          "njord": {
+            "played": 7,
+            "fairShareWinRatio": 0
+          },
+          "frigg": {
+            "played": 11,
+            "fairShareWinRatio": 0.45
+          },
+          "hel": {
+            "played": 12,
+            "fairShareWinRatio": 0.69
+          },
+          "odin": {
+            "played": 8,
+            "fairShareWinRatio": 0.73
+          },
+          "loki": {
+            "played": 7,
+            "fairShareWinRatio": 0.84
+          }
+        },
+        "strategies": {
+          "gardener": {
+            "played": 18,
+            "fairShareWinRatio": 0.26
+          },
+          "baron": {
+            "played": 18,
+            "fairShareWinRatio": 2.47
+          },
+          "chaser": {
+            "played": 17,
+            "fairShareWinRatio": 0.63
+          },
+          "menace": {
+            "played": 17,
+            "fairShareWinRatio": 0.59
+          }
+        }
+      },
+      "ci": {
+        "metrics": {
+          "medianWinningMarginPct": [
+            9.88,
+            17.53
+          ],
+          "ruinedOwnedPlotsPct": [
+            15.09,
+            27.01
+          ],
+          "emergencySuccessPct": [
+            94.05,
+            100
+          ],
+          "goodwillOfTotalScorePct": [
+            16.27,
+            18.26
+          ],
+          "zeroPrestigePct": [
+            0,
+            0
+          ],
+          "carBootPct": [
+            16.42,
+            19.81
+          ],
+          "prayAndMeddlePct": [
+            30.8,
+            34.76
+          ],
+          "fizzlePct": [
+            7.89,
+            12.17
+          ]
+        },
+        "gods": {
+          "thor": [
+            0,
+            0
+          ],
+          "freya": [
+            0.59,
+            3.49
+          ],
+          "heimdall": [
+            1.22,
+            5.34
+          ],
+          "njord": [
+            0,
+            0
+          ],
+          "frigg": [
+            0,
+            1.49
+          ],
+          "hel": [
+            0,
+            1.56
+          ],
+          "odin": [
+            0,
+            2.51
+          ],
+          "loki": [
+            0,
+            3.04
+          ]
+        }
+      }
+    }
+  ]
+}

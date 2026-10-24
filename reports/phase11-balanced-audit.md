@@ -1,36 +1,28 @@
-# Phase 11 — Controlled robot balance audit (v1.2.0-dev.12)
+# Phase 11 balanced strategy audit — 1.2.0-dev.12
 
-**420 seeded matches:** 140 each for Standard, Extended and Epic. Four competent strategies rotate through all seven player counts (2–8); deliberately random play is excluded from this run.
+Seed 240000+k*59, seat count 2+k%7, deterministic style rotation without random robot. 800 seeded game-level bootstrap resamples per mode; intervals approximate, not human data.
 
-95% uncertainty ranges below are 800 seeded bootstrap resamples at the **match**, not individual-player, level. The exact JSON and Markdown report can be regenerated with npm run test:balance-controlled.
-
-| Metric | Standard | Extended | Epic | Target |
+| Measure | Standard | Extended | Epic | Design target |
 | --- | --- | --- | --- | --- |
-| Median winning margin | 13.34% (10.82–15.91) | 13.55% (10.53–16.11) | 12.82% (10.26–15.12) | <15% |
-| Ruined owned plots | 17.74% (16.05–19.47) | 24.85% (22.87–26.71) | 24.71% (22.82–26.66) | 10–25% |
-| Emergency success | **93.81% (91.19–95.95)** | **95.95% (94.05–97.86)** | **95.71% (94.17–97.38)** | 55–70% |
-| Goodwill share of score | 14.30% (13.86–14.71) | 14.34% (13.93–14.75) | 17.10% (16.71–17.48) | 10–20% |
-| Players with zero Prestige | 0% (0–0) | 0% (0–0) | 0% (0–0) | <2% |
-| Car-Boot Sale actions | 12.82% (12.20–13.54) | 11.86% (11.28–12.47) | 16.35% (15.68–17.04) | ≤20% |
-| Pray + Meddle actions | 24.53% (23.30–25.72) | 27.55% (26.42–28.79) | 34.56% (33.78–35.38) | ≥18% |
+| Median winning margin | 11.26% (95% bootstrap 4.44–20%) | 18.02% (95% bootstrap 8.31–30.21%) | 13.65% (95% bootstrap 9.88–17.53%) | <15% |
+| Ruined owned plots | 18.02% (95% bootstrap 13.13–23.21%) | 25.43% (95% bootstrap 18.03–32.04%) | 20.69% (95% bootstrap 15.09–27.01%) | 10–25% |
+| Emergency success | 95.24% (95% bootstrap 88.1–100%) | 100% (95% bootstrap 100–100%) | 97.62% (95% bootstrap 94.05–100%) | 55–70% |
+| Goodwill share | 14.46% (95% bootstrap 13.51–15.16%) | 14.89% (95% bootstrap 14.19–15.54%) | 17.33% (95% bootstrap 16.27–18.26%) | 10–20% |
+| Players with zero Prestige | 0% (95% bootstrap 0–0%) | 0% (95% bootstrap 0–0%) | 0% (95% bootstrap 0–0%) | <2% |
+| Car-Boot actions | 13.1% (95% bootstrap 11.34–14.87%) | 12.56% (95% bootstrap 11.44–13.89%) | 18.25% (95% bootstrap 16.42–19.81%) | ≤20% |
+| Pray + Meddle actions | 24.84% (95% bootstrap 21.62–27.37%) | 28.93% (95% bootstrap 25.37–32.21%) | 32.66% (95% bootstrap 30.8–34.76%) | ≥18% |
 
-## God fair-share win ratios
+## Gods — ratio to fair share (95% match-bootstrap intervals)
 
 | God | Standard | Extended | Epic |
 | --- | --- | --- | --- |
-| Thor | 0.95 (0.57–1.40) | 1.06 (0.64–1.48) | 0.84 (0.48–1.23) |
-| Freya | 0.71 (0.39–1.08) | 1.04 (0.66–1.50) | 1.37 (0.93–1.85) |
-| Heimdall | 0.91 (0.55–1.39) | 1.27 (0.82–1.72) | 1.58 (1.06–2.10) |
-| Njord | 0.91 (0.55–1.29) | 1.09 (0.68–1.56) | 0.48 (0.18–0.80) |
-| Frigg | 1.24 (0.83–1.68) | 0.93 (0.59–1.31) | 1.29 (0.91–1.75) |
-| Hel | 1.24 (0.81–1.73) | 0.96 (0.57–1.43) | 0.67 (0.33–1.04) |
-| Odin | 0.82 (0.48–1.21) | 0.88 (0.54–1.25) | 0.67 (0.37–0.99) |
-| Loki | 1.27 (0.75–1.81) | 0.77 (0.36–1.21) | 1.13 (0.62–1.62) |
+| Thor | 0 (0–0) | 1.39 (0–3.49) | 0 (0–0) |
+| Freya | 0.96 (0–1.8) | 0.48 (0–1.85) | 1.91 (0.59–3.49) |
+| Heimdall | 1.82 (0.43–3.49) | 3.03 (1.15–5.1) | 3.03 (1.22–5.34) |
+| Njord | 0 (0–0) | 0 (0–0) | 0 (0–0) |
+| Frigg | 1.79 (0.44–3.71) | 0.89 (0–1.9) | 0.45 (0–1.49) |
+| Hel | 1.03 (0–2.28) | 1.03 (0–1.93) | 0.69 (0–1.56) |
+| Odin | 0 (0–0) | 0.73 (0–2.04) | 0.73 (0–2.51) |
+| Loki | 1.69 (0–3.59) | 0 (0–0) | 0.84 (0–3.04) |
 
-## Independent assessment
-
-**The emergency system is insufficiently demanding for the tested competent robots.** Earlier mixed-style reports included a deliberately random robot with poor performance, masking how reliably strategic groups avert emergencies.
-
-God estimates are not yet a reliable ranking: god assignment is not a fully factorial counterfactual study; intervals remain wide. Experimental increases to emergency thresholds in small matched-seed samples improved target success rates but risked excessive ruined gardens, particularly in longer modes. **No costs, probabilities, abilities or scoring values were changed** because the effects on human enjoyment and balance are not established.
-
-This is software-controlled robot evidence, not real participants, real network conditions or proof of voluntary replay. Retain the 55–70% target as open and prioritise the November human sessions.
+**Interpretation:** Intervals account for match-level grouping but do not guarantee target precision, and gods are not assigned in a fully factorial counterfactual experiment. These numbers reflect programmed robot decisions, not real enjoyment, subjective fairness, mobile latency, or voluntary rematches. Make changes only with controlled paired evidence.

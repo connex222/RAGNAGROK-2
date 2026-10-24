@@ -25,8 +25,8 @@ Run the archived original edition with `npm run start:v1`. Its rules, pages and 
 | `npm run test:phase9:offline` | Seven player-count full-game protocol tests using real engine and mock transport |
 | `npm run test:phase9:network` | Twenty-one actual Socket.io full-game tests: 2–8 players × Standard / Extended / Epic; requires installed npm dependencies |
 | `npm run test:phase14:browser` | Chromium keyboard-focus and named-dialog checks for 320/375/430px phones and 720p/1080p televisions (requires Python Playwright) |
-| `npm run test:phase10` | Regressions for action-picker affordability, shortage explanations and Car-Boot action order |
-| `npm run test:balance-controlled` | 140 seeded games per length (420 total), rotated competent robot profiles with 95% match-bootstrap intervals |
+| `npm run test:phase10` | Regression: action picker cannot spend future Car-Boot supplies, reports shortages, and preserves affordable alternatives |
+| `npm run test:balance-controlled` | 140 seeded games per length (420 total), with non-random rotating robot profiles, 95% match-level bootstrap intervals; writes JSON and Markdown reports |
 | `npm run test:phase8:browser` | Optional Chromium phone viewports, feedback and consent controls (requires Python Playwright and Chromium) |
 | `npm run test:phase3` | Abandoned-room and UI structure regressions |
 | `npm run test:protocol-acceptance` | Complete 9-round protocol matches with 2/4/6/8 simulated controllers, no Socket.io transport |
