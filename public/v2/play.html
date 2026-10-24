@@ -38,10 +38,17 @@ button:disabled { cursor:not-allowed; }
 label.f, .avatar-label { display:block; font-weight:700; margin:16px 0 6px; }
 input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; border-radius:var(--radius); border:2px solid var(--line); background:var(--surface); color:var(--ink); }
 #joinCode { text-transform:uppercase; letter-spacing:.35em; font-weight:900; font-size:24px; }
-.avatars { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
+/* Premium illustrated portraits, large enough to select on a 320px phone. */
+.avatars { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
 @media (max-width:360px) { .avatars { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 .avatars button { min-width:0; }
-.avatars button { aspect-ratio:1; font-size:28px; border-radius:14px; background:var(--surface); border:2px solid var(--line); }
+ .avatars button { min-height:92px; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:5px 2px; border-radius:14px; background:var(--surface); border:2px solid var(--line); font-size:12px; font-weight:800; color:var(--ink); }
+.avatars button .player-portrait { width:56px; height:56px; border-radius:10px; border:1px solid var(--line); }
+.avatars button .avatar-name { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.player-portrait { width:32px; height:32px; display:inline-block; flex-shrink:0; object-fit:cover; vertical-align:middle; border-radius:9px; border:2px solid var(--line); background:var(--surface2); }
+#top .player-portrait { width:42px; height:42px; }
+.players .player-portrait { width:34px; height:34px; }
+.chip .player-portrait { width:25px; height:25px; border-radius:7px; }
 .avatars button[aria-pressed="true"] { border-color:var(--primary); background:var(--surface2); }
 
 /* buttons */
@@ -226,7 +233,7 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
   <input class="f" id="joinCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false">
   <label class="f" for="joinName">Your name</label>
   <input class="f" id="joinName" maxlength="16" autocomplete="nickname">
-  <div class="f avatar-label" id="avatarGroupTitle">Pick a face</div>
+  <div class="f avatar-label" id="avatarGroupTitle">Choose your portrait <small class="muted">(your god comes later)</small></div>
   <div class="avatars" id="avatarGrid" role="group" aria-labelledby="avatarGroupTitle"></div>
   <div style="margin-top:22px"><button class="btn primary" data-act="join">Join the street</button></div>
   <p class="muted small" id="joinMsg" role="alert" style="min-height:1.4em"></p>
@@ -255,6 +262,7 @@ input.f { width:100%; min-height:var(--tap); font:inherit; padding:0 16px; borde
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/sfx.js"></script>
+<script src="/avatars.js"></script>
 <script src="/board.js"></script>
 <script src="/assets.js"></script>
 <script src="/v2/rules.js"></script>
@@ -279,7 +287,7 @@ const ACT = {
 };
 const GOD_ICON = { thor: '⚡', loki: '🎭', freya: '🌸', hel: '☠️', odin: '👁️', heimdall: '🔭', frigg: '📋', njord: '⛲' };
 const HEALTH = ['Ruined', 'Withered', 'Healthy', 'Lush'];
-const AVATARS = ['🦩', '🌻', '🔨', '💀', '🐐', '🦔', '🍄', '🐸', '🦉', '🐝', '🌵', '👑'];
+const AVATARS = RagnaAvatars.choices;
 const KEY = 'ragnagrok.player';
 const PREFS = 'ragnagrok.prefs';
 const RULES_KEY = 'ragnagrok.rules2Hidden';
@@ -317,9 +325,9 @@ let clockOffset = 0;
 let saved = store.get(KEY);
 const prefs = Object.assign({ day: false, sound: true, tips: true }, store.get(PREFS) || {});
 const params = new URLSearchParams(location.search);
-const ui = { tab: 'plan', sheet: null, unseen: 0, joinMsg: '', avatar: store.get('ragnagrok.avatar') || AVATARS[0], zoom: false, lastStep: null, pulseRating: null, pulseAgain: null };
+const ui = { tab: 'plan', sheet: null, unseen: 0, joinMsg: '', avatar: RagnaAvatars.idFor(store.get('ragnagrok.avatar') || AVATARS[0].id), zoom: false, lastStep: null, pulseRating: null, pulseAgain: null };
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.15';
+const CLIENT_VERSION = '1.2.0-dev.16';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -332,6 +340,7 @@ const sup = k => (ART[SUP_ART(k)] ? I(SUP_ART(k)) : SUP_EMOJI[k]);
 const chips = b => SUP.filter(r => b && b[r] > 0).map(r => `<span class="chip">${b[r]} ${sup(r)} <small>${SUP_NAME[r]}</small></span>`).join('') || '<span class="chip">Free</span>';
 const godIcon = g => (ART['deity-' + g] ? I('deity-' + g) : GOD_ICON[g] || '');
 const featureIcon = f => (ART['feature-' + f] ? I('feature-' + f) : RagnaBoard.FEATURE_ICON[f] || '🌷');
+const avatarPic = value => RagnaAvatars.html(value);
 
 /* ================= derived ================= */
 const me = () => (view && view.me ? view.me : null);
@@ -619,7 +628,7 @@ function renderJoin() {
   if (!code.value && params.get('room')) code.value = params.get('room').toUpperCase();
   const name = $('#joinName');
   if (!name.value) name.value = store.get('ragnagrok.name') || '';
-  $('#avatarGrid').innerHTML = AVATARS.map(a => `<button data-act="avatar" data-av="${a}" aria-pressed="${a === ui.avatar}" aria-label="Avatar ${a}">${a}</button>`).join('');
+  $('#avatarGrid').innerHTML = AVATARS.map(a => `<button type="button" data-act="avatar" data-av="${a.id}" aria-pressed="${a.id === ui.avatar}" aria-label="Choose ${a.name} portrait">${avatarPic(a.id)}<span class="avatar-name">${a.name}</span></button>`).join('');
   $('#joinMsg').textContent = ui.joinMsg;
   const logo = $('#joinLogo');
   if (ART.logo && !logo.dataset.done) { logo.innerHTML = `<img src="${ART.logo}" alt="RAGNAGROK" style="max-width:100%;max-height:160px">`; logo.dataset.done = '1'; }
@@ -629,7 +638,7 @@ function renderTop() {
   const p = pl(mySeat());
   const god = p.god && C ? C.gods[p.god] : null;
   const score = view.phase.stage === 'lobby' ? `Room ${esc(view.meta.code)}` : `${p.score} Prestige`;
-  $('#top').innerHTML = `<span class="av" aria-hidden="true">${esc(p.avatar)}</span>
+  $('#top').innerHTML = `<span class="av" aria-hidden="true">${avatarPic(p.avatar)}</span>
     <div class="who"><b>${esc(p.name)}</b><small>${god ? godIcon(p.god) + ' ' + esc(god.name) + ' · ' : ''}${score}</small></div>
     <button class="iconbtn" data-act="rules" aria-label="How to play">📖</button>
     <button class="iconbtn" data-act="menu" aria-label="Menu">⚙️</button>`;
@@ -719,7 +728,7 @@ function renderActionBar() {
 function renderLobby() {
   const isHost = view.meta.isHost;
   const len = view.config.length;
-  const rows = view.players.map(p => `<tr class="${p.connected ? '' : 'off'}"><td>${esc(p.avatar)} ${esc(p.name)}${p.seat === 0 ? ' <span class="muted small">host</span>' : ''}</td>
+  const rows = view.players.map(p => `<tr class="${p.connected ? '' : 'off'}"><td>${avatarPic(p.avatar)} ${esc(p.name)}${p.seat === 0 ? ' <span class="muted small">host</span>' : ''}</td>
     <td>${isHost && p.seat !== 0 ? `<button class="btn small" data-act="kick" data-seat="${p.seat}">Remove</button>` : ''}</td></tr>`).join('');
   const lengths = C ? Object.entries(C.lengths) : [];
   const timeGuess = { standard: '15–20 min', long: '20–25 min', epic: 'about an hour' };
@@ -873,7 +882,7 @@ function renderPlanTab() {
 }
 
 function renderLocks() {
-  return `<div class="card small"><b>Who's ready</b><div class="chips" style="margin-top:6px">${view.players.map(p => `<span class="chip${p.locked ? ' ok' : ''}">${esc(p.avatar)} ${esc(p.name)} ${p.locked ? '✔' : p.connected ? '…' : 'offline'}</span>`).join('')}</div></div>`;
+  return `<div class="card small"><b>Who's ready</b><div class="chips" style="margin-top:6px">${view.players.map(p => `<span class="chip${p.locked ? ' ok' : ''}">${avatarPic(p.avatar)} ${esc(p.name)} ${p.locked ? '✔' : p.connected ? '…' : 'offline'}</span>`).join('')}</div></div>`;
 }
 
 function renderPledge(after) {
@@ -957,7 +966,7 @@ function renderGarden() {
     return `<li><span class="ic">${p.feature ? featureIcon(p.feature) : RagnaBoard.RES_ICON[p.terrain]}</span><div><b>${esc(C.terrainNames[p.terrain])}</b> · ${HEALTH[p.health]}${p.condition ? ' · ' + C.conditions[p.condition].name : ''}
       ${p.feature ? `<div class="small">${esc(C.features[p.feature].name)} · ${C.features[p.feature].prestige} Prestige</div>` : ''}${threat ? '<div class="small" style="color:var(--bad)"><b>⚠️ Will be hit this round</b></div>' : ''}</div></li>`;
   }).join('');
-  const board = view.players.slice().sort((a, b) => b.score - a.score).map(p => `<tr class="${p.connected ? '' : 'off'}"><td><b>#${p.seat + 1}</b> ${esc(p.avatar)} ${esc(p.name)}${p.seat === mySeat() ? ' (you)' : ''}<div class="small muted">${p.god ? godIcon(p.god) + ' ' + esc(C.gods[p.god].name) + ' · ' : ''}${p.plots} plots · ${p.handCount} cards · ${p.goodwill} Goodwill</div></td><td>${p.score}</td></tr>`).join('');
+  const board = view.players.slice().sort((a, b) => b.score - a.score).map(p => `<tr class="${p.connected ? '' : 'off'}"><td><b>#${p.seat + 1}</b> ${avatarPic(p.avatar)} ${esc(p.name)}${p.seat === mySeat() ? ' (you)' : ''}<div class="small muted">${p.god ? godIcon(p.god) + ' ' + esc(C.gods[p.god].name) + ' · ' : ''}${p.plots} plots · ${p.handCount} cards · ${p.goodwill} Goodwill</div></td><td>${p.score}</td></tr>`).join('');
   return `${mapHtml({ zoom: ui.zoom })}
     <div class="legend"><span>Coloured ring + number = player seat</span><span>Gold dots = health</span><span style="color:#ff6b6b">Red dashes = hit this round</span><span>💀 Ruined</span></div>
     ${topo && topo.radius > 2 ? `<button class="btn small" data-act="zoom" style="margin-top:8px">${ui.zoom ? '🔍 Fit' : '🔍 Zoom'}</button>` : ''}
@@ -1000,7 +1009,7 @@ function renderSessionTotals() {
 function renderGameOver() {
   const f = view.final;
   if (!f) return '';
-  const rows = f.scores.map((s, i) => `<tr><td>${i + 1}. ${esc(pl(s.seat).avatar)} ${esc(pl(s.seat).name)}<div class="small muted">Shows ${s.shows} · Features ${s.features} · Goodwill ${s.goodwill}</div></td><td>${s.total}</td></tr>`).join('');
+  const rows = f.scores.map((s, i) => `<tr><td>${i + 1}. ${avatarPic(pl(s.seat).avatar)} ${esc(pl(s.seat).name)}<div class="small muted">Shows ${s.shows} · Features ${s.features} · Goodwill ${s.goodwill}</div></td><td>${s.total}</td></tr>`).join('');
   const won = f.winners.includes(mySeat());
   const honours = (f.honours || []).filter(h => h.seats.includes(mySeat()));
   const honourCards = honours.length ? `<div class="card"><h3>🎖️ Your garden honours</h3>${honours.map(h => `<p class="small"><b>${esc(h.icon)} ${esc(h.name)}</b> · ${esc(h.description)} (${h.value})${h.seats.length > 1 ? ' · shared' : ''}</p>`).join('')}</div>` : '';
@@ -1194,7 +1203,7 @@ async function onAct(el) {
   const d = el.dataset;
   const s = ui.sheet;
   switch (a) {
-    case 'avatar': ui.avatar = d.av; store.set('ragnagrok.avatar', d.av); renderJoin(); return;
+    case 'avatar': if (RagnaAvatars.has(d.av)) { ui.avatar = d.av; store.set('ragnagrok.avatar', d.av); renderJoin(); } return;
     case 'join': {
       const code = $('#joinCode').value.trim().toUpperCase();
       const name = $('#joinName').value.trim();
