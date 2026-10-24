@@ -418,4 +418,6 @@ const SFX = (() => {
   };
 })();
 
+// Classic browser scripts must export explicitly: top-level const is not window.SFX.
+if (typeof window !== 'undefined') window.SFX = SFX;
 if (typeof module !== 'undefined') module.exports = SFX;

@@ -1,5 +1,14 @@
 # RAGNAGROK — Development Changelog
 
+## v1.2.0-dev.15 — Restore browser sound and stabilise TV audio (24 October 2026)
+
+- **Critical browser-audio fix:** the shared `public/sfx.js` declared a top-level `const SFX` but never set `window.SFX`. Both V2 clients check `window.SFX` before playing anything, so browser sound effects could silently fail even when the MP3 mappings and files were correct. The browser global is now exported explicitly while retaining the Node/module test export.
+- Added a clearly labelled, keyboard-operable FX mute button on the TV, independent of the existing Music toggle. It appears after the initial audio-unlock gesture and reflects the actual persisted Web Audio mute setting with `aria-pressed` and an accessible action label. Phone menu mute now reaches the actual browser sound engine.
+- Fixed repeated music restarts on every pointer/key gesture. Music unlock is now idempotent; superseded volume fades are invalidated so quickly switching Music off/on cannot let a stale fade-out silence the resumed track.
+- The 10.11-second `sfx-timerTick.mp3` had been requested every second during the last ten seconds of planning; the repeated cue now uses the existing 0.24-second `sfx-tap.mp3` instead, with the original final `sfx-timeUp.mp3` retained. No new samples or dependencies.
+- Added a dependency-free regression test exercising the real TV Music object, FX toggle and browser sound export, plus six optional real Chromium phone/TV audio-control cases (320/375/430px; 720p/1080p/4K). Existing offline tests and all 63 V2 game-mode smoke matches passed locally; GitHub CI remains the publication gate.
+- The asset audit confirmed 53 recorded sound effects and two background-music tracks with valid MP3 metadata; sample level checks identified notable loudness differences. No subjective audio quality, speaker-level loudness or physical-device readiness is claimed, and Render remains separately suspended.
+
 ## v1.2.0-dev.14 — Keyboard navigation and screen-reader dialog fixes (23 October 2026)
 
 - **Phone:** action/rules/menu sheets now receive an accessible name from the visible heading; closing via Escape, the close button, or the backdrop restores keyboard and switch-control focus to the original Menu, Rules or action-slot button even after the controller UI was re-rendered. The underlying app is inert while the sheet is open.

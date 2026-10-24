@@ -2,7 +2,7 @@
 
 **A 2–8-player TV-and-phone party strategy game.** The Norse apocalypse has reached a respectable English suburb, and the Village Garden Show is carrying on regardless. Everyone plans secretly on their phone, watches disaster and mischief unfold on the shared TV, and competes for the Golden Flamingo.
 
-**Current build:** `1.2.0-dev.14` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
+**Current build:** `1.2.0-dev.15` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
 
 ## Start on Windows
 
@@ -24,6 +24,8 @@ Run the archived original edition with `npm run start:v1`. Its rules, pages and 
 | `npm run test:phase9` | Server-authoritative match starts, host privacy and restart-persistent aggregates |
 | `npm run test:phase9:offline` | Seven player-count full-game protocol tests using real engine and mock transport |
 | `npm run test:phase9:network` | Twenty-one actual Socket.io full-game tests: 2–8 players × Standard / Extended / Epic; requires installed npm dependencies |
+| `npm run test:phase15:audio` | Music fade/unlock and TV FX mute regression; confirms browser sound export and short countdown cue |
+| `npm run test:phase15:browser` | Optional real Chromium TV/phone sound-toggle checks at 320–430px and 720p/1080p/4K |
 | `npm run test:phase14:browser` | Chromium keyboard-focus and named-dialog checks for 320/375/430px phones and 720p/1080p televisions (requires Python Playwright) |
 | `npm run test:phase10` | Regression: action picker cannot spend future Car-Boot supplies, reports shortages, and preserves affordable alternatives |
 | `npm run test:balance-controlled` | 140 seeded games per length (420 total), with non-random rotating robot profiles, 95% match-level bootstrap intervals; writes JSON and Markdown reports |
