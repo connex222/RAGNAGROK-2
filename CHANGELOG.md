@@ -1,5 +1,13 @@
 # RAGNAGROK — Development Changelog
 
+## v1.2.0-dev.16 — Replace emoji profiles with real illustrated avatars (24 October 2026)
+
+- Fixed the phone's hard-coded twelve-emoji avatar picker. It now displays eight distinct, existing professionally illustrated Norse portrait crops, sized and labelled for 320–430px handsets; choosing a portrait is cosmetic and does not preselect a player's god.
+- Replaced emoji profile markers **throughout** the phone UI (join picker, header, lobby, who's-ready chips, live score and final results) and shared TV (lobby, god drafting, action reveals, readiness, garden rankings, forecasts and Golden Flamingo results).
+- Added one shared browser/Node `public/avatars.js` catalogue that resolves only allowlisted, local WebP filenames. Legacy emoji avatar values from existing rooms and local preferences map to portraits without breaking saved games, reconnect tokens or game rules. Untrusted avatar values cannot create arbitrary URLs or HTML.
+- Added a regression test validating all eight existing distinct WebP files, their responsive sizes and successful 2–8 player server projections. An optional real-Chromium acceptance checks decoded images and selection at 320/375/430px and TV at 720p/1080p, including existing emoji sessions.
+- No new source art generated, no archived V1 rules changed and no new dependencies. Render remains separately user-suspended; this build must pass GitHub CI and still requires physical-device acceptance.
+
 ## v1.2.0-dev.15 — Restore browser sound and stabilise TV audio (24 October 2026)
 
 - **Critical browser-audio fix:** the shared `public/sfx.js` declared a top-level `const SFX` but never set `window.SFX`. Both V2 clients check `window.SFX` before playing anything, so browser sound effects could silently fail even when the MP3 mappings and files were correct. The browser global is now exported explicitly while retaining the Node/module test export.
