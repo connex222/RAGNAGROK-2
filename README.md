@@ -2,7 +2,7 @@
 
 **A 2–8-player TV-and-phone party strategy game.** The Norse apocalypse has reached a respectable English suburb, and the Village Garden Show is carrying on regardless. Everyone plans secretly on their phone, watches disaster and mischief unfold on the shared TV, and competes for the Golden Flamingo.
 
-**Current build:** `1.2.0-dev.15` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
+**Current build:** `1.2.0-dev.16` — internal playtest edition, not a production release. This version redesigns gameplay and changes the V2 saved-game format.
 
 ## Start on Windows
 
@@ -88,3 +88,9 @@ The TV and phone lobbies show the current match number. Only the authenticated h
 ## Emergency planning secrecy and balance checks
 
 During planning, no player or television sees *any* pledge total, including the street aggregate, because it reveals an opponent's contribution in a two-person game. The TV still displays the public target; the full result and contributions appear only after the resolution. Run `node test/phase13-pledge-secrecy.test.js` to check all 2–8 player sizes and `npm run test:emergency-sensitivity` for a paired-seed, robot-only balance sensitivity diagnostic. Neither test changes deployed game rules.
+
+## Illustrated player avatars (dev.16)
+
+The phone's join screen now offers **eight distinct illustrated character portraits** from the existing Norse face artwork, one for each possible player seat. The selected portrait is visible on the phone's header, player lists, scoreboards and results, and on the TV lobby, player panel, reveals and winner screen. Selecting a portrait is cosmetic; the game's god draft happens later.
+
+Portraits are stored as short IDs (e.g. `freya`) in the existing server avatar field. Older saved rooms and phones that previously chose an emoji are displayed with a corresponding illustration automatically, without invalidating room tokens or changing the existing saved-game format. Portraits are supplied locally by `/img/deity-*-face.webp`; no external image service or new dependencies are required. Use `npm run test:phase16:avatars` to check all assets and server payloads, or `npm run test:phase16:browser` for actual Chromium images at 320/375/430px and TV at 720p/1080p.
