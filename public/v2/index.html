@@ -222,7 +222,7 @@ ul.costs li > span:last-child { margin-left:auto; padding-left:12px; white-space
   <section id="over" class="screen" hidden></section>
   <div id="pause" hidden>⏸ Paused</div>
   <div id="rules" role="dialog" aria-modal="true" aria-labelledby="tvRulesTitle" hidden><div id="rulesBox"></div></div>
-  <div id="corner"><button id="rulesBtn">📖 Rules</button><button id="musicBtn" hidden>🎵 Music</button><button id="soundGate">🔊 Enable sound</button></div>
+  <div id="corner"><button id="rulesBtn">📖 Rules</button><button id="musicBtn" type="button" hidden>🎵 Music</button><button id="effectsBtn" type="button" hidden aria-pressed="false" aria-label="Mute sound effects">🔊 FX</button><button id="soundGate" type="button">🔊 Enable sound</button></div>
   <div id="banner"></div>
   <div id="conn" hidden>Reconnecting to the server…</div>
   <div id="updateRequired" role="alert" hidden>
@@ -277,7 +277,7 @@ let tipIndex = 0;
 let theatre = { key: null, start: 0, shown: 0 };
 let lastBoardKey = '';
 const socket = io({ transports: ['websocket', 'polling'] });
-const CLIENT_VERSION = '1.2.0-dev.14';
+const CLIENT_VERSION = '1.2.0-dev.15';
 function checkBuild(info) {
   if (info && typeof info.version === 'string' && info.version !== CLIENT_VERSION)
     $('#updateRequired').hidden = false;
@@ -366,7 +366,26 @@ socket.on('state', v => {
 socket.on('events', list => list.forEach(onEvent));
 
 /* sound */
-function unlockSound() { if (window.SFX) window.SFX.unlock(); Music.unlock(); $('#soundGate').hidden = true; }
+function updateEffectsButton() {
+  const muted = !!(window.SFX && window.SFX.isMuted());
+  const btn = $('#effectsBtn');
+  btn.hidden = !window.SFX;
+  btn.textContent = muted ? '🔇 FX' : '🔊 FX';
+  btn.setAttribute('aria-pressed', String(muted));
+  btn.setAttribute('aria-label', muted ? 'Enable sound effects' : 'Mute sound effects');
+}
+function toggleEffects() {
+  if (!window.SFX) return;
+  window.SFX.setMuted(!window.SFX.isMuted());
+  updateEffectsButton();
+}
+function unlockSound() {
+  if (window.SFX) window.SFX.unlock();
+  Music.unlock();
+  $('#soundGate').hidden = true;
+  updateEffectsButton();
+}
+$('#effectsBtn').addEventListener('click', toggleEffects);
 $('#soundGate').addEventListener('click', unlockSound);
 document.addEventListener('keydown', unlockSound);
 document.addEventListener('pointerdown', unlockSound);
@@ -619,7 +638,7 @@ function tickClock() {
   const left = view.meta.paused ? null : remaining(view.phase.deadline);
   $('#clock').innerHTML = left === null ? '' : `<b>${left >= 60 ? Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : left + 's'}</b><small>${view.phase.step === 'plan' ? 'to plan' : 'next'}</small>`;
   $('#clock').className = left !== null && left <= 10 && view.phase.step === 'plan' ? 'low' : '';
-  if (view.phase.step === 'plan' && left !== null && left <= 10 && left !== lastTick) { lastTick = left; sfx(left === 0 ? 'timeUp' : 'timerTick'); }
+  if (view.phase.step === 'plan' && left !== null && left <= 10 && left !== lastTick) { lastTick = left; sfx(left === 0 ? 'timeUp' : 'tap'); }
   if (view.phase.step === 'resolve' && view.resolution && theatreShown() !== theatre.shown) renderPanel();
 }
 setInterval(tickClock, 250);
@@ -733,7 +752,8 @@ document.addEventListener('keydown', e => {
 
 /* ================= music ================= */
 const Music = {
-  tracks: {}, current: null, unlocked: false, off: !!store.get(MUSIC_KEY), levels: { intro: 0.55, ambience: 0.28 },
+  tracks: {}, current: null, unlocked: false, off: !!store.get(MUSIC_KEY),
+  levels: { intro: 0.55, ambience: 0.28 }, fadeVersion: new WeakMap(),
   load(map) {
     [['intro', 'music-intro'], ['ambience', 'music-ambience']].forEach(([k, slot]) => {
       if (!map[slot] || this.tracks[k]) return;
@@ -753,11 +773,28 @@ const Music = {
     if (t) { const p = t.play(); if (p && p.catch) p.catch(() => {}); this.fade(t, this.levels[want], 2000); }
   },
   fade(a, to, ms) {
+    // A fresh transition invalidates scheduled frames from any previous fade.
+    // Without this, quickly toggling music back on lets an old fade-out pause it.
+    const version = (this.fadeVersion.get(a) || 0) + 1;
+    this.fadeVersion.set(a, version);
     const from = a.volume; const t0 = performance.now();
-    const step = t => { const k = Math.min(1, (t - t0) / ms); a.volume = Math.max(0, Math.min(1, from + (to - from) * k)); if (k < 1) requestAnimationFrame(step); else if (to === 0) a.pause(); };
+    const step = t => {
+      if (this.fadeVersion.get(a) !== version) return;
+      const k = Math.min(1, Math.max(0, (t - t0) / ms));
+      a.volume = Math.max(0, Math.min(1, from + (to - from) * k));
+      if (k < 1) requestAnimationFrame(step);
+      else if (to === 0) a.pause();
+    };
     requestAnimationFrame(step);
   },
-  unlock() { this.unlocked = true; this.current = null; this.update(); },
+  unlock() {
+    // unlockSound receives every pointerdown/keydown; repeated gestures must not
+    // reset the active track or start another fade every time anyone clicks.
+    if (this.unlocked) return;
+    this.unlocked = true;
+    this.current = null;
+    this.update();
+  },
   toggle() { this.off = !this.off; store.set(MUSIC_KEY, this.off); Object.values(this.tracks).forEach(a => this.fade(a, 0, 600)); this.current = null; this.update(); }
 };
 $('#musicBtn').addEventListener('click', e => { e.stopPropagation(); Music.toggle(); });
